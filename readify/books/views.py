@@ -83,10 +83,18 @@ def book_list(request):
     # 获取所有分类
     categories = BookCategory.objects.all().order_by('name')
     
+    # 获取热门分类（有书籍的分类）
+    popular_categories = BookCategory.objects.filter(
+        book__user=request.user
+    ).distinct()[:5]
+    
     context = {
+        'books': page_obj,  # 模板中使用的是books变量
         'page_obj': page_obj,
+        'is_paginated': page_obj.has_other_pages(),
         'search_query': search_query,
         'categories': categories,
+        'popular_categories': popular_categories,
         'selected_category': category_code,
     }
     
