@@ -7,6 +7,11 @@
     <title>阅读 - {{ book.title }} - Readify</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- Markdown渲染库 -->
+    <script src="https://cdn.jsdelivr.net/npm/marked@4.3.0/marked.min.js"></script>
+    <!-- 代码高亮库 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/default.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
     <style>
         .reading-container {
             max-width: 1200px;
@@ -215,6 +220,183 @@
                 position: static;
             }
         }
+        
+        /* AI回答显示样式 */
+        .ai-answer-content {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            line-height: 1.6;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        
+        .ai-answer-content h1, .ai-answer-content h2, .ai-answer-content h3 {
+            color: #495057;
+            margin-top: 1.5em;
+            margin-bottom: 0.5em;
+        }
+        
+        .ai-answer-content h1 { font-size: 1.5em; }
+        .ai-answer-content h2 { font-size: 1.3em; }
+        .ai-answer-content h3 { font-size: 1.1em; }
+        
+        .ai-answer-content p {
+            margin-bottom: 1em;
+        }
+        
+        .ai-answer-content ul, .ai-answer-content ol {
+            margin-bottom: 1em;
+            padding-left: 1.5em;
+        }
+        
+        .ai-answer-content li {
+            margin-bottom: 0.3em;
+        }
+        
+        .ai-answer-content blockquote {
+            border-left: 4px solid #007bff;
+            padding-left: 1em;
+            margin: 1em 0;
+            color: #6c757d;
+            font-style: italic;
+        }
+        
+        .ai-answer-content code {
+            background: #e9ecef;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        
+        .ai-answer-content pre {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 1em;
+            overflow-x: auto;
+            margin: 1em 0;
+        }
+        
+        .ai-answer-content pre code {
+            background: none;
+            padding: 0;
+        }
+        
+        /* 放大查看模态框样式 */
+        .ai-fullscreen-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 10000;
+            display: none;
+            overflow-y: auto;
+        }
+        
+        .ai-fullscreen-content {
+            background: white;
+            margin: 20px auto;
+            padding: 30px;
+            border-radius: 10px;
+            max-width: 900px;
+            min-height: calc(100vh - 40px);
+            position: relative;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+        }
+        
+        .ai-fullscreen-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e9ecef;
+        }
+        
+        .ai-fullscreen-close {
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .ai-fullscreen-close:hover {
+            background: #c82333;
+            transform: scale(1.1);
+        }
+        
+        .ai-fullscreen-body {
+            font-size: 16px;
+            line-height: 1.8;
+            color: #333;
+        }
+        
+        .ai-answer-preview {
+            max-height: 200px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .ai-answer-preview::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 30px;
+            background: linear-gradient(transparent, #f8f9fa);
+        }
+        
+        .ai-expand-btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: all 0.3s ease;
+        }
+        
+        .ai-expand-btn:hover {
+            background: #0056b3;
+            transform: translateY(-1px);
+        }
+        
+        .ai-answer-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #dee2e6;
+        }
+        
+        .ai-action-btn {
+            padding: 6px 12px;
+            border: 1px solid #dee2e6;
+            background: white;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .ai-action-btn:hover {
+            background: #f8f9fa;
+            border-color: #007bff;
+            color: #007bff;
+        }
     </style>
 </head>
 <body>
@@ -369,7 +551,23 @@
                         
                         <div id="summaryContent" class="mt-2" style="display: none;">
                             <div class="alert alert-info">
-                                <div id="summaryText"></div>
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <h6><i class="fas fa-magic"></i> AI总结</h6>
+                                    <button class="ai-expand-btn" onclick="expandAIAnswer('summaryText', 'AI章节总结')">
+                                        <i class="fas fa-expand"></i> 放大查看
+                                    </button>
+                                </div>
+                                <div class="ai-answer-preview">
+                                    <div id="summaryText" class="ai-answer-content"></div>
+                                </div>
+                                <div class="ai-answer-actions">
+                                    <button class="ai-action-btn" onclick="copyAIContent('summaryText')">
+                                        <i class="fas fa-copy"></i> 复制
+                                    </button>
+                                    <button class="ai-action-btn" onclick="regenerateSummary()">
+                                        <i class="fas fa-redo"></i> 重新生成
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -377,6 +575,20 @@
                     <!-- 翻译功能 -->
                     <div class="note-section">
                         <h6><i class="fas fa-language"></i> 翻译功能</h6>
+                        
+                        <!-- 翻译模式选择 -->
+                        <div class="mb-2">
+                            <label class="form-label">翻译模式</label>
+                            <div class="btn-group w-100" role="group">
+                                <input type="radio" class="btn-check" name="translationMode" id="manualMode" value="manual" checked>
+                                <label class="btn btn-outline-primary btn-sm" for="manualMode">手动</label>
+                                
+                                <input type="radio" class="btn-check" name="translationMode" id="autoMode" value="auto">
+                                <label class="btn btn-outline-primary btn-sm" for="autoMode">自动</label>
+                            </div>
+                        </div>
+                        
+                        <!-- 目标语言 -->
                         <div class="mb-2">
                             <label class="form-label">目标语言</label>
                             <select class="form-select form-select-sm" id="targetLanguage">
@@ -390,12 +602,26 @@
                                 <option value="ar">阿拉伯语</option>
                             </select>
                         </div>
-                        <button class="btn btn-primary btn-sm w-100 mb-2" onclick="translateText()">
-                            <i class="fas fa-language"></i> 翻译
-                        </button>
-                        <div id="translationInfo" class="text-muted small mb-2" style="display: none;">
-                            翻译模式: <span id="translationMode">全文翻译</span>
+                        
+                        <!-- 翻译按钮 -->
+                        <div class="mb-2">
+                            <button class="btn btn-primary btn-sm w-100 mb-1" onclick="translateSelectedText()" id="translateBtn">
+                                <i class="fas fa-language"></i> 翻译选中文本
+                            </button>
+                            <button class="btn btn-success btn-sm w-100 mb-1" onclick="translateCurrentPage()" id="translatePageBtn">
+                                <i class="fas fa-file-alt"></i> 翻译当前页面
+                            </button>
+                            <button class="btn btn-info btn-sm w-100 mb-1" onclick="toggleAutoTranslation()" id="autoTranslateBtn">
+                                <i class="fas fa-magic"></i> <span id="autoTranslateText">开启自动翻译</span>
+                            </button>
                         </div>
+                        
+                        <!-- 翻译状态显示 -->
+                        <div id="translationStatus" class="text-muted small mb-2" style="display: none;">
+                            <i class="fas fa-info-circle"></i> <span id="translationStatusText">准备就绪</span>
+                        </div>
+                        
+                        <!-- 翻译历史 -->
                         <button class="btn btn-outline-secondary btn-sm w-100" onclick="showTranslationHistory()">
                             <i class="fas fa-history"></i> 翻译历史
                         </button>
@@ -476,13 +702,39 @@
         </div>
     </div>
 
+    <!-- AI回答放大查看模态框 -->
+    <div class="ai-fullscreen-modal" id="aiFullscreenModal">
+        <div class="ai-fullscreen-content">
+            <div class="ai-fullscreen-header">
+                <h4 id="aiFullscreenTitle"><i class="fas fa-robot"></i> AI助手回答</h4>
+                <button class="ai-fullscreen-close" onclick="closeAIFullscreen()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="ai-fullscreen-body" id="aiFullscreenBody">
+                <!-- AI回答内容将在这里显示 -->
+            </div>
+            <div class="ai-answer-actions mt-4">
+                <button class="btn btn-outline-primary" onclick="copyFullscreenContent()">
+                    <i class="fas fa-copy"></i> 复制全文
+                </button>
+                <button class="btn btn-outline-secondary" onclick="downloadAIAnswer()">
+                    <i class="fas fa-download"></i> 下载
+                </button>
+                <button class="btn btn-primary" onclick="closeAIFullscreen()">
+                    <i class="fas fa-times"></i> 关闭
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         // 全局变量
         let currentChapter = {{ progress.current_chapter }};
         let totalChapters = {{ total_chapters }};
         let bookId = {{ book.id }};
-        let readingStartTime = Date.now();
+        let sessionStartTime = Date.now();
         let readingTimer;
         let speechSynthesis = window.speechSynthesis;
         let currentUtterance = null;
@@ -491,34 +743,526 @@
         let currentPage = 1;
         let linesPerPage = 30;
         
-        // 页面加载时初始化
-        document.addEventListener('DOMContentLoaded', function() {
-            startReadingSession();
-            updateReadingTimer();
-            
-            // 监听文本选择
-            document.addEventListener('mouseup', handleTextSelection);
-            
-            // 初始化翻译模式
-            updateTranslationMode();
-        });
+        // 翻译相关变量
+        let autoTranslationEnabled = false;
+        let translationMode = 'manual';
+        let lastScrollPosition = 0;
+        let scrollTranslationTimer = null;
         
-        // 开始阅读会话
-        function startReadingSession() {
-            fetch(`/books/start-session/${bookId}/`, {
+        // 右键菜单功能
+        let contextMenu = null;
+        
+        // 创建右键菜单
+        function createContextMenu() {
+            if (contextMenu) {
+                contextMenu.remove();
+            }
+            
+            contextMenu = document.createElement('div');
+            contextMenu.className = 'context-menu';
+            contextMenu.style.cssText = `
+                position: fixed;
+                background: white;
+                border: 1px solid #ccc;
+                border-radius: 5px;
+                padding: 5px 0;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+                z-index: 10000;
+                display: none;
+                min-width: 150px;
+            `;
+            
+            const menuItems = [
+                { text: '解释这段文字', action: 'explain' },
+                { text: '总结这段内容', action: 'summarize' },
+                { text: '提出问题', action: 'question' },
+                { text: '翻译', action: 'translate' }
+            ];
+            
+            menuItems.forEach(item => {
+                const menuItem = document.createElement('div');
+                menuItem.className = 'context-menu-item';
+                menuItem.textContent = item.text;
+                menuItem.style.cssText = `
+                    padding: 8px 15px;
+                    cursor: pointer;
+                    border-bottom: 1px solid #eee;
+                `;
+                
+                menuItem.addEventListener('mouseenter', () => {
+                    menuItem.style.backgroundColor = '#f0f0f0';
+                });
+                
+                menuItem.addEventListener('mouseleave', () => {
+                    menuItem.style.backgroundColor = 'white';
+                });
+                
+                menuItem.addEventListener('click', () => {
+                    handleContextMenuAction(item.action);
+                    hideContextMenu();
+                });
+                
+                contextMenu.appendChild(menuItem);
+            });
+            
+            document.body.appendChild(contextMenu);
+        }
+        
+        // 显示右键菜单
+        function showContextMenu(x, y) {
+            if (!contextMenu) {
+                createContextMenu();
+            }
+            
+            contextMenu.style.left = x + 'px';
+            contextMenu.style.top = y + 'px';
+            contextMenu.style.display = 'block';
+        }
+        
+        // 隐藏右键菜单
+        function hideContextMenu() {
+            if (contextMenu) {
+                contextMenu.style.display = 'none';
+            }
+        }
+        
+        // 处理右键菜单动作
+        function handleContextMenuAction(action) {
+            if (!selectedText) {
+                alert('请先选择文本');
+                return;
+            }
+            
+            switch (action) {
+                case 'explain':
+                    askAIWithPrompt('请解释这段文字的含义：\n\n' + selectedText);
+                    break;
+                case 'summarize':
+                    askAIWithPrompt('请总结这段内容的要点：\n\n' + selectedText);
+                    break;
+                case 'question':
+                    const userQuestion = prompt('请输入您的问题：');
+                    if (userQuestion) {
+                        askAIWithPrompt('基于以下文本：\n\n' + selectedText + '\n\n问题：' + userQuestion);
+                    }
+                    break;
+                case 'translate':
+                    translateSelectedText();
+                    break;
+            }
+        }
+        
+        // 使用预设提示词询问AI
+        function askAIWithPrompt(prompt) {
+            fetch(`/ai-analysis/${bookId}/`, {
                 method: 'POST',
                 headers: {
+                    'Content-Type': 'application/json',
                     'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({
+                    selected_text: selectedText,
+                    question: prompt,
+                    analysis_type: 'custom',
+                    chapter_number: currentChapter
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showAIResult(prompt, data.result || data.answer);
+                } else {
+                    alert('AI分析失败: ' + (data.error || '未知错误'));
+                }
+            })
+            .catch(error => {
+                console.error('AI分析失败:', error);
+                alert('AI分析失败');
+            });
+        }
+        
+        // 显示AI回答结果
+        function showAIResult(question, answer) {
+            // 创建结果显示窗口
+            const resultModal = document.createElement('div');
+            resultModal.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.5);
+                z-index: 10001;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+            `;
+            
+            const resultContent = document.createElement('div');
+            resultContent.style.cssText = `
+                background: white;
+                padding: 20px;
+                border-radius: 10px;
+                max-width: 700px;
+                max-height: 80%;
+                overflow-y: auto;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+                position: relative;
+            `;
+            
+            // 渲染Markdown内容
+            const renderedAnswer = renderMarkdown(answer);
+            
+            resultContent.innerHTML = `
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <h5><i class="fas fa-robot"></i> AI助手回答</h5>
+                    <button class="ai-expand-btn" onclick="expandCurrentAIAnswer('${question}', '${answer.replace(/'/g, "\\'")}')">
+                        <i class="fas fa-expand"></i> 放大查看
+                    </button>
+                </div>
+                <div class="mb-3">
+                    <strong>问题：</strong>
+                    <p class="text-muted">${question}</p>
+                </div>
+                <div class="mb-3">
+                    <strong>回答：</strong>
+                    <div class="ai-answer-content ai-answer-preview">${renderedAnswer}</div>
+                </div>
+                <div class="ai-answer-actions">
+                    <button class="ai-action-btn" onclick="copyToClipboard('${answer.replace(/'/g, "\\'")}')">
+                        <i class="fas fa-copy"></i> 复制回答
+                    </button>
+                    <button class="ai-action-btn" onclick="downloadCurrentAnswer('${question}', '${answer.replace(/'/g, "\\'")}')">
+                        <i class="fas fa-download"></i> 下载
+                    </button>
+                    <button class="btn btn-primary" onclick="this.closest('.modal-overlay').remove()">
+                        <i class="fas fa-times"></i> 关闭
+                    </button>
+                </div>
+            `;
+            
+            resultModal.className = 'modal-overlay';
+            resultModal.appendChild(resultContent);
+            document.body.appendChild(resultModal);
+            
+            // 高亮代码块
+            if (typeof hljs !== 'undefined') {
+                resultContent.querySelectorAll('pre code').forEach((block) => {
+                    hljs.highlightElement(block);
+                });
+            }
+            
+            // 点击背景关闭
+            resultModal.addEventListener('click', (e) => {
+                if (e.target === resultModal) {
+                    resultModal.remove();
+                }
+            });
+        }
+        
+        // 放大查看当前AI回答
+        function expandCurrentAIAnswer(question, answer) {
+            const modal = document.getElementById('aiFullscreenModal');
+            const titleElement = document.getElementById('aiFullscreenTitle');
+            const bodyElement = document.getElementById('aiFullscreenBody');
+            
+            titleElement.innerHTML = `<i class="fas fa-robot"></i> AI问答回答`;
+            bodyElement.innerHTML = `
+                <div class="mb-4">
+                    <h6><i class="fas fa-question-circle"></i> 问题</h6>
+                    <div class="bg-light p-3 rounded">${question}</div>
+                </div>
+                <div>
+                    <h6><i class="fas fa-lightbulb"></i> 回答</h6>
+                    <div class="ai-answer-content">${renderMarkdown(answer)}</div>
+                </div>
+            `;
+            
+            // 高亮代码块
+            if (typeof hljs !== 'undefined') {
+                bodyElement.querySelectorAll('pre code').forEach((block) => {
+                    hljs.highlightElement(block);
+                });
+            }
+            
+            modal.style.display = 'block';
+            document.body.style.overflow = 'hidden';
+            
+            // 关闭当前小窗口
+            const currentModal = document.querySelector('.modal-overlay');
+            if (currentModal) {
+                currentModal.remove();
+            }
+        }
+        
+        // 下载当前回答
+        function downloadCurrentAnswer(question, answer) {
+            const content = `问题：${question}\n\n回答：\n${answer}`;
+            const filename = `AI回答_${new Date().toISOString().slice(0, 10)}.txt`;
+            
+            const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showToast('文件下载已开始', 'success');
+        }
+        
+        // 复制到剪贴板
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                alert('已复制到剪贴板');
+            }).catch(err => {
+                console.error('复制失败:', err);
+            });
+        }
+        
+        // 加载指定章节
+        function loadChapter(chapterNumber) {
+            goToChapter(chapterNumber);
+        }
+        
+        // 页面加载时初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 初始化阅读器
+            loadChapter(currentChapter);
+            startReadingSession();
+            
+            // 初始化Markdown渲染器
+            initializeMarkdownRenderer();
+            
+            // 设置翻译模式监听器
+            setupTranslationModeListeners();
+            
+            // 添加文本选择事件监听
+            document.addEventListener('mouseup', handleTextSelection);
+            
+            // 添加右键菜单事件监听
+            document.addEventListener('contextmenu', function(e) {
+                if (selectedText && selectedText.length > 0) {
+                    e.preventDefault();
+                    showContextMenu(e.pageX, e.pageY);
                 }
             });
             
-            // 启动计时器
+            // 点击其他地方隐藏右键菜单
+            document.addEventListener('click', function(e) {
+                if (!e.target.closest('.context-menu')) {
+                    hideContextMenu();
+                }
+            });
+            
+            // 页面离开时结束会话
+            window.addEventListener('beforeunload', function() {
+                endReadingSession();
+            });
+            
+            // 启动阅读计时器
+            startReadingTimer();
+        });
+        
+        // 启动阅读计时器
+        function startReadingTimer() {
             readingTimer = setInterval(updateReadingTimer, 1000);
+        }
+        
+        // 初始化Markdown渲染器
+        function initializeMarkdownRenderer() {
+            if (typeof marked !== 'undefined') {
+                // 配置marked选项
+                marked.setOptions({
+                    highlight: function(code, lang) {
+                        if (typeof hljs !== 'undefined' && lang && hljs.getLanguage(lang)) {
+                            try {
+                                return hljs.highlight(code, { language: lang }).value;
+                            } catch (err) {}
+                        }
+                        return code;
+                    },
+                    breaks: true,
+                    gfm: true
+                });
+                console.log('Markdown渲染器初始化成功');
+            } else {
+                console.warn('Markdown渲染器未加载');
+            }
+        }
+        
+        // 渲染Markdown内容
+        function renderMarkdown(content) {
+            if (typeof marked !== 'undefined') {
+                try {
+                    return marked.parse(content);
+                } catch (error) {
+                    console.error('Markdown渲染失败:', error);
+                    return content.replace(/\n/g, '<br>');
+                }
+            } else {
+                // 如果marked未加载，简单处理换行
+                return content.replace(/\n/g, '<br>');
+            }
+        }
+        
+        // 放大查看AI回答
+        function expandAIAnswer(contentId, title) {
+            const contentElement = document.getElementById(contentId);
+            if (!contentElement) return;
+            
+            const content = contentElement.textContent || contentElement.innerText;
+            const modal = document.getElementById('aiFullscreenModal');
+            const titleElement = document.getElementById('aiFullscreenTitle');
+            const bodyElement = document.getElementById('aiFullscreenBody');
+            
+            titleElement.innerHTML = `<i class="fas fa-robot"></i> ${title}`;
+            bodyElement.innerHTML = `<div class="ai-answer-content">${renderMarkdown(content)}</div>`;
+            
+            // 高亮代码块
+            if (typeof hljs !== 'undefined') {
+                bodyElement.querySelectorAll('pre code').forEach((block) => {
+                    hljs.highlightElement(block);
+                });
+            }
+            
+            modal.style.display = 'block';
+            document.body.style.overflow = 'hidden';
+        }
+        
+        // 关闭放大查看
+        function closeAIFullscreen() {
+            const modal = document.getElementById('aiFullscreenModal');
+            modal.style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+        
+        // 复制AI内容
+        function copyAIContent(contentId) {
+            const contentElement = document.getElementById(contentId);
+            if (!contentElement) return;
+            
+            const content = contentElement.textContent || contentElement.innerText;
+            navigator.clipboard.writeText(content).then(() => {
+                showToast('内容已复制到剪贴板', 'success');
+            }).catch(err => {
+                console.error('复制失败:', err);
+                showToast('复制失败', 'error');
+            });
+        }
+        
+        // 复制全屏内容
+        function copyFullscreenContent() {
+            const bodyElement = document.getElementById('aiFullscreenBody');
+            if (!bodyElement) return;
+            
+            const content = bodyElement.textContent || bodyElement.innerText;
+            navigator.clipboard.writeText(content).then(() => {
+                showToast('全文已复制到剪贴板', 'success');
+            }).catch(err => {
+                console.error('复制失败:', err);
+                showToast('复制失败', 'error');
+            });
+        }
+        
+        // 下载AI回答
+        function downloadAIAnswer() {
+            const bodyElement = document.getElementById('aiFullscreenBody');
+            const titleElement = document.getElementById('aiFullscreenTitle');
+            
+            if (!bodyElement) return;
+            
+            const content = bodyElement.textContent || bodyElement.innerText;
+            const title = titleElement.textContent || 'AI回答';
+            const filename = `${title}_${new Date().toISOString().slice(0, 10)}.txt`;
+            
+            const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showToast('文件下载已开始', 'success');
+        }
+        
+        // 显示提示消息
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `alert alert-${type === 'error' ? 'danger' : type === 'success' ? 'success' : 'info'} position-fixed`;
+            toast.style.cssText = `
+                top: 20px;
+                right: 20px;
+                z-index: 10001;
+                min-width: 250px;
+                opacity: 0;
+                transition: opacity 0.3s ease;
+            `;
+            toast.innerHTML = `
+                <i class="fas fa-${type === 'error' ? 'exclamation-triangle' : type === 'success' ? 'check-circle' : 'info-circle'}"></i>
+                ${message}
+            `;
+            
+            document.body.appendChild(toast);
+            
+            // 显示动画
+            setTimeout(() => {
+                toast.style.opacity = '1';
+            }, 100);
+            
+            // 自动隐藏
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => {
+                    if (toast.parentNode) {
+                        toast.parentNode.removeChild(toast);
+                    }
+                }, 300);
+            }, 3000);
+        }
+        
+        // 重新生成总结
+        function regenerateSummary() {
+            if (confirm('确定要重新生成总结吗？这将覆盖当前的总结内容。')) {
+                generateSummary();
+            }
+        }
+        
+        // 开始阅读会话
+        function startReadingSession() {
+            fetch(`/start-session/${bookId}/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({
+                    chapter_number: currentChapter
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    sessionStartTime = Date.now();
+                    startReadingTimer();
+                    console.log('阅读会话已开始');
+                } else {
+                    console.error('开始阅读会话失败:', data.error);
+                }
+            })
+            .catch(error => {
+                console.error('开始阅读会话失败:', error);
+            });
         }
         
         // 更新阅读计时器
         function updateReadingTimer() {
-            const elapsed = Math.floor((Date.now() - readingStartTime) / 1000);
+            const elapsed = Math.floor((Date.now() - sessionStartTime) / 1000);
             const minutes = Math.floor(elapsed / 60);
             const seconds = elapsed % 60;
             document.getElementById('readingTime').textContent = 
@@ -536,11 +1280,30 @@
                 clearInterval(readingTimer);
             }
             
-            fetch('/books/end-session/', {
+            const readingTime = Math.floor((Date.now() - sessionStartTime) / 1000);
+            
+            fetch('/end-session/', {
                 method: 'POST',
                 headers: {
+                    'Content-Type': 'application/json',
                     'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({
+                    book_id: bookId,
+                    reading_time: readingTime,
+                    chapter_number: currentChapter
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log('阅读会话已结束，阅读时间:', readingTime, '秒');
+                } else {
+                    console.error('结束阅读会话失败:', data.error);
                 }
+            })
+            .catch(error => {
+                console.error('结束阅读会话失败:', error);
             });
         }
         
@@ -558,10 +1321,18 @@
         }
         
         function goToChapter(chapterNumber) {
-            fetch(`/books/api/books/${bookId}/chapters/${chapterNumber}/`)
+            // 显示加载状态
+            const chapterTitle = document.getElementById('chapterTitle');
+            const chapterContent = document.getElementById('chapterContent');
+            
+            chapterTitle.innerHTML = '<h3><i class="fas fa-spinner fa-spin"></i> 加载中...</h3>';
+            chapterContent.innerHTML = '<div class="text-center"><i class="fas fa-spinner fa-spin"></i> 正在加载章节内容...</div>';
+            
+            fetch(`/api/books/${bookId}/chapters/${chapterNumber}/`)
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
+                        // 更新章节标题
                         document.getElementById('chapterTitle').innerHTML = 
                             `<h3>${data.title || '第' + chapterNumber + '章'}</h3>`;
                         
@@ -569,13 +1340,36 @@
                         const formattedContent = formatBookContent(data.content);
                         document.getElementById('chapterContent').innerHTML = formattedContent;
                         
+                        // 更新当前章节
                         currentChapter = parseInt(chapterNumber);
+                        
+                        // 更新章节选择器
+                        const chapterSelect = document.getElementById('chapterSelect');
+                        if (chapterSelect) {
+                            chapterSelect.value = chapterNumber;
+                        }
+                        
+                        // 更新进度和导航
                         updateProgress();
                         updateNavigationButtons();
-                        updateTranslationMode();
+                        
+                        // 滚动到顶部
+                        document.getElementById('mainContent').scrollTop = 0;
+                        
+                        console.log(`已切换到第${chapterNumber}章`);
+                    } else {
+                        console.error('获取章节内容失败:', data.error);
+                        document.getElementById('chapterTitle').innerHTML = '<h3>加载失败</h3>';
+                        document.getElementById('chapterContent').innerHTML = 
+                            `<div class="alert alert-danger">加载章节失败: ${data.error || '未知错误'}</div>`;
                     }
                 })
-                .catch(error => console.error('加载章节失败:', error));
+                .catch(error => {
+                    console.error('加载章节失败:', error);
+                    document.getElementById('chapterTitle').innerHTML = '<h3>加载失败</h3>';
+                    document.getElementById('chapterContent').innerHTML = 
+                        '<div class="alert alert-danger">网络错误，请稍后重试</div>';
+                });
         }
         
         // 格式化书籍内容
@@ -678,8 +1472,15 @@
                     selectedTextInfo.style.display = 'block';
                 }
                 
-                // 更新翻译模式
-                updateTranslationMode();
+                // 更新翻译按钮文本
+                updateTranslationButtonText();
+                
+                // 如果开启了自动翻译模式，自动翻译选中文本
+                if (autoTranslationEnabled && translationMode === 'auto') {
+                    setTimeout(() => {
+                        translateSelectedText();
+                    }, 500); // 延迟500ms，避免频繁触发
+                }
                 
                 console.log('选中文本:', selectedText);
             } else {
@@ -689,22 +1490,19 @@
                 if (selectedTextInfo) {
                     selectedTextInfo.style.display = 'none';
                 }
-                updateTranslationMode();
+                updateTranslationButtonText();
+                hideContextMenu();
             }
         }
         
-        // 更新翻译模式
-        function updateTranslationMode() {
-            const translationMode = document.getElementById('translationMode');
-            const translationInfo = document.getElementById('translationInfo');
-            
-            if (translationMode && translationInfo) {
+        // 更新翻译按钮文本
+        function updateTranslationButtonText() {
+            const translateBtn = document.getElementById('translateBtn');
+            if (translateBtn) {
                 if (selectedText) {
-                    translationMode.textContent = '选中文本';
-                    translationInfo.style.display = 'block';
+                    translateBtn.innerHTML = '<i class="fas fa-language"></i> 翻译选中文本';
                 } else {
-                    translationMode.textContent = '全文翻译';
-                    translationInfo.style.display = 'block';
+                    translateBtn.innerHTML = '<i class="fas fa-language"></i> 翻译选中文本';
                 }
             }
         }
@@ -745,7 +1543,7 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success && data.result) {
-                    showAIResult(question, selectedText, data.result.answer || data.result.summary || '无法获取回答');
+                    showAIResult(question, data.result.answer || data.result.summary || '无法获取回答');
                 } else {
                     alert('AI问答失败: ' + (data.error || '未知错误'));
                 }
@@ -762,59 +1560,6 @@
             });
         }
         
-        // 显示AI回答结果
-        function showAIResult(question, selectedText, answer) {
-            // 显示问题
-            const questionDisplay = document.getElementById('aiQuestionDisplay');
-            const displayedQuestion = document.getElementById('displayedQuestion');
-            if (questionDisplay && displayedQuestion) {
-                displayedQuestion.textContent = question;
-                questionDisplay.style.display = 'block';
-            }
-            
-            // 显示选中文本（如果有）
-            const selectedTextDisplay = document.getElementById('aiSelectedTextDisplay');
-            const displayedSelectedText = document.getElementById('displayedSelectedText');
-            if (selectedText && selectedTextDisplay && displayedSelectedText) {
-                displayedSelectedText.textContent = selectedText;
-                selectedTextDisplay.style.display = 'block';
-            } else if (selectedTextDisplay) {
-                selectedTextDisplay.style.display = 'none';
-            }
-            
-            // 显示AI回答
-            const aiAnswerText = document.getElementById('aiAnswerText');
-            if (aiAnswerText) {
-                aiAnswerText.textContent = answer;
-            }
-            
-            // 显示处理信息
-            const aiProcessingInfo = document.getElementById('aiProcessingInfo');
-            if (aiProcessingInfo) {
-                aiProcessingInfo.textContent = `处理时间: ${new Date().toLocaleTimeString()}`;
-            }
-            
-            // 显示面板
-            document.getElementById('aiResultOverlay').style.display = 'block';
-            document.getElementById('aiResultPanel').style.display = 'block';
-        }
-        
-        // 关闭AI结果面板
-        function closeAIResultPanel() {
-            document.getElementById('aiResultOverlay').style.display = 'none';
-            document.getElementById('aiResultPanel').style.display = 'none';
-        }
-        
-        // 复制AI回答
-        function copyAIAnswer() {
-            const aiAnswerText = document.getElementById('aiAnswerText').textContent;
-            navigator.clipboard.writeText(aiAnswerText).then(() => {
-                alert('AI回答已复制到剪贴板');
-            }).catch(err => {
-                console.error('复制失败:', err);
-            });
-        }
-        
         // AI总结功能
         function generateSummary() {
             const btn = event.target;
@@ -822,7 +1567,7 @@
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 生成中...';
             btn.disabled = true;
             
-            fetch(`/books/smart-summary/${bookId}/`, {
+            fetch(`/smart-summary/${bookId}/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -837,15 +1582,28 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    document.getElementById('summaryText').innerHTML = data.summary || '生成总结失败';
+                    const summaryElement = document.getElementById('summaryText');
+                    const summaryContent = data.summary || '生成总结失败';
+                    
+                    // 渲染Markdown内容
+                    summaryElement.innerHTML = renderMarkdown(summaryContent);
+                    
+                    // 高亮代码块
+                    if (typeof hljs !== 'undefined') {
+                        summaryElement.querySelectorAll('pre code').forEach((block) => {
+                            hljs.highlightElement(block);
+                        });
+                    }
+                    
                     document.getElementById('summaryContent').style.display = 'block';
+                    showToast('章节总结生成成功', 'success');
                 } else {
-                    alert('生成总结失败: ' + (data.error || '未知错误'));
+                    showToast('生成总结失败: ' + (data.error || '未知错误'), 'error');
                 }
             })
             .catch(error => {
                 console.error('生成总结失败:', error);
-                alert('生成总结失败');
+                showToast('生成总结失败，请稍后重试', 'error');
             })
             .finally(() => {
                 btn.innerHTML = originalText;
@@ -853,13 +1611,14 @@
             });
         }
         
+        // 生成全书总结
         function generateBookSummary() {
             const btn = event.target;
             const originalText = btn.innerHTML;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 生成中...';
             btn.disabled = true;
             
-            fetch(`/books/smart-summary/${bookId}/`, {
+            fetch(`/smart-summary/${bookId}/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -873,15 +1632,28 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    document.getElementById('summaryText').innerHTML = data.summary || '生成概要失败';
+                    const summaryElement = document.getElementById('summaryText');
+                    const summaryContent = data.summary || '生成总结失败';
+                    
+                    // 渲染Markdown内容
+                    summaryElement.innerHTML = renderMarkdown(summaryContent);
+                    
+                    // 高亮代码块
+                    if (typeof hljs !== 'undefined') {
+                        summaryElement.querySelectorAll('pre code').forEach((block) => {
+                            hljs.highlightElement(block);
+                        });
+                    }
+                    
                     document.getElementById('summaryContent').style.display = 'block';
+                    showToast('全书总结生成成功', 'success');
                 } else {
-                    alert('生成概要失败: ' + (data.error || '未知错误'));
+                    showToast('生成总结失败: ' + (data.error || '未知错误'), 'error');
                 }
             })
             .catch(error => {
-                console.error('生成概要失败:', error);
-                alert('生成概要失败');
+                console.error('生成总结失败:', error);
+                showToast('生成总结失败，请稍后重试', 'error');
             })
             .finally(() => {
                 btn.innerHTML = originalText;
@@ -889,68 +1661,7 @@
             });
         }
         
-        // 翻译功能
-        function translateText() {
-            const targetLanguage = document.getElementById('targetLanguage').value;
-            
-            let textToTranslate = '';
-            let translationType = 'chapter';
-            
-            if (selectedText) {
-                textToTranslate = selectedText;
-                translationType = 'selection';
-            } else {
-                // 获取整章内容
-                textToTranslate = document.getElementById('chapterContent').textContent;
-                translationType = 'chapter';
-            }
-            
-            if (!textToTranslate.trim()) {
-                alert('没有可翻译的内容');
-                return;
-            }
-            
-            // 显示加载状态
-            showTranslationPanel();
-            document.getElementById('originalText').textContent = textToTranslate.length > 200 ? 
-                textToTranslate.substring(0, 200) + '...' : textToTranslate;
-            document.getElementById('translatedText').innerHTML = '<i class="fas fa-spinner fa-spin"></i> 正在翻译...';
-            
-            const requestData = {
-                text: textToTranslate,
-                target_language: targetLanguage,
-                source_language: 'auto',
-                translation_type: translationType,
-                chapter_number: currentChapter
-            };
-            
-            fetch(`/books/translate/${bookId}/`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCookie('csrftoken')
-                },
-                body: JSON.stringify(requestData)
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    document.getElementById('originalText').textContent = data.original_text;
-                    document.getElementById('translatedText').textContent = data.translated_text;
-                    document.getElementById('translationInfo').textContent = 
-                        `${data.source_language} → ${data.target_language} | 置信度: ${(data.confidence * 100).toFixed(1)}%`;
-                } else {
-                    document.getElementById('translatedText').innerHTML = 
-                        `<div class="alert alert-danger">${data.error}</div>`;
-                }
-            })
-            .catch(error => {
-                console.error('翻译失败:', error);
-                document.getElementById('translatedText').innerHTML = 
-                    '<div class="alert alert-danger">翻译失败，请稍后重试</div>';
-            });
-        }
-        
+        // 翻译功能面板显示/隐藏
         function showTranslationPanel() {
             document.getElementById('translationOverlay').style.display = 'block';
             document.getElementById('translationPanel').style.display = 'block';
@@ -964,23 +1675,25 @@
         function copyTranslation() {
             const translatedText = document.getElementById('translatedText').textContent;
             navigator.clipboard.writeText(translatedText).then(() => {
-                alert('翻译结果已复制到剪贴板');
+                showToast('翻译结果已复制到剪贴板', 'success');
             }).catch(err => {
                 console.error('复制失败:', err);
+                showToast('复制失败', 'error');
             });
         }
         
         function showTranslationHistory() {
-            fetch(`/books/translation-history/${bookId}/`)
+            fetch(`/translation-history/${bookId}/`)
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
                         // 这里可以显示翻译历史，暂时用alert代替
-                        alert(`找到 ${data.history.length} 条翻译记录`);
+                        showToast(`找到 ${data.history.length} 条翻译记录`, 'info');
                     }
                 })
                 .catch(error => {
                     console.error('获取翻译历史失败:', error);
+                    showToast('获取翻译历史失败', 'error');
                 });
         }
         
@@ -998,6 +1711,241 @@
                 }
             }
             return cookieValue;
+        }
+
+        // 翻译选中文本
+        function translateSelectedText() {
+            if (!selectedText) {
+                showToast('请先选择要翻译的文本', 'warning');
+                return;
+            }
+            
+            updateTranslationStatus('正在翻译选中文本...');
+            
+            const targetLanguage = document.getElementById('targetLanguage').value;
+            const requestData = {
+                text: selectedText,
+                target_language: targetLanguage,
+                source_language: 'auto',
+                translation_type: 'selection',
+                chapter_number: currentChapter
+            };
+            
+            performTranslation(requestData, '选中文本翻译');
+        }
+
+        // 翻译当前页面
+        function translateCurrentPage() {
+            const chapterContent = document.getElementById('chapterContent');
+            if (!chapterContent) {
+                showToast('无法获取页面内容', 'error');
+                return;
+            }
+            
+            // 获取当前可见区域的文本
+            const visibleText = getVisiblePageText();
+            if (!visibleText) {
+                showToast('当前页面没有可翻译的内容', 'warning');
+                return;
+            }
+            
+            updateTranslationStatus('正在翻译当前页面...');
+            
+            const targetLanguage = document.getElementById('targetLanguage').value;
+            const requestData = {
+                text: visibleText,
+                target_language: targetLanguage,
+                source_language: 'auto',
+                translation_type: 'page',
+                chapter_number: currentChapter
+            };
+            
+            performTranslation(requestData, '页面翻译');
+        }
+
+        // 切换自动翻译
+        function toggleAutoTranslation() {
+            autoTranslationEnabled = !autoTranslationEnabled;
+            
+            const autoTranslateBtn = document.getElementById('autoTranslateBtn');
+            const autoTranslateText = document.getElementById('autoTranslateText');
+            
+            if (autoTranslationEnabled) {
+                autoTranslateText.textContent = '关闭自动翻译';
+                autoTranslateBtn.classList.remove('btn-info');
+                autoTranslateBtn.classList.add('btn-warning');
+                updateTranslationStatus('自动翻译已开启');
+                
+                // 开始监听滚动
+                setupScrollTranslation();
+                showToast('自动翻译已开启', 'success');
+            } else {
+                autoTranslateText.textContent = '开启自动翻译';
+                autoTranslateBtn.classList.remove('btn-warning');
+                autoTranslateBtn.classList.add('btn-info');
+                updateTranslationStatus('自动翻译已关闭');
+                
+                // 停止监听滚动
+                removeScrollTranslation();
+                showToast('自动翻译已关闭', 'info');
+            }
+        }
+
+        // 执行翻译请求
+        function performTranslation(requestData, translationType) {
+            fetch(`/translate/${bookId}/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify(requestData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showTranslationResult(data, translationType);
+                    updateTranslationStatus(`${translationType}完成`);
+                } else {
+                    showToast(`翻译失败: ${data.error}`, 'error');
+                    updateTranslationStatus('翻译失败');
+                }
+            })
+            .catch(error => {
+                console.error('翻译失败:', error);
+                showToast('翻译失败，请稍后重试', 'error');
+                updateTranslationStatus('翻译失败');
+            });
+        }
+
+        // 显示翻译结果
+        function showTranslationResult(data, translationType) {
+            // 显示翻译面板
+            showTranslationPanel();
+            
+            // 填充翻译结果
+            document.getElementById('originalText').textContent = data.original_text.length > 500 ? 
+                data.original_text.substring(0, 500) + '...' : data.original_text;
+            document.getElementById('translatedText').textContent = data.translated_text;
+            document.getElementById('translationInfo').textContent = 
+                `${translationType} | ${data.source_language} → ${data.target_language} | 置信度: ${(data.confidence * 100).toFixed(1)}%`;
+        }
+
+        // 获取可见页面文本
+        function getVisiblePageText() {
+            const chapterContent = document.getElementById('chapterContent');
+            const mainContent = document.getElementById('mainContent');
+            
+            if (!chapterContent || !mainContent) return '';
+            
+            // 获取可视区域
+            const containerRect = mainContent.getBoundingClientRect();
+            const containerTop = containerRect.top;
+            const containerBottom = containerRect.bottom;
+            
+            // 获取所有段落
+            const paragraphs = chapterContent.querySelectorAll('p');
+            let visibleText = '';
+            
+            for (let p of paragraphs) {
+                const pRect = p.getBoundingClientRect();
+                
+                // 检查段落是否在可视区域内
+                if (pRect.bottom > containerTop && pRect.top < containerBottom) {
+                    visibleText += p.textContent + '\n\n';
+                }
+            }
+            
+            return visibleText.trim();
+        }
+
+        // 设置滚动翻译
+        function setupScrollTranslation() {
+            const mainContent = document.getElementById('mainContent');
+            if (!mainContent) return;
+            
+            mainContent.addEventListener('scroll', handleScrollTranslation);
+        }
+
+        // 移除滚动翻译
+        function removeScrollTranslation() {
+            const mainContent = document.getElementById('mainContent');
+            if (!mainContent) return;
+            
+            mainContent.removeEventListener('scroll', handleScrollTranslation);
+            
+            if (scrollTranslationTimer) {
+                clearTimeout(scrollTranslationTimer);
+                scrollTranslationTimer = null;
+            }
+        }
+
+        // 处理滚动翻译
+        function handleScrollTranslation() {
+            if (!autoTranslationEnabled) return;
+            
+            const mainContent = document.getElementById('mainContent');
+            const currentScrollPosition = mainContent.scrollTop;
+            
+            // 检查是否滚动了足够的距离
+            if (Math.abs(currentScrollPosition - lastScrollPosition) > 200) {
+                lastScrollPosition = currentScrollPosition;
+                
+                // 清除之前的定时器
+                if (scrollTranslationTimer) {
+                    clearTimeout(scrollTranslationTimer);
+                }
+                
+                // 设置新的定时器，延迟翻译以避免频繁请求
+                scrollTranslationTimer = setTimeout(() => {
+                    updateTranslationStatus('检测到滚动，准备翻译...');
+                    translateCurrentPage();
+                }, 1000); // 1秒延迟
+            }
+        }
+
+        // 更新翻译状态
+        function updateTranslationStatus(message) {
+            const statusElement = document.getElementById('translationStatus');
+            const statusText = document.getElementById('translationStatusText');
+            
+            if (statusElement && statusText) {
+                statusText.textContent = message;
+                statusElement.style.display = 'block';
+                
+                // 3秒后自动隐藏
+                setTimeout(() => {
+                    statusElement.style.display = 'none';
+                }, 3000);
+            }
+        }
+
+        // 监听翻译模式变化
+        function setupTranslationModeListeners() {
+            const manualMode = document.getElementById('manualMode');
+            const autoMode = document.getElementById('autoMode');
+            
+            if (manualMode) {
+                manualMode.addEventListener('change', function() {
+                    if (this.checked) {
+                        translationMode = 'manual';
+                        if (autoTranslationEnabled) {
+                            toggleAutoTranslation(); // 关闭自动翻译
+                        }
+                    }
+                });
+            }
+            
+            if (autoMode) {
+                autoMode.addEventListener('change', function() {
+                    if (this.checked) {
+                        translationMode = 'auto';
+                        if (!autoTranslationEnabled) {
+                            toggleAutoTranslation(); // 开启自动翻译
+                        }
+                    }
+                });
+            }
         }
     </script>
 </body>

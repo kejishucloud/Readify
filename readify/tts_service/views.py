@@ -1,5 +1,5 @@
-from django.shortcuts import render
-from django.http import JsonResponse
+from django.shortcuts import render, get_object_or_404
+from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
@@ -11,9 +11,12 @@ from rest_framework.response import Response
 from rest_framework import status
 import json
 import logging
-from django.db.models import Count
+from django.db.models import Count, Sum, Avg
 from django.utils import timezone
 from datetime import timedelta
+from django.db.models.functions import TruncDate
+from django.core.paginator import Paginator
+from django.conf import settings
 
 from .services import ChatTTSService, TTSVoiceService, EnhancedChatTTSService
 from .models import ChatTTSCache, ChatTTSRequest, TTSSpeaker, TTSSettings, TTSVoice, UserVoicePreference, TTSUsageLog
@@ -523,8 +526,8 @@ def usage_statistics(request):
     daily_usage = TTSUsageLog.objects.filter(
         user=user,
         created_at__date__range=[start_date, end_date]
-    ).extra(
-        select={'day': 'date(created_at)'}
+    ).annotate(
+        day=TruncDate('created_at')
     ).values('day').annotate(
         count=Count('id')
     ).order_by('day')

@@ -12,13 +12,40 @@ import json
 import logging
 
 from .models import UserProfile, UserPreferences, UserAIConfig
-from readify.books.models import Book, ReadingProgress, BookNote, BookQuestion
+from readify.books.models import Book, ReadingProgress, BookNote, BookQuestion, BatchUpload
 from readify.ai_services.models import AIRequest
 from readify.translation_service.models import TranslationRequest
 from readify.tts_service.models import ChatTTSRequest
 from readify.ai_services.services import AIService
 
 logger = logging.getLogger(__name__)
+
+
+def get_user_upload_errors(user):
+    """获取用户上传异常数量的辅助函数"""
+    if not user.is_authenticated:
+        return 0
+    
+    try:
+        # 获取失败的书籍处理数量
+        failed_books = Book.objects.filter(
+            user=user, 
+            processing_status='failed'
+        ).count()
+        
+        # 获取失败的批量上传数量
+        failed_batches = BatchUpload.objects.filter(
+            user=user,
+            status__in=['failed', 'partial']
+        ).aggregate(
+            total_failed=Sum('failed_files')
+        )['total_failed'] or 0
+        
+        return failed_books + failed_batches
+        
+    except Exception as e:
+        logger.error(f"获取用户上传异常数量失败: {str(e)}")
+        return 0
 
 
 def get_user_stats(user):
@@ -29,6 +56,7 @@ def get_user_stats(user):
             'categories_count': 0,
             'total_views': 0,
             'notes_count': 0,
+            'upload_errors': 0,
         }
     
     try:
@@ -46,6 +74,7 @@ def get_user_stats(user):
             'categories_count': user_books.values('category').distinct().count(),
             'total_views': sum([book.view_count for book in user_books if hasattr(book, 'view_count') and book.view_count]),
             'notes_count': BookNote.objects.filter(user=user).count(),
+            'upload_errors': get_user_upload_errors(user),
         }
         
         return user_stats
@@ -56,6 +85,7 @@ def get_user_stats(user):
             'categories_count': 0,
             'total_views': 0,
             'notes_count': 0,
+            'upload_errors': 0,
         }
 
 

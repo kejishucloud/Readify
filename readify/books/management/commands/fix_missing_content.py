@@ -60,40 +60,20 @@ class Command(BaseCommand):
                 with transaction.atomic():
                     # 使用BookProcessingService来处理内容提取
                     processing_service = BookProcessingService(book.user)
-                    content = processing_service._extract_text_content(book)
+                    success = processing_service.create_book_chapters(book)
                     
-                    if content:
-                        # 成功提取到内容
-                        BookContent.objects.create(
-                            book=book,
-                            chapter_number=1,
-                            chapter_title="全文内容",
-                            content=content[:50000],  # 限制长度
-                            word_count=len(content)
-                        )
-                        book.word_count = len(content)
-                        book.processing_status = 'completed'
+                    if success:
+                        # 成功创建章节
+                        chapter_count = book.contents.count()
                         self.stdout.write(
-                            self.style.SUCCESS(f'✓ 成功修复: {book.title}')
+                            self.style.SUCCESS(f'✓ 成功修复: {book.title} ({chapter_count}个章节)')
                         )
                     else:
-                        # 提取失败，创建默认内容
-                        default_content = f"抱歉，无法自动解析《{book.title}》的文本内容。\n\n可能的原因：\n1. 文件格式不支持自动解析\n2. 文件内容为图片或扫描版\n3. 文件已加密或损坏\n\n请尝试：\n- 转换为TXT格式后重新上传\n- 联系管理员获取帮助"
-                        
-                        BookContent.objects.create(
-                            book=book,
-                            chapter_number=1,
-                            chapter_title="内容解析说明",
-                            content=default_content,
-                            word_count=len(default_content)
-                        )
-                        book.word_count = len(default_content)
-                        book.processing_status = 'failed'
+                        # 创建失败，但已有默认内容
                         self.stdout.write(
                             self.style.WARNING(f'⚠ 创建默认内容: {book.title}')
                         )
                     
-                    book.save()
                     fixed_count += 1
                     
             except Exception as e:

@@ -3,6 +3,8 @@ import logging
 import hashlib
 from typing import Optional, Dict, Any, List
 import openai
+import requests
+import re
 from django.conf import settings
 from django.utils import timezone
 from langdetect import detect, DetectorFactory
@@ -23,12 +25,42 @@ class TranslationService:
     """翻译服务类"""
     
     def __init__(self):
-        self.client = openai.OpenAI(
-            api_key=getattr(settings, 'OPENAI_API_KEY', ''),
-            base_url=getattr(settings, 'OPENAI_BASE_URL', 'https://api.openai.com/v1')
-        )
+        # 检查是否使用Qwen模型
         self.default_model = getattr(settings, 'OPENAI_MODEL', 'gpt-3.5-turbo')
-        self.supported_languages = getattr(settings, 'TRANSLATION_SUPPORTED_LANGUAGES', {})
+        self.api_key = getattr(settings, 'OPENAI_API_KEY', '')
+        self.base_url = getattr(settings, 'OPENAI_BASE_URL', 'https://api.openai.com/v1')
+        
+        # 判断是否为Qwen模型
+        self.is_qwen_model = 'Qwen' in self.default_model
+        
+        if self.is_qwen_model:
+            # 使用自定义API
+            self.client = None
+            logger.info(f"使用Qwen模型: {self.default_model}")
+        else:
+            # 使用OpenAI客户端
+            self.client = openai.OpenAI(
+                api_key=self.api_key,
+                base_url=self.base_url
+            )
+            logger.info(f"使用OpenAI模型: {self.default_model}")
+        
+        self.supported_languages = getattr(settings, 'TRANSLATION_SUPPORTED_LANGUAGES', {
+            'zh': '中文',
+            'en': '英文',
+            'ja': '日文',
+            'ko': '韩文',
+            'fr': '法文',
+            'de': '德文',
+            'es': '西班牙文',
+            'it': '意大利文',
+            'ru': '俄文',
+            'ar': '阿拉伯文',
+            'hi': '印地文',
+            'pt': '葡萄牙文',
+            'th': '泰文',
+            'vi': '越南文'
+        })
         
         # 语言检测映射
         self.language_mapping = {
@@ -125,6 +157,23 @@ class TranslationService:
         
         return prompt
     
+    def _clean_qwen_response(self, text: str) -> str:
+        """清理Qwen模型响应中的思考标签和多余内容"""
+        if not text:
+            return text
+        
+        # 移除<think>...</think>标签及其内容
+        text = re.sub(r'<think>.*?</think>', '', text, flags=re.DOTALL)
+        
+        # 移除其他可能的标签
+        text = re.sub(r'<[^>]+>', '', text)
+        
+        # 清理多余的空白字符
+        text = re.sub(r'\n\s*\n', '\n', text)
+        text = text.strip()
+        
+        return text
+    
     def _call_ai_translation(self, text: str, source_lang: str, target_lang: str, 
                            model: str = None) -> Dict[str, Any]:
         """调用AI进行翻译"""
@@ -134,6 +183,93 @@ class TranslationService:
             
             prompt = self._create_translation_prompt(text, source_lang, target_lang)
             
+            if self.is_qwen_model:
+                # 使用自定义API调用Qwen模型
+                return self._call_qwen_translation(text, source_lang, target_lang, model, prompt)
+            else:
+                # 使用OpenAI客户端
+                return self._call_openai_translation(text, source_lang, target_lang, model, prompt)
+            
+        except Exception as e:
+            logger.error(f"AI翻译失败: {str(e)}")
+            return {
+                'success': False,
+                'error': str(e)
+            }
+    
+    def _call_qwen_translation(self, text: str, source_lang: str, target_lang: str, 
+                              model: str, prompt: str) -> Dict[str, Any]:
+        """调用Qwen模型进行翻译"""
+        try:
+            # 构建请求
+            headers = {
+                'Content-Type': 'application/json',
+                'Authorization': f'Bearer {self.api_key}'
+            }
+            
+            data = {
+                'model': model,
+                'messages': [
+                    {
+                        "role": "system",
+                        "content": "你是一个专业的翻译助手，能够准确翻译各种语言的文本，保持原文的语气、风格和含义。请只返回翻译结果，不要添加任何解释、思考过程或额外内容。"
+                    },
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                'temperature': 0.1,  # 降低温度以获得更稳定的输出
+                'max_tokens': 4000,
+                'stream': False
+            }
+            
+            # 发送请求
+            endpoint = f"{self.base_url.rstrip('/')}/chat/completions"
+            logger.info(f"发送Qwen翻译请求到: {endpoint}")
+            
+            response = requests.post(
+                endpoint,
+                headers=headers,
+                json=data,
+                timeout=60
+            )
+            
+            if response.status_code != 200:
+                error_msg = f"Qwen API请求失败: {response.status_code} - {response.text}"
+                logger.error(error_msg)
+                raise Exception(error_msg)
+            
+            result = response.json()
+            
+            if 'choices' not in result or not result['choices']:
+                raise Exception("Qwen API响应格式错误：缺少choices字段")
+            
+            translated_text = result['choices'][0]['message']['content'].strip()
+            
+            # 清理Qwen模型的响应
+            translated_text = self._clean_qwen_response(translated_text)
+            
+            # 简单的质量评估
+            confidence = self._estimate_translation_quality(text, translated_text, source_lang, target_lang)
+            
+            logger.info(f"Qwen翻译成功，模型: {model}")
+            
+            return {
+                'success': True,
+                'translated_text': translated_text,
+                'confidence': confidence,
+                'model': model
+            }
+            
+        except Exception as e:
+            logger.error(f"Qwen翻译失败: {str(e)}")
+            raise e
+    
+    def _call_openai_translation(self, text: str, source_lang: str, target_lang: str, 
+                                model: str, prompt: str) -> Dict[str, Any]:
+        """调用OpenAI模型进行翻译"""
+        try:
             response = self.client.chat.completions.create(
                 model=model,
                 messages=[
@@ -155,6 +291,8 @@ class TranslationService:
             # 简单的质量评估
             confidence = self._estimate_translation_quality(text, translated_text, source_lang, target_lang)
             
+            logger.info(f"OpenAI翻译成功，模型: {model}")
+            
             return {
                 'success': True,
                 'translated_text': translated_text,
@@ -163,11 +301,8 @@ class TranslationService:
             }
             
         except Exception as e:
-            logger.error(f"AI翻译失败: {str(e)}")
-            return {
-                'success': False,
-                'error': str(e)
-            }
+            logger.error(f"OpenAI翻译失败: {str(e)}")
+            raise e
     
     def _estimate_translation_quality(self, source_text: str, translated_text: str, 
                                     source_lang: str, target_lang: str) -> float:

@@ -55,6 +55,7 @@
             border-radius: 15px;
             padding: 10px 0;
             min-width: 280px;
+            z-index: 1055 !important;
         }
         
         .user-dropdown-header {
@@ -179,9 +180,6 @@
         }
         
         .quick-action-btn {
-            position: fixed;
-            bottom: 30px;
-            right: 30px;
             width: 60px;
             height: 60px;
             border-radius: 50%;
@@ -190,7 +188,6 @@
             border: none;
             box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
             transition: all 0.3s ease;
-            z-index: 1000;
         }
         
         .quick-action-btn:hover {
@@ -243,8 +240,23 @@
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link" href="{% url 'favorite_books' %}">
+                            <i class="fas fa-heart"></i> 收藏书籍
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'recent_books' %}">
+                            <i class="fas fa-clock"></i> 最近阅读
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link" href="{% url 'category_list' %}">
                             <i class="fas fa-tags"></i> 分类浏览
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'reading_statistics_charts' %}">
+                            <i class="fas fa-chart-line"></i> 阅读统计
                         </a>
                     </li>
                     <li class="nav-item">
@@ -257,7 +269,7 @@
                 <ul class="navbar-nav">
                     {% if user.is_authenticated %}
                     <li class="nav-item dropdown navbar-user-section">
-                        <a class="nav-link dropdown-toggle user-name-clickable" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" style="z-index: 1050;">
+                        <a class="nav-link dropdown-toggle user-name-clickable" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             <div class="d-flex align-items-center">
                                 <div class="position-relative me-2">
                                     <div class="user-avatar">
@@ -269,7 +281,7 @@
                                 <span class="user-activity-indicator"></span>
                             </div>
                         </a>
-                        <ul class="dropdown-menu user-dropdown-menu" style="z-index: 1051;">
+                        <ul class="dropdown-menu user-dropdown-menu">
                             <div class="user-dropdown-header">
                                 <div class="d-flex align-items-center">
                                     <div class="user-avatar me-3" style="width: 50px; height: 50px; font-size: 1.5rem;">
@@ -368,12 +380,21 @@
 
     <!-- 快速操作按钮 -->
     {% if user.is_authenticated %}
-    <div class="dropdown">
-        <button class="quick-action-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+    <div class="dropdown position-fixed" style="bottom: 30px; right: 30px; z-index: 1000;">
+        <button class="quick-action-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false" id="quickActionDropdown">
             <i class="fas fa-plus"></i>
-            <span class="notification-badge">3</span>
+            {% if user_stats.upload_errors > 0 %}
+            <span class="notification-badge">{{ user_stats.upload_errors }}</span>
+            {% endif %}
         </button>
         <ul class="dropdown-menu dropdown-menu-end" style="border-radius: 15px; border: none; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
+            {% if user_stats.upload_errors > 0 %}
+            <li><a class="dropdown-item text-warning" href="{% url 'batch_upload' %}">
+                <i class="fas fa-exclamation-triangle text-warning me-2"></i> 
+                处理异常 ({{ user_stats.upload_errors }})
+            </a></li>
+            <li><hr class="dropdown-divider"></li>
+            {% endif %}
             <li><a class="dropdown-item" href="{% url 'book_upload' %}">
                 <i class="fas fa-upload text-primary me-2"></i> 上传书籍
             </a></li>
@@ -469,17 +490,6 @@
                     this.style.transform = 'translateY(0)';
                 });
             });
-            
-            // 快速操作按钮动画
-            const quickActionBtn = document.querySelector('.quick-action-btn');
-            if (quickActionBtn) {
-                quickActionBtn.addEventListener('click', function() {
-                    this.style.transform = 'scale(0.95)';
-                    setTimeout(() => {
-                        this.style.transform = 'scale(1)';
-                    }, 150);
-                });
-            }
             
             // 用户状态更新（模拟）
             setInterval(function() {

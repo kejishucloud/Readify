@@ -108,62 +108,34 @@ class BookProcessingService:
     def _process_single_file(self, file, batch_upload: BatchUpload) -> Optional[Book]:
         """处理单个文件"""
         try:
-            # 提取基本信息
-            title = self._extract_title_from_filename(file.name)
-            file_ext = os.path.splitext(file.name)[1].lower()
-            
-            logger.info(f"开始处理文件: {file.name}, 标题: {title}, 用户: {self.user.username}")
-            
             # 检查文件格式
             if not self._is_supported_format(file.name):
-                logger.error(f"不支持的文件格式: {file.name}")
+                logger.warning(f"不支持的文件格式: {file.name}")
                 return None
+            
+            # 提取标题
+            title = self._extract_title_from_filename(file.name)
             
             # 创建书籍记录
             book = Book.objects.create(
                 user=self.user,
                 title=title,
                 file=file,
+                format=os.path.splitext(file.name)[1][1:].lower(),
                 file_size=file.size,
-                format=file_ext.replace('.', ''),  # 移除点号
                 processing_status='pending'
             )
             
-            logger.info(f"书籍记录已创建: ID={book.id}, 标题={book.title}, 用户={book.user.username}")
+            logger.info(f"开始处理文件: {file.name}, 书籍ID: {book.id}")
             
-            # 提取文本内容
-            content = self._extract_text_content(book)
+            # 使用新的章节创建方法
+            success = self.create_book_chapters(book)
             
-            # 无论是否成功提取内容，都创建BookContent记录
-            if content:
-                # 成功提取到内容
-                BookContent.objects.create(
-                    book=book,
-                    chapter_number=1,
-                    chapter_title="全文内容",
-                    content=content[:50000],  # 限制长度
-                    word_count=len(content)
-                )
-                book.word_count = len(content)
-                book.processing_status = 'completed'
-                logger.info(f"成功提取内容: {book.title}, 字数: {len(content)}")
+            if success:
+                logger.info(f"成功处理文件: {book.title}, 章节数: {book.contents.count()}")
             else:
-                # 提取失败，创建默认内容
-                default_content = f"抱歉，无法自动解析《{title}》的文本内容。\n\n可能的原因：\n1. 文件格式不支持自动解析\n2. 文件内容为图片或扫描版\n3. 文件已加密或损坏\n\n请尝试：\n- 转换为TXT格式后重新上传\n- 联系管理员获取帮助"
-                
-                BookContent.objects.create(
-                    book=book,
-                    chapter_number=1,
-                    chapter_title="内容解析说明",
-                    content=default_content,
-                    word_count=len(default_content)
-                )
-                book.word_count = len(default_content)
-                book.processing_status = 'failed'
-                logger.warning(f"内容提取失败，使用默认内容: {book.title}")
+                logger.warning(f"文件处理失败，但已创建默认内容: {book.title}")
             
-            book.save()
-            logger.info(f"书籍处理完成: {book.title}, 状态: {book.processing_status}")
             return book
             
         except Exception as e:
@@ -498,6 +470,212 @@ class BookProcessingService:
         except Exception as e:
             logger.error(f"获取书籍文本失败: {str(e)}")
             return f"书名：{book.title}"
+
+    def _extract_and_split_content(self, book: Book) -> List[Dict[str, Any]]:
+        """提取文本内容并智能分割为章节"""
+        try:
+            # 首先提取完整内容
+            full_content = self._extract_text_content(book)
+            if not full_content:
+                return []
+            
+            # 智能分割章节
+            chapters = self._smart_split_chapters(full_content, book.title)
+            return chapters
+            
+        except Exception as e:
+            logger.error(f"提取和分割内容失败: {str(e)}")
+            return []
+
+    def _smart_split_chapters(self, content: str, book_title: str) -> List[Dict[str, Any]]:
+        """智能分割章节"""
+        import re
+        
+        chapters = []
+        
+        # 章节分割模式（按优先级排序）
+        chapter_patterns = [
+            # 中文章节模式
+            (r'第[一二三四五六七八九十百千万\d]+章[^\n]*', '中文数字章节'),
+            (r'第\d+章[^\n]*', '阿拉伯数字章节'),
+            (r'章节\s*\d+[^\n]*', '章节+数字'),
+            (r'第\d+节[^\n]*', '节'),
+            (r'第[一二三四五六七八九十]+节[^\n]*', '中文数字节'),
+            
+            # 英文章节模式
+            (r'Chapter\s+\d+[^\n]*', '英文章节'),
+            (r'CHAPTER\s+\d+[^\n]*', '英文章节大写'),
+            (r'Part\s+\d+[^\n]*', '部分'),
+            (r'Section\s+\d+[^\n]*', '段落'),
+            
+            # 标题模式
+            (r'^[一二三四五六七八九十百千万]+、[^\n]+', '中文序号标题'),
+            (r'^\d+\.\s*[^\n]+', '数字序号标题'),
+            (r'^[A-Z][^\n]{10,50}$', '可能的标题'),
+        ]
+        
+        # 尝试每种模式
+        for pattern, pattern_name in chapter_patterns:
+            matches = list(re.finditer(pattern, content, re.MULTILINE | re.IGNORECASE))
+            
+            if len(matches) >= 2:  # 至少找到2个章节才认为有效
+                logger.info(f"使用模式 '{pattern_name}' 找到 {len(matches)} 个章节")
+                chapters = self._split_by_matches(content, matches)
+                break
+        
+        # 如果没有找到章节模式，按段落数量分割
+        if not chapters:
+            chapters = self._split_by_paragraphs(content)
+        
+        # 如果章节太少，尝试其他分割方法
+        if len(chapters) < 3:
+            # 尝试按空行分割
+            sections = content.split('\n\n\n')  # 三个换行符分割
+            if len(sections) >= 3:
+                chapters = []
+                for i, section in enumerate(sections):
+                    if section.strip():
+                        chapters.append({
+                            'chapter_number': i + 1,
+                            'chapter_title': f'第{i + 1}部分',
+                            'content': section.strip(),
+                            'word_count': len(section.strip())
+                        })
+        
+        # 确保至少有一个章节
+        if not chapters:
+            chapters = [{
+                'chapter_number': 1,
+                'chapter_title': '全文内容',
+                'content': content,
+                'word_count': len(content)
+            }]
+        
+        # 限制章节内容长度
+        for chapter in chapters:
+            if len(chapter['content']) > 50000:
+                chapter['content'] = chapter['content'][:50000] + '\n\n[内容过长，已截断...]'
+                chapter['word_count'] = len(chapter['content'])
+        
+        logger.info(f"最终分割为 {len(chapters)} 个章节")
+        return chapters
+
+    def _split_by_matches(self, content: str, matches) -> List[Dict[str, Any]]:
+        """根据匹配结果分割章节"""
+        chapters = []
+        
+        for i, match in enumerate(matches):
+            start_pos = match.start()
+            end_pos = matches[i + 1].start() if i + 1 < len(matches) else len(content)
+            
+            chapter_content = content[start_pos:end_pos].strip()
+            chapter_title = match.group().strip()
+            
+            # 清理标题
+            if len(chapter_title) > 100:
+                chapter_title = chapter_title[:100] + '...'
+            
+            chapters.append({
+                'chapter_number': i + 1,
+                'chapter_title': chapter_title,
+                'content': chapter_content,
+                'word_count': len(chapter_content)
+            })
+        
+        return chapters
+
+    def _split_by_paragraphs(self, content: str, max_chars_per_chapter: int = 15000) -> List[Dict[str, Any]]:
+        """按段落和字符数分割章节"""
+        paragraphs = [p.strip() for p in content.split('\n\n') if p.strip()]
+        
+        if not paragraphs:
+            paragraphs = [p.strip() for p in content.split('\n') if p.strip()]
+        
+        chapters = []
+        current_chapter_content = []
+        current_char_count = 0
+        chapter_number = 1
+        
+        for paragraph in paragraphs:
+            # 如果添加这个段落会超过限制，开始新章节
+            if current_char_count + len(paragraph) > max_chars_per_chapter and current_chapter_content:
+                chapter_content = '\n\n'.join(current_chapter_content)
+                chapters.append({
+                    'chapter_number': chapter_number,
+                    'chapter_title': f'第{chapter_number}部分',
+                    'content': chapter_content,
+                    'word_count': len(chapter_content)
+                })
+                
+                current_chapter_content = [paragraph]
+                current_char_count = len(paragraph)
+                chapter_number += 1
+            else:
+                current_chapter_content.append(paragraph)
+                current_char_count += len(paragraph)
+        
+        # 添加最后一个章节
+        if current_chapter_content:
+            chapter_content = '\n\n'.join(current_chapter_content)
+            chapters.append({
+                'chapter_number': chapter_number,
+                'chapter_title': f'第{chapter_number}部分',
+                'content': chapter_content,
+                'word_count': len(chapter_content)
+            })
+        
+        return chapters
+
+    def create_book_chapters(self, book: Book) -> bool:
+        """为书籍创建章节内容"""
+        try:
+            # 删除现有的章节内容
+            BookContent.objects.filter(book=book).delete()
+            
+            # 提取并分割内容
+            chapters = self._extract_and_split_content(book)
+            
+            if not chapters:
+                # 创建默认内容
+                default_content = f"抱歉，无法自动解析《{book.title}》的文本内容。\n\n可能的原因：\n1. 文件格式不支持自动解析\n2. 文件内容为图片或扫描版\n3. 文件已加密或损坏\n\n请尝试：\n- 转换为TXT格式后重新上传\n- 联系管理员获取帮助"
+                
+                BookContent.objects.create(
+                    book=book,
+                    chapter_number=1,
+                    chapter_title="内容解析说明",
+                    content=default_content,
+                    word_count=len(default_content)
+                )
+                book.word_count = len(default_content)
+                book.processing_status = 'failed'
+                book.save()
+                return False
+            
+            # 创建章节记录
+            total_word_count = 0
+            for chapter_data in chapters:
+                BookContent.objects.create(
+                    book=book,
+                    chapter_number=chapter_data['chapter_number'],
+                    chapter_title=chapter_data['chapter_title'],
+                    content=chapter_data['content'],
+                    word_count=chapter_data['word_count']
+                )
+                total_word_count += chapter_data['word_count']
+            
+            # 更新书籍信息
+            book.word_count = total_word_count
+            book.processing_status = 'completed'
+            book.save()
+            
+            logger.info(f"成功创建 {len(chapters)} 个章节，总字数: {total_word_count}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"创建书籍章节失败: {str(e)}")
+            book.processing_status = 'failed'
+            book.save()
+            return False
 
 
 class CategoryService:

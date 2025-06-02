@@ -72,4 +72,25 @@ urlpatterns = [
     path('books/<int:book_id>/optimized-reader/', views.optimized_book_reader, name='optimized_book_reader'),
     path('books/<int:book_id>/optimized-content/', views.get_optimized_chapter_content, name='get_optimized_chapter_content'),
     path('books/<int:book_id>/metadata-api/', views.get_book_metadata_api, name='get_book_metadata_api'),
+    
+    # 收藏功能
+    path('books/<int:book_id>/toggle-favorite/', views.toggle_book_favorite, name='toggle_book_favorite'),
+    path('favorites/', views.favorite_books, name='favorite_books'),
+    
+    # 最近阅读
+    path('recent/', views.recent_books, name='recent_books'),
+    
+    # 阅读统计图表
+    path('statistics/charts/', views.reading_statistics_charts, name='reading_statistics_charts'),
+    path('api/statistics/charts/', views.get_reading_charts_data, name='get_reading_charts_data'),
+    
+    # 阅读目标管理
+    path('goals/', views.reading_goals, name='reading_goals'),
+    path('goals/create/', views.create_reading_goal, name='create_reading_goal'),
+    path('goals/<int:goal_id>/update/', views.update_reading_goal, name='update_reading_goal'),
+    path('goals/<int:goal_id>/delete/', views.delete_reading_goal, name='delete_reading_goal'),
+    path('api/goals/progress/', views.get_reading_goal_progress, name='get_reading_goal_progress'),
+    
+    # 高级搜索
+    path('search/advanced/', views.advanced_book_search, name='advanced_book_search'),
 ] 

@@ -6,6 +6,11 @@
     <title>智能阅读 - {{ book.title }} - Readify</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- Markdown渲染库 -->
+    <script src="https://cdn.jsdelivr.net/npm/marked@4.3.0/marked.min.js"></script>
+    <!-- 代码高亮库 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/default.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
     <style>
         body {
             background-color: #f8f9fa;
@@ -201,6 +206,142 @@
             .reader-header {
                 padding: 15px;
             }
+        }
+        
+        /* AI回答显示样式 */
+        .ai-answer-content {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            line-height: 1.6;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        
+        .ai-answer-content h1, .ai-answer-content h2, .ai-answer-content h3 {
+            color: #495057;
+            margin-top: 1.5em;
+            margin-bottom: 0.5em;
+        }
+        
+        .ai-answer-content h1 { font-size: 1.5em; }
+        .ai-answer-content h2 { font-size: 1.3em; }
+        .ai-answer-content h3 { font-size: 1.1em; }
+        
+        .ai-answer-content p {
+            margin-bottom: 1em;
+        }
+        
+        .ai-answer-content ul, .ai-answer-content ol {
+            margin-bottom: 1em;
+            padding-left: 1.5em;
+        }
+        
+        .ai-answer-content li {
+            margin-bottom: 0.3em;
+        }
+        
+        .ai-answer-content blockquote {
+            border-left: 4px solid #007bff;
+            padding-left: 1em;
+            margin: 1em 0;
+            color: #6c757d;
+            font-style: italic;
+        }
+        
+        .ai-answer-content code {
+            background: #e9ecef;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        
+        .ai-answer-content pre {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 1em;
+            overflow-x: auto;
+            margin: 1em 0;
+        }
+        
+        .ai-answer-content pre code {
+            background: none;
+            padding: 0;
+        }
+        
+        /* 放大查看模态框样式 */
+        .ai-fullscreen-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 10000;
+            display: none;
+            overflow-y: auto;
+        }
+        
+        .ai-fullscreen-content {
+            background: white;
+            margin: 20px auto;
+            padding: 30px;
+            border-radius: 10px;
+            max-width: 900px;
+            min-height: calc(100vh - 40px);
+            position: relative;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+        }
+        
+        .ai-fullscreen-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e9ecef;
+        }
+        
+        .ai-fullscreen-close {
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .ai-fullscreen-close:hover {
+            background: #c82333;
+            transform: scale(1.1);
+        }
+        
+        .ai-fullscreen-body {
+            font-size: 16px;
+            line-height: 1.8;
+            color: #333;
+        }
+        
+        .ai-expand-btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 15px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .ai-expand-btn:hover {
+            background: #0056b3;
+            transform: translateY(-1px);
         }
     </style>
 </head>
@@ -513,6 +654,32 @@
         </div>
     </div>
 
+    <!-- AI回答放大查看模态框 -->
+    <div class="ai-fullscreen-modal" id="aiFullscreenModal">
+        <div class="ai-fullscreen-content">
+            <div class="ai-fullscreen-header">
+                <h4 id="aiFullscreenTitle"><i class="fas fa-robot"></i> AI助手回答</h4>
+                <button class="ai-fullscreen-close" onclick="closeAIFullscreen()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="ai-fullscreen-body" id="aiFullscreenBody">
+                <!-- AI回答内容将在这里显示 -->
+            </div>
+            <div class="ai-answer-actions mt-4">
+                <button class="btn btn-outline-primary" onclick="copyFullscreenContent()">
+                    <i class="fas fa-copy"></i> 复制全文
+                </button>
+                <button class="btn btn-outline-secondary" onclick="downloadAIAnswer()">
+                    <i class="fas fa-download"></i> 下载
+                </button>
+                <button class="btn btn-primary" onclick="closeAIFullscreen()">
+                    <i class="fas fa-times"></i> 关闭
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     {% csrf_token %}
     <script>
@@ -532,6 +699,9 @@
             startReadingTimer();
             setupTextSelection();
             loadUserPreferences();
+            
+            // 初始化Markdown渲染器
+            initializeMarkdownRenderer();
         });
         
         // 初始化阅读器
@@ -663,15 +833,65 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    answerContent.innerHTML = data.result.answer || '抱歉，无法生成回答。';
-                    updateQAHistory(question, data.result.answer);
+                    const answer = data.result.answer || '抱歉，无法生成回答。';
+                    
+                    // 渲染Markdown内容
+                    answerContent.innerHTML = `
+                        <div class="ai-answer-content">${renderMarkdown(answer)}</div>
+                        <div class="mt-2">
+                            <button class="ai-expand-btn" onclick="expandCurrentAnswer('${question}', '${answer.replace(/'/g, "\\'")}')">
+                                <i class="fas fa-expand"></i> 放大查看
+                            </button>
+                        </div>
+                    `;
+                    
+                    // 高亮代码块
+                    if (typeof hljs !== 'undefined') {
+                        answerContent.querySelectorAll('pre code').forEach((block) => {
+                            hljs.highlightElement(block);
+                        });
+                    }
+                    
+                    updateQAHistory(question, answer);
+                    showToast('AI回答生成成功', 'success');
                 } else {
-                    answerContent.innerHTML = '错误: ' + (data.error || '未知错误');
+                    answerContent.innerHTML = `<div class="alert alert-danger">${data.error || '未知错误'}</div>`;
+                    showToast('AI回答失败', 'error');
                 }
             })
             .catch(error => {
-                answerContent.innerHTML = '网络错误，请稍后重试。';
+                answerContent.innerHTML = '<div class="alert alert-danger">网络错误，请稍后重试。</div>';
+                showToast('网络错误', 'error');
             });
+        }
+        
+        // 放大查看当前回答
+        function expandCurrentAnswer(question, answer) {
+            const modal = document.getElementById('aiFullscreenModal');
+            const titleElement = document.getElementById('aiFullscreenTitle');
+            const bodyElement = document.getElementById('aiFullscreenBody');
+            
+            titleElement.innerHTML = `<i class="fas fa-robot"></i> AI问答回答`;
+            bodyElement.innerHTML = `
+                <div class="mb-4">
+                    <h6><i class="fas fa-question-circle"></i> 问题</h6>
+                    <div class="bg-light p-3 rounded">${question}</div>
+                </div>
+                <div>
+                    <h6><i class="fas fa-lightbulb"></i> 回答</h6>
+                    <div class="ai-answer-content">${renderMarkdown(answer)}</div>
+                </div>
+            `;
+            
+            // 高亮代码块
+            if (typeof hljs !== 'undefined') {
+                bodyElement.querySelectorAll('pre code').forEach((block) => {
+                    hljs.highlightElement(block);
+                });
+            }
+            
+            modal.style.display = 'block';
+            document.body.style.overflow = 'hidden';
         }
         
         // 总结文本
@@ -691,7 +911,7 @@
             summaryContent.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 正在生成总结...';
             summaryResult.style.display = 'block';
             
-            fetch(`/books/smart-summary/{{ book.id }}/`, {
+            fetch(`/smart-summary/{{ book.id }}/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -707,7 +927,25 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    summaryContent.innerHTML = data.summary;
+                    const summary = data.summary;
+                    
+                    // 渲染Markdown内容
+                    summaryContent.innerHTML = `
+                        <div class="ai-answer-content">${renderMarkdown(summary)}</div>
+                        <div class="mt-2">
+                            <button class="ai-expand-btn" onclick="expandAIAnswer('summaryContentText', '智能总结')">
+                                <i class="fas fa-expand"></i> 放大查看
+                            </button>
+                        </div>
+                        <div id="summaryContentText" style="display: none;">${summary}</div>
+                    `;
+                    
+                    // 高亮代码块
+                    if (typeof hljs !== 'undefined') {
+                        summaryContent.querySelectorAll('pre code').forEach((block) => {
+                            hljs.highlightElement(block);
+                        });
+                    }
                     
                     if (data.key_points && data.key_points.length > 0) {
                         const keyPoints = document.getElementById('keyPoints');
@@ -722,12 +960,16 @@
                         
                         keyPoints.style.display = 'block';
                     }
+                    
+                    showToast('总结生成成功', 'success');
                 } else {
-                    summaryContent.innerHTML = '错误: ' + (data.error || '未知错误');
+                    summaryContent.innerHTML = `<div class="alert alert-danger">${data.error || '未知错误'}</div>`;
+                    showToast('总结生成失败', 'error');
                 }
             })
             .catch(error => {
-                summaryContent.innerHTML = '网络错误，请稍后重试。';
+                summaryContent.innerHTML = '<div class="alert alert-danger">网络错误，请稍后重试。</div>';
+                showToast('网络错误', 'error');
             });
         }
         
@@ -759,7 +1001,7 @@
         
         // 生成章节总结
         function generateChapterSummary() {
-            fetch(`/books/smart-summary/{{ book.id }}/`, {
+            fetch(`/smart-summary/{{ book.id }}/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -774,37 +1016,66 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    alert('章节总结已生成！\n\n' + data.summary.substring(0, 200) + '...');
-                    location.reload(); // 重新加载页面显示新总结
+                    // 创建显示窗口
+                    showSummaryModal('章节总结', data.summary);
+                    showToast('章节总结生成成功', 'success');
                 } else {
-                    alert('错误: ' + (data.error || '未知错误'));
+                    showToast('章节总结生成失败: ' + (data.error || '未知错误'), 'error');
                 }
+            })
+            .catch(error => {
+                console.error('生成章节总结失败:', error);
+                showToast('网络错误，请稍后重试', 'error');
             });
         }
         
         // 生成全书总结
         function generateBookSummary() {
-            if (confirm('生成全书总结可能需要较长时间，是否继续？')) {
-                fetch(`/books/smart-summary/{{ book.id }}/`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCsrfToken()
-                    },
-                    body: JSON.stringify({
-                        summary_type: 'book',
-                        summary_style: 'balanced'
-                    })
+            fetch(`/smart-summary/{{ book.id }}/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken()
+                },
+                body: JSON.stringify({
+                    summary_type: 'book',
+                    summary_style: 'detailed'
                 })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        alert('全书总结已生成！');
-                    } else {
-                        alert('错误: ' + (data.error || '未知错误'));
-                    }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // 创建显示窗口
+                    showSummaryModal('全书总结', data.summary);
+                    showToast('全书总结生成成功', 'success');
+                } else {
+                    showToast('全书总结生成失败: ' + (data.error || '未知错误'), 'error');
+                }
+            })
+            .catch(error => {
+                console.error('生成全书总结失败:', error);
+                showToast('网络错误，请稍后重试', 'error');
+            });
+        }
+        
+        // 显示总结模态框
+        function showSummaryModal(title, content) {
+            const modal = document.getElementById('aiFullscreenModal');
+            const titleElement = document.getElementById('aiFullscreenTitle');
+            const bodyElement = document.getElementById('aiFullscreenBody');
+            
+            titleElement.innerHTML = `<i class="fas fa-magic"></i> ${title}`;
+            bodyElement.innerHTML = `<div class="ai-answer-content">${renderMarkdown(content)}</div>`;
+            
+            // 高亮代码块
+            if (typeof hljs !== 'undefined') {
+                bodyElement.querySelectorAll('pre code').forEach((block) => {
+                    hljs.highlightElement(block);
                 });
             }
+            
+            modal.style.display = 'block';
+            document.body.style.overflow = 'hidden';
         }
         
         // 语音朗读功能
@@ -950,6 +1221,116 @@
             // 这里可以加载用户的阅读偏好设置
             document.getElementById('backgroundTheme').value = '{{ user_preferences.reading_background }}';
             changeBackground();
+        }
+        
+        // 初始化Markdown渲染器
+        function initializeMarkdownRenderer() {
+            if (typeof marked !== 'undefined') {
+                // 配置marked选项
+                marked.setOptions({
+                    highlight: function(code, lang) {
+                        if (typeof hljs !== 'undefined' && lang && hljs.getLanguage(lang)) {
+                            try {
+                                return hljs.highlight(code, { language: lang }).value;
+                            } catch (err) {}
+                        }
+                        return code;
+                    },
+                    breaks: true,
+                    gfm: true
+                });
+                console.log('Markdown渲染器初始化成功');
+            } else {
+                console.warn('Markdown渲染器未加载');
+            }
+        }
+        
+        // 渲染Markdown内容
+        function renderMarkdown(content) {
+            if (typeof marked !== 'undefined') {
+                try {
+                    return marked.parse(content);
+                } catch (error) {
+                    console.error('Markdown渲染失败:', error);
+                    return content.replace(/\n/g, '<br>');
+                }
+            } else {
+                // 如果marked未加载，简单处理换行
+                return content.replace(/\n/g, '<br>');
+            }
+        }
+        
+        // 复制全屏内容
+        function copyFullscreenContent() {
+            const bodyElement = document.getElementById('aiFullscreenBody');
+            if (!bodyElement) return;
+            
+            const content = bodyElement.textContent || bodyElement.innerText;
+            navigator.clipboard.writeText(content).then(() => {
+                showToast('全文已复制到剪贴板', 'success');
+            }).catch(err => {
+                console.error('复制失败:', err);
+                showToast('复制失败', 'error');
+            });
+        }
+        
+        // 下载AI回答
+        function downloadAIAnswer() {
+            const bodyElement = document.getElementById('aiFullscreenBody');
+            const titleElement = document.getElementById('aiFullscreenTitle');
+            
+            if (!bodyElement) return;
+            
+            const content = bodyElement.textContent || bodyElement.innerText;
+            const title = titleElement.textContent || 'AI回答';
+            const filename = `${title}_${new Date().toISOString().slice(0, 10)}.txt`;
+            
+            const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showToast('文件下载已开始', 'success');
+        }
+        
+        // 显示提示消息
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `alert alert-${type === 'error' ? 'danger' : type === 'success' ? 'success' : 'info'} position-fixed`;
+            toast.style.cssText = `
+                top: 20px;
+                right: 20px;
+                z-index: 10001;
+                min-width: 250px;
+                opacity: 0;
+                transition: opacity 0.3s ease;
+            `;
+            toast.innerHTML = `
+                <i class="fas fa-${type === 'error' ? 'exclamation-triangle' : type === 'success' ? 'check-circle' : 'info-circle'}"></i>
+                ${message}
+            `;
+            
+            document.body.appendChild(toast);
+            
+            // 显示动画
+            setTimeout(() => {
+                toast.style.opacity = '1';
+            }, 100);
+            
+            // 自动隐藏
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => {
+                    if (toast.parentNode) {
+                        toast.parentNode.removeChild(toast);
+                    }
+                }, 300);
+            }, 3000);
         }
     </script>
 </body>

@@ -1,0 +1,623 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}高级搜索 - Readify{% endblock %}
+
+{% block extra_css %}
+<style>
+    .search-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem 0;
+        margin-bottom: 2rem;
+    }
+    
+    .search-form {
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        padding: 2rem;
+        margin-bottom: 2rem;
+    }
+    
+    .search-filters {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .filter-group label {
+        font-weight: 600;
+        color: #495057;
+        margin-bottom: 0.5rem;
+    }
+    
+    .search-actions {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+    
+    .btn-search {
+        border-radius: 25px;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-search:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+    
+    .search-results {
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        padding: 2rem;
+    }
+    
+    .results-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid #e9ecef;
+    }
+    
+    .results-count {
+        color: #6c757d;
+        font-size: 0.9rem;
+    }
+    
+    .sort-controls {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+    
+    .book-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 1.5rem;
+    }
+    
+    .book-card {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+        overflow: hidden;
+        transition: all 0.3s ease;
+        border: 1px solid #e9ecef;
+    }
+    
+    .book-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    }
+    
+    .book-cover {
+        position: relative;
+        height: 200px;
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+    }
+    
+    .book-cover img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    
+    .book-cover .no-cover {
+        color: #6c757d;
+        font-size: 3rem;
+        opacity: 0.5;
+    }
+    
+    .book-info {
+        padding: 1.5rem;
+    }
+    
+    .book-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 0.5rem;
+        line-height: 1.3;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+    
+    .book-author {
+        color: #6c757d;
+        font-size: 0.9rem;
+        margin-bottom: 0.75rem;
+    }
+    
+    .book-meta {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+        font-size: 0.8rem;
+        color: #6c757d;
+    }
+    
+    .book-format {
+        background: #e9ecef;
+        padding: 0.25rem 0.5rem;
+        border-radius: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+    
+    .book-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+    
+    .btn-book {
+        flex: 1;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        padding: 0.5rem;
+        transition: all 0.3s ease;
+    }
+    
+    .favorite-btn {
+        color: #dc3545;
+        border: 1px solid #dc3545;
+        background: white;
+    }
+    
+    .favorite-btn.favorited {
+        background: #dc3545;
+        color: white;
+    }
+    
+    .favorite-btn:hover {
+        background: #dc3545;
+        color: white;
+    }
+    
+    .empty-results {
+        text-align: center;
+        padding: 3rem;
+        color: #6c757d;
+    }
+    
+    .empty-results i {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+    }
+    
+    .active-filters {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+    }
+    
+    .filter-tag {
+        background: #667eea;
+        color: white;
+        padding: 0.25rem 0.75rem;
+        border-radius: 15px;
+        font-size: 0.8rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .filter-tag .remove {
+        cursor: pointer;
+        opacity: 0.7;
+    }
+    
+    .filter-tag .remove:hover {
+        opacity: 1;
+    }
+    
+    @media (max-width: 768px) {
+        .search-filters {
+            grid-template-columns: 1fr;
+        }
+        
+        .search-actions {
+            flex-direction: column;
+        }
+        
+        .results-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+        
+        .book-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="search-header">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1 class="mb-0">
+                    <i class="fas fa-search me-2"></i>
+                    高级搜索
+                </h1>
+                <p class="mb-0 mt-2 opacity-75">
+                    使用多种条件精确查找你需要的书籍
+                </p>
+            </div>
+            <div class="col-md-4 text-end">
+                <a href="{% url 'book_list' %}" class="btn btn-light">
+                    <i class="fas fa-list me-2"></i>
+                    返回书籍列表
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <!-- 搜索表单 -->
+    <div class="search-form">
+        <form method="get" id="searchForm">
+            <div class="search-filters">
+                <div class="filter-group">
+                    <label for="q">关键词搜索</label>
+                    <input type="text" class="form-control" id="q" name="q" 
+                           value="{{ search_params.q }}" 
+                           placeholder="搜索书名、描述或标签...">
+                </div>
+                
+                <div class="filter-group">
+                    <label for="author">作者</label>
+                    <input type="text" class="form-control" id="author" name="author" 
+                           value="{{ search_params.author }}" 
+                           placeholder="输入作者姓名...">
+                </div>
+                
+                <div class="filter-group">
+                    <label for="category">分类</label>
+                    <select class="form-select" id="category" name="category">
+                        <option value="">所有分类</option>
+                        {% for cat in categories %}
+                        <option value="{{ cat.code }}" 
+                                {% if search_params.category == cat.code %}selected{% endif %}>
+                            {{ cat.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label for="format">文件格式</label>
+                    <select class="form-select" id="format" name="format">
+                        <option value="">所有格式</option>
+                        <option value="pdf" {% if search_params.format == 'pdf' %}selected{% endif %}>PDF</option>
+                        <option value="epub" {% if search_params.format == 'epub' %}selected{% endif %}>EPUB</option>
+                        <option value="mobi" {% if search_params.format == 'mobi' %}selected{% endif %}>MOBI</option>
+                        <option value="txt" {% if search_params.format == 'txt' %}selected{% endif %}>TXT</option>
+                        <option value="docx" {% if search_params.format == 'docx' %}selected{% endif %}>DOCX</option>
+                        <option value="html" {% if search_params.format == 'html' %}selected{% endif %}>HTML</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label for="date_from">上传日期（从）</label>
+                    <input type="date" class="form-control" id="date_from" name="date_from" 
+                           value="{{ search_params.date_from }}">
+                </div>
+                
+                <div class="filter-group">
+                    <label for="date_to">上传日期（到）</label>
+                    <input type="date" class="form-control" id="date_to" name="date_to" 
+                           value="{{ search_params.date_to }}">
+                </div>
+            </div>
+            
+            <div class="search-actions">
+                <button type="submit" class="btn btn-primary btn-search">
+                    <i class="fas fa-search me-2"></i>
+                    搜索
+                </button>
+                <button type="button" class="btn btn-outline-secondary btn-search" onclick="clearFilters()">
+                    <i class="fas fa-times me-2"></i>
+                    清除筛选
+                </button>
+                <button type="button" class="btn btn-outline-info btn-search" onclick="saveSearch()">
+                    <i class="fas fa-bookmark me-2"></i>
+                    保存搜索
+                </button>
+            </div>
+        </form>
+    </div>
+    
+    <!-- 活跃筛选条件 -->
+    {% if search_params.q or search_params.author or search_params.category or search_params.format or search_params.date_from or search_params.date_to %}
+    <div class="active-filters">
+        {% if search_params.q %}
+        <span class="filter-tag">
+            关键词: {{ search_params.q }}
+            <span class="remove" onclick="removeFilter('q')">&times;</span>
+        </span>
+        {% endif %}
+        {% if search_params.author %}
+        <span class="filter-tag">
+            作者: {{ search_params.author }}
+            <span class="remove" onclick="removeFilter('author')">&times;</span>
+        </span>
+        {% endif %}
+        {% if search_params.category %}
+        <span class="filter-tag">
+            分类: {% for cat in categories %}{% if cat.code == search_params.category %}{{ cat.name }}{% endif %}{% endfor %}
+            <span class="remove" onclick="removeFilter('category')">&times;</span>
+        </span>
+        {% endif %}
+        {% if search_params.format %}
+        <span class="filter-tag">
+            格式: {{ search_params.format|upper }}
+            <span class="remove" onclick="removeFilter('format')">&times;</span>
+        </span>
+        {% endif %}
+        {% if search_params.date_from %}
+        <span class="filter-tag">
+            开始日期: {{ search_params.date_from }}
+            <span class="remove" onclick="removeFilter('date_from')">&times;</span>
+        </span>
+        {% endif %}
+        {% if search_params.date_to %}
+        <span class="filter-tag">
+            结束日期: {{ search_params.date_to }}
+            <span class="remove" onclick="removeFilter('date_to')">&times;</span>
+        </span>
+        {% endif %}
+    </div>
+    {% endif %}
+    
+    <!-- 搜索结果 -->
+    <div class="search-results">
+        <div class="results-header">
+            <div>
+                <h4 class="mb-1">搜索结果</h4>
+                <div class="results-count">
+                    找到 {{ total_results }} 本书籍
+                </div>
+            </div>
+            <div class="sort-controls">
+                <label for="sort" class="form-label mb-0 me-2">排序:</label>
+                <select class="form-select" id="sort" name="sort" onchange="changeSort()" style="width: auto;">
+                    <option value="uploaded_at" {% if search_params.sort == 'uploaded_at' %}selected{% endif %}>上传时间</option>
+                    <option value="title" {% if search_params.sort == 'title' %}selected{% endif %}>书名</option>
+                    <option value="author" {% if search_params.sort == 'author' %}selected{% endif %}>作者</option>
+                    <option value="view_count" {% if search_params.sort == 'view_count' %}selected{% endif %}>查看次数</option>
+                    <option value="last_read" {% if search_params.sort == 'last_read' %}selected{% endif %}>最后阅读</option>
+                </select>
+            </div>
+        </div>
+        
+        {% if books %}
+        <div class="book-grid">
+            {% for book in books %}
+            <div class="book-card">
+                <div class="book-cover">
+                    {% if book.cover %}
+                    <img src="{{ book.cover.url }}" alt="{{ book.title }}">
+                    {% else %}
+                    <i class="fas fa-book no-cover"></i>
+                    {% endif %}
+                </div>
+                <div class="book-info">
+                    <h5 class="book-title">{{ book.title }}</h5>
+                    <div class="book-author">
+                        {% if book.author %}
+                            <i class="fas fa-user me-1"></i>
+                            {{ book.author }}
+                        {% else %}
+                            <i class="fas fa-user me-1"></i>
+                            未知作者
+                        {% endif %}
+                    </div>
+                    <div class="book-meta">
+                        <span class="book-format">{{ book.format|upper }}</span>
+                        <span>{{ book.uploaded_at|date:"Y-m-d" }}</span>
+                    </div>
+                    <div class="book-actions">
+                        <a href="{% url 'book_detail' book.id %}" class="btn btn-outline-primary btn-book">
+                            <i class="fas fa-eye me-1"></i>
+                            查看
+                        </a>
+                        <a href="{% url 'book_read' book.id %}" class="btn btn-primary btn-book">
+                            <i class="fas fa-book-open me-1"></i>
+                            阅读
+                        </a>
+                        <button class="btn favorite-btn btn-book" onclick="toggleFavorite({{ book.id }}, this)">
+                            <i class="fas fa-heart"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <!-- 分页 -->
+        {% if is_paginated %}
+        <nav aria-label="搜索结果分页" class="mt-4">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?{{ request.GET.urlencode }}&page=1">首页</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?{{ request.GET.urlencode }}&page={{ page_obj.previous_page_number }}">上一页</a>
+                </li>
+                {% endif %}
+                
+                {% for num in page_obj.paginator.page_range %}
+                {% if page_obj.number == num %}
+                <li class="page-item active">
+                    <span class="page-link">{{ num }}</span>
+                </li>
+                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                <li class="page-item">
+                    <a class="page-link" href="?{{ request.GET.urlencode }}&page={{ num }}">{{ num }}</a>
+                </li>
+                {% endif %}
+                {% endfor %}
+                
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?{{ request.GET.urlencode }}&page={{ page_obj.next_page_number }}">下一页</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?{{ request.GET.urlencode }}&page={{ page_obj.paginator.num_pages }}">末页</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+        
+        {% else %}
+        <div class="empty-results">
+            <i class="fas fa-search"></i>
+            <h4>没有找到匹配的书籍</h4>
+            <p>尝试调整搜索条件或清除部分筛选器</p>
+            <button class="btn btn-primary btn-search" onclick="clearFilters()">
+                <i class="fas fa-refresh me-2"></i>
+                重新搜索
+            </button>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 清除所有筛选条件
+function clearFilters() {
+    document.getElementById('searchForm').reset();
+    window.location.href = '{% url "advanced_book_search" %}';
+}
+
+// 移除单个筛选条件
+function removeFilter(filterName) {
+    const form = document.getElementById('searchForm');
+    const input = form.querySelector(`[name="${filterName}"]`);
+    if (input) {
+        input.value = '';
+        form.submit();
+    }
+}
+
+// 改变排序
+function changeSort() {
+    document.getElementById('searchForm').submit();
+}
+
+// 切换收藏状态
+function toggleFavorite(bookId, button) {
+    fetch(`/books/${bookId}/toggle-favorite/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            if (data.is_favorited) {
+                button.classList.add('favorited');
+                button.innerHTML = '<i class="fas fa-heart"></i>';
+            } else {
+                button.classList.remove('favorited');
+                button.innerHTML = '<i class="far fa-heart"></i>';
+            }
+            showToast(data.message, 'success');
+        } else {
+            showToast(data.error, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('操作失败，请重试', 'error');
+    });
+}
+
+// 保存搜索条件
+function saveSearch() {
+    const params = new URLSearchParams(window.location.search);
+    const searchData = {
+        q: params.get('q') || '',
+        author: params.get('author') || '',
+        category: params.get('category') || '',
+        format: params.get('format') || '',
+        date_from: params.get('date_from') || '',
+        date_to: params.get('date_to') || '',
+        sort: params.get('sort') || 'uploaded_at'
+    };
+    
+    // 保存到localStorage
+    const savedSearches = JSON.parse(localStorage.getItem('savedSearches') || '[]');
+    const searchName = prompt('请输入搜索名称:');
+    
+    if (searchName) {
+        savedSearches.push({
+            name: searchName,
+            params: searchData,
+            date: new Date().toISOString()
+        });
+        localStorage.setItem('savedSearches', JSON.stringify(savedSearches));
+        showToast('搜索条件已保存', 'success');
+    }
+}
+
+// 显示提示消息
+function showToast(message, type) {
+    const toast = document.createElement('div');
+    toast.className = `alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible fade show position-fixed`;
+    toast.style.top = '20px';
+    toast.style.right = '20px';
+    toast.style.zIndex = '9999';
+    toast.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        if (toast.parentNode) {
+            toast.parentNode.removeChild(toast);
+        }
+    }, 3000);
+}
+
+// 页面加载时检查收藏状态
+document.addEventListener('DOMContentLoaded', function() {
+    // 这里可以添加检查书籍收藏状态的逻辑
+    // 由于需要后端支持，暂时省略
+});
+</script>
+{% endblock %} 

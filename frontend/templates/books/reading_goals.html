@@ -1,0 +1,554 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}阅读目标 - Readify{% endblock %}
+
+{% block extra_css %}
+<style>
+    .goals-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem 0;
+        margin-bottom: 2rem;
+    }
+    
+    .goal-card {
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        transition: all 0.3s ease;
+        border-left: 5px solid #667eea;
+    }
+    
+    .goal-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+    }
+    
+    .goal-card.completed {
+        border-left-color: #28a745;
+        background: linear-gradient(135deg, #f8fff9 0%, #e8f5e8 100%);
+    }
+    
+    .goal-card.overdue {
+        border-left-color: #dc3545;
+        background: linear-gradient(135deg, #fff8f8 0%, #f5e8e8 100%);
+    }
+    
+    .progress-bar-container {
+        background: #e9ecef;
+        border-radius: 10px;
+        height: 20px;
+        overflow: hidden;
+        margin: 1rem 0;
+    }
+    
+    .progress-bar {
+        height: 100%;
+        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+        border-radius: 10px;
+        transition: width 0.3s ease;
+        position: relative;
+    }
+    
+    .progress-bar.completed {
+        background: linear-gradient(90deg, #28a745 0%, #20c997 100%);
+    }
+    
+    .progress-text {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        color: white;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+    
+    .goal-stats {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+    
+    .goal-type-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+    
+    .goal-type-daily {
+        background: #e3f2fd;
+        color: #1976d2;
+    }
+    
+    .goal-type-weekly {
+        background: #f3e5f5;
+        color: #7b1fa2;
+    }
+    
+    .goal-type-monthly {
+        background: #e8f5e8;
+        color: #388e3c;
+    }
+    
+    .goal-type-yearly {
+        background: #fff3e0;
+        color: #f57c00;
+    }
+    
+    .metric-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        background: #f8f9fa;
+        color: #495057;
+    }
+    
+    .create-goal-form {
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        padding: 2rem;
+        margin-bottom: 2rem;
+    }
+    
+    .btn-goal {
+        border-radius: 25px;
+        padding: 0.5rem 1.5rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-goal:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+    
+    .goal-actions {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 1rem;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 3rem;
+        color: #6c757d;
+    }
+    
+    .empty-state i {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+    }
+    
+    @media (max-width: 768px) {
+        .goal-stats {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.5rem;
+        }
+        
+        .goal-actions {
+            flex-direction: column;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="goals-header">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1 class="mb-0">
+                    <i class="fas fa-target me-2"></i>
+                    阅读目标管理
+                </h1>
+                <p class="mb-0 mt-2 opacity-75">
+                    设定目标，追踪进度，养成良好的阅读习惯
+                </p>
+            </div>
+            <div class="col-md-4 text-end">
+                <button class="btn btn-light btn-goal" data-bs-toggle="modal" data-bs-target="#createGoalModal">
+                    <i class="fas fa-plus me-2"></i>
+                    创建目标
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <!-- 活跃目标概览 -->
+    {% if active_goals %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <h3 class="mb-3">
+                <i class="fas fa-fire text-warning me-2"></i>
+                活跃目标
+            </h3>
+        </div>
+        {% for goal in active_goals %}
+        <div class="col-md-6 col-lg-4">
+            <div class="goal-card {% if goal.is_completed %}completed{% endif %}">
+                <div class="goal-stats">
+                    <span class="goal-type-badge goal-type-{{ goal.goal_type }}">
+                        {{ goal.get_goal_type_display }}
+                    </span>
+                    <span class="metric-badge">
+                        {{ goal.get_metric_type_display }}
+                    </span>
+                </div>
+                
+                <h5 class="mb-2">
+                    {% if goal.metric_type == 'time' %}
+                        阅读 {{ goal.target_value }} 分钟
+                    {% elif goal.metric_type == 'books' %}
+                        完成 {{ goal.target_value }} 本书
+                    {% elif goal.metric_type == 'pages' %}
+                        阅读 {{ goal.target_value }} 页
+                    {% else %}
+                        阅读 {{ goal.target_value }} 字
+                    {% endif %}
+                </h5>
+                
+                <div class="progress-bar-container">
+                    <div class="progress-bar {% if goal.is_completed %}completed{% endif %}" 
+                         style="width: {{ goal.progress_percentage }}%">
+                        <span class="progress-text">{{ goal.progress_percentage|floatformat:1 }}%</span>
+                    </div>
+                </div>
+                
+                <div class="d-flex justify-content-between text-muted small">
+                    <span>当前: {{ goal.current_value }}</span>
+                    <span>目标: {{ goal.target_value }}</span>
+                </div>
+                
+                <div class="goal-actions">
+                    <button class="btn btn-sm btn-outline-primary btn-goal" 
+                            onclick="editGoal({{ goal.id }}, {{ goal.target_value }})">
+                        <i class="fas fa-edit me-1"></i>
+                        编辑
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger btn-goal" 
+                            onclick="deleteGoal({{ goal.id }})">
+                        <i class="fas fa-trash me-1"></i>
+                        删除
+                    </button>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    
+    <!-- 所有目标历史 -->
+    <div class="row">
+        <div class="col-12">
+            <h3 class="mb-3">
+                <i class="fas fa-history text-info me-2"></i>
+                目标历史
+            </h3>
+        </div>
+    </div>
+    
+    {% if goals %}
+    <div class="row">
+        {% for goal in goals %}
+        <div class="col-md-6 col-lg-4">
+            <div class="goal-card {% if goal.is_completed %}completed{% endif %} {% if not goal.is_active %}opacity-75{% endif %}">
+                <div class="goal-stats">
+                    <span class="goal-type-badge goal-type-{{ goal.goal_type }}">
+                        {{ goal.get_goal_type_display }}
+                    </span>
+                    <span class="metric-badge">
+                        {{ goal.get_metric_type_display }}
+                    </span>
+                    {% if not goal.is_active %}
+                    <span class="badge bg-secondary">已停用</span>
+                    {% endif %}
+                </div>
+                
+                <h6 class="mb-2">
+                    {% if goal.metric_type == 'time' %}
+                        阅读 {{ goal.target_value }} 分钟
+                    {% elif goal.metric_type == 'books' %}
+                        完成 {{ goal.target_value }} 本书
+                    {% elif goal.metric_type == 'pages' %}
+                        阅读 {{ goal.target_value }} 页
+                    {% else %}
+                        阅读 {{ goal.target_value }} 字
+                    {% endif %}
+                </h6>
+                
+                <div class="progress-bar-container">
+                    <div class="progress-bar {% if goal.is_completed %}completed{% endif %}" 
+                         style="width: {{ goal.progress_percentage }}%">
+                        <span class="progress-text">{{ goal.progress_percentage|floatformat:1 }}%</span>
+                    </div>
+                </div>
+                
+                <div class="d-flex justify-content-between text-muted small">
+                    <span>{{ goal.start_date }} - {{ goal.end_date }}</span>
+                    <span>{{ goal.current_value }}/{{ goal.target_value }}</span>
+                </div>
+                
+                {% if goal.is_completed %}
+                <div class="text-success small mt-2">
+                    <i class="fas fa-check-circle me-1"></i>
+                    已完成于 {{ goal.completed_at|date:"Y-m-d" }}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <i class="fas fa-target"></i>
+        <h4>还没有设定任何目标</h4>
+        <p>开始设定你的第一个阅读目标，让阅读更有动力！</p>
+        <button class="btn btn-primary btn-goal" data-bs-toggle="modal" data-bs-target="#createGoalModal">
+            <i class="fas fa-plus me-2"></i>
+            创建第一个目标
+        </button>
+    </div>
+    {% endif %}
+</div>
+
+<!-- 创建目标模态框 -->
+<div class="modal fade" id="createGoalModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-target me-2"></i>
+                    创建阅读目标
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createGoalForm">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="goalType" class="form-label">目标周期</label>
+                        <select class="form-select" id="goalType" name="goal_type" required>
+                            {% for type_code, type_name in goal_types %}
+                            <option value="{{ type_code }}">{{ type_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="metricType" class="form-label">目标类型</label>
+                        <select class="form-select" id="metricType" name="metric_type" required>
+                            {% for metric_code, metric_name in metric_types %}
+                            <option value="{{ metric_code }}">{{ metric_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="targetValue" class="form-label">目标值</label>
+                        <input type="number" class="form-control" id="targetValue" name="target_value" 
+                               min="1" required placeholder="请输入目标值">
+                        <div class="form-text" id="targetValueHelp">
+                            请输入你想要达成的目标数值
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="createGoal()">创建目标</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 编辑目标模态框 -->
+<div class="modal fade" id="editGoalModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-edit me-2"></i>
+                    编辑目标
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editGoalForm">
+                    {% csrf_token %}
+                    <input type="hidden" id="editGoalId" name="goal_id">
+                    <div class="mb-3">
+                        <label for="editTargetValue" class="form-label">目标值</label>
+                        <input type="number" class="form-control" id="editTargetValue" name="target_value" 
+                               min="1" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="updateGoal()">更新目标</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 更新目标值提示文本
+document.getElementById('metricType').addEventListener('change', function() {
+    const metricType = this.value;
+    const helpText = document.getElementById('targetValueHelp');
+    const targetInput = document.getElementById('targetValue');
+    
+    switch(metricType) {
+        case 'time':
+            helpText.textContent = '请输入阅读时间（分钟）';
+            targetInput.placeholder = '例如：60（分钟）';
+            break;
+        case 'books':
+            helpText.textContent = '请输入要完成的书籍数量';
+            targetInput.placeholder = '例如：5（本书）';
+            break;
+        case 'pages':
+            helpText.textContent = '请输入要阅读的页数';
+            targetInput.placeholder = '例如：100（页）';
+            break;
+        case 'words':
+            helpText.textContent = '请输入要阅读的字数';
+            targetInput.placeholder = '例如：50000（字）';
+            break;
+    }
+});
+
+// 创建目标
+function createGoal() {
+    const form = document.getElementById('createGoalForm');
+    const formData = new FormData(form);
+    
+    fetch('{% url "create_reading_goal" %}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast(data.message, 'success');
+            setTimeout(() => {
+                location.reload();
+            }, 1000);
+        } else {
+            showToast(data.error, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('创建目标失败，请重试', 'error');
+    });
+}
+
+// 编辑目标
+function editGoal(goalId, currentValue) {
+    document.getElementById('editGoalId').value = goalId;
+    document.getElementById('editTargetValue').value = currentValue;
+    
+    const modal = new bootstrap.Modal(document.getElementById('editGoalModal'));
+    modal.show();
+}
+
+// 更新目标
+function updateGoal() {
+    const goalId = document.getElementById('editGoalId').value;
+    const form = document.getElementById('editGoalForm');
+    const formData = new FormData(form);
+    
+    fetch(`/goals/${goalId}/update/`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast(data.message, 'success');
+            setTimeout(() => {
+                location.reload();
+            }, 1000);
+        } else {
+            showToast(data.error, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('更新目标失败，请重试', 'error');
+    });
+}
+
+// 删除目标
+function deleteGoal(goalId) {
+    if (confirm('确定要删除这个目标吗？此操作不可撤销。')) {
+        fetch(`/goals/${goalId}/delete/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast(data.message, 'success');
+                setTimeout(() => {
+                    location.reload();
+                }, 1000);
+            } else {
+                showToast(data.error, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('删除目标失败，请重试', 'error');
+        });
+    }
+}
+
+// 显示提示消息
+function showToast(message, type) {
+    const toast = document.createElement('div');
+    toast.className = `alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible fade show position-fixed`;
+    toast.style.top = '20px';
+    toast.style.right = '20px';
+    toast.style.zIndex = '9999';
+    toast.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        if (toast.parentNode) {
+            toast.parentNode.removeChild(toast);
+        }
+    }, 3000);
+}
+
+// 初始化时触发一次
+document.getElementById('metricType').dispatchEvent(new Event('change'));
+</script>
+{% endblock %} 

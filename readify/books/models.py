@@ -635,3 +635,66 @@ class ReadingGoal(models.Model):
             self.is_completed = True
             self.completed_at = timezone.now()
         self.save()
+
+
+class BookFavorite(models.Model):
+    """书籍收藏模型"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name='用户')
+    book = models.ForeignKey(Book, on_delete=models.CASCADE, verbose_name='书籍')
+    created_at = models.DateTimeField(default=timezone.now, verbose_name='收藏时间')
+    
+    class Meta:
+        verbose_name = '书籍收藏'
+        verbose_name_plural = '书籍收藏'
+        unique_together = ['user', 'book']
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', 'created_at']),
+            models.Index(fields=['book']),
+        ]
+    
+    def __str__(self):
+        return f'{self.user.username} - {self.book.title}'
+
+
+class RecentReading(models.Model):
+    """最近阅读记录模型"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name='用户')
+    book = models.ForeignKey(Book, on_delete=models.CASCADE, verbose_name='书籍')
+    last_read_at = models.DateTimeField(default=timezone.now, verbose_name='最后阅读时间')
+    last_chapter = models.IntegerField(default=1, verbose_name='最后阅读章节')
+    last_position = models.IntegerField(default=0, verbose_name='最后阅读位置')
+    reading_duration = models.IntegerField(default=0, verbose_name='本次阅读时长(秒)')
+    
+    class Meta:
+        verbose_name = '最近阅读'
+        verbose_name_plural = '最近阅读'
+        unique_together = ['user', 'book']
+        ordering = ['-last_read_at']
+        indexes = [
+            models.Index(fields=['user', 'last_read_at']),
+            models.Index(fields=['book']),
+        ]
+    
+    def __str__(self):
+        return f'{self.user.username} - {self.book.title} ({self.last_read_at})'
+    
+    @classmethod
+    def update_recent_reading(cls, user, book, chapter=1, position=0, duration=0):
+        """更新最近阅读记录"""
+        recent, created = cls.objects.get_or_create(
+            user=user,
+            book=book,
+            defaults={
+                'last_chapter': chapter,
+                'last_position': position,
+                'reading_duration': duration,
+            }
+        )
+        if not created:
+            recent.last_read_at = timezone.now()
+            recent.last_chapter = chapter
+            recent.last_position = position
+            recent.reading_duration += duration
+            recent.save()
+        return recent

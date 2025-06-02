@@ -1,22 +1,58 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.http import JsonResponse
-from django.core.paginator import Paginator
-from django.db.models import Q, Count
+from django.http import JsonResponse, HttpResponse, Http404
 from django.views.decorators.http import require_http_methods
-import json
 from django.views.decorators.csrf import csrf_exempt
+from django.core.paginator import Paginator
+from django.db.models import Q, Count, Sum, Avg, Max, Min
+from django.db.models.functions import TruncDate, TruncMonth, Extract
 from django.utils import timezone
-from django.db import models
+from django.conf import settings
+from django.core.files.storage import default_storage
+from django.core.files.base import ContentFile
+from django.urls import reverse
+from datetime import datetime, timedelta
+import json
 import os
 import logging
-from datetime import timedelta
+import uuid
+import calendar
+import zipfile
+import tempfile
+import shutil
+from pathlib import Path
+import mimetypes
+import re
+import time
+import threading
+from concurrent.futures import ThreadPoolExecutor
+import requests
 
-from .models import Book, BookContent, ReadingProgress, BookNote, BookQuestion, BookCategory, BatchUpload, ReadingSession, ReadingStatistics, NoteCollection, ParagraphSummary, BookSummary, ReadingAssistant, ReadingQA, ChapterSummary, ReadingTimeTracker
-from .services import BookProcessingService, CategoryService, ReadingStatisticsService, BookNoteService, AISummaryService
+from .models import (
+    Book, BookCategory, BookNote, ReadingProgress, 
+    RecentReading, ReadingSession, BookFavorite,
+    ReadingStatistics, ReadingGoal, ReadingTimeTracker,
+    BatchUpload, BookContent, BookQuestion, BookSummary,
+    ParagraphSummary, ChapterSummary, ReadingAssistant,
+    ReadingQA, NoteCollection
+)
+from .services import (
+    BookProcessingService, 
+    ReadingStatisticsService,
+    CategoryService,
+    BookNoteService,
+    AISummaryService
+)
 from .reading_assistant import ReadingAssistantService
 from .renderers import OptimizedBookRenderer, RendererFactory
+from .forms import BookUploadForm, BookNoteForm
+
+# 尝试导入翻译服务，如果不存在则跳过
+try:
+    from readify.translation_service.services import TranslationService
+except ImportError:
+    TranslationService = None
 
 logger = logging.getLogger(__name__)
 
@@ -130,47 +166,22 @@ def book_upload(request):
             # 处理书籍内容提取和AI分类
             processing_service = BookProcessingService(request.user)
             
-            # 首先提取文本内容
+            # 使用新的章节创建方法
             try:
-                extracted_content = processing_service._extract_text_content(book)
+                success = processing_service.create_book_chapters(book)
                 
-                if extracted_content:
-                    # 成功提取到内容，创建BookContent记录
-                    BookContent.objects.create(
-                        book=book,
-                        chapter_number=1,
-                        chapter_title="全文内容",
-                        content=extracted_content[:50000],  # 限制长度
-                        word_count=len(extracted_content)
-                    )
-                    book.word_count = len(extracted_content)
-                    book.processing_status = 'processing'
-                    book.save()
-                    
-                    # 然后进行AI分类
+                if success:
+                    # 成功创建章节，进行AI分类
                     processing_service.classify_book_with_ai(book)
-                    
-                    messages.success(request, f'书籍《{title}》上传成功！内容已提取，正在进行AI分类...')
+                    messages.success(request, f'书籍《{title}》上传成功！已分割为 {book.contents.count()} 个章节，正在进行AI分类...')
                 else:
-                    # 提取失败，创建默认内容
-                    default_content = f"抱歉，无法自动解析《{book.title}》的文本内容。\n\n可能的原因：\n1. 文件格式不支持自动解析\n2. 文件内容为图片或扫描版\n3. 文件已加密或损坏\n\n请尝试：\n- 转换为TXT格式后重新上传\n- 联系管理员获取帮助"
-                    
-                    BookContent.objects.create(
-                        book=book,
-                        chapter_number=1,
-                        chapter_title="内容解析说明",
-                        content=default_content,
-                        word_count=len(default_content)
-                    )
-                    book.word_count = len(default_content)
-                    book.processing_status = 'failed'
-                    book.save()
-                    
+                    # 创建失败，但已有默认内容
+                    processing_service.classify_book_with_ai(book)
                     messages.warning(request, f'书籍《{title}》上传成功，但无法自动解析文本内容。请查看详情页面了解更多信息。')
                     
             except Exception as content_error:
-                logger.error(f"内容提取失败: {str(content_error)}")
-                # 即使内容提取失败，也尝试AI分类
+                logger.error(f"内容处理失败: {str(content_error)}")
+                # 即使内容处理失败，也尝试AI分类
                 processing_service.classify_book_with_ai(book)
                 messages.warning(request, f'书籍《{title}》上传成功，但内容处理时出现问题：{str(content_error)}')
             
@@ -293,6 +304,22 @@ def book_read(request, book_id):
     """阅读书籍视图"""
     book = get_object_or_404(Book, id=book_id, user=request.user)
     
+    # 更新最近阅读记录
+    recent_reading, created = RecentReading.objects.get_or_create(
+        user=request.user,
+        book=book,
+        defaults={
+            'last_read_at': timezone.now(),
+            'last_chapter': 1,
+            'last_position': 0,
+            'reading_duration': 0
+        }
+    )
+    
+    if not created:
+        recent_reading.last_read_at = timezone.now()
+        recent_reading.save()
+    
     # 获取或创建阅读进度
     progress, created = ReadingProgress.objects.get_or_create(
         user=request.user,
@@ -313,44 +340,23 @@ def book_read(request, book_id):
     # 如果书籍没有任何章节内容，尝试重新处理
     if not current_chapter:
         try:
-            # 使用书籍处理服务重新提取内容
+            # 使用书籍处理服务重新处理
             processing_service = BookProcessingService(request.user)
-            content = processing_service._extract_text_content(book)
+            success = processing_service.create_book_chapters(book)
             
-            if content:
-                # 成功提取到内容，创建BookContent记录
-                current_chapter = BookContent.objects.create(
-                    book=book,
-                    chapter_number=1,
-                    chapter_title="全文内容",
-                    content=content[:50000],  # 限制长度
-                    word_count=len(content)
-                )
-                book.word_count = len(content)
-                book.processing_status = 'completed'
-                book.save()
-                
-                # 更新进度
-                progress.current_chapter = 1
+            if success:
+                # 重新获取章节
+                chapters = BookContent.objects.filter(book=book).order_by('chapter_number')
+                current_chapter = chapters.first()
+                progress.current_chapter = current_chapter.chapter_number if current_chapter else 1
                 progress.save()
+                logger.info(f"重新处理书籍成功，创建了 {chapters.count()} 个章节")
             else:
-                # 创建默认内容
-                default_content = f"抱歉，无法自动解析《{book.title}》的文本内容。\n\n可能的原因：\n1. 文件格式不支持自动解析\n2. 文件内容为图片或扫描版\n3. 文件已加密或损坏\n\n请尝试：\n- 转换为TXT格式后重新上传\n- 联系管理员获取帮助"
-                
-                current_chapter = BookContent.objects.create(
-                    book=book,
-                    chapter_number=1,
-                    chapter_title="内容解析说明",
-                    content=default_content,
-                    word_count=len(default_content)
-                )
-                book.word_count = len(default_content)
-                book.processing_status = 'failed'
-                book.save()
-                
-                # 更新进度
-                progress.current_chapter = 1
-                progress.save()
+                # 处理失败，使用默认章节
+                current_chapter = BookContent.objects.filter(book=book).first()
+                if current_chapter:
+                    progress.current_chapter = current_chapter.chapter_number
+                    progress.save()
                 
         except Exception as e:
             logger.error(f"重新处理书籍内容失败: {str(e)}")
@@ -1662,27 +1668,20 @@ def translate_text_selection(request, book_id):
                 user=request.user,
                 source_text=text[:500],  # 限制长度
                 translated_text=result['translated_text'][:500],
-                source_language=result.get('detected_language', source_language),
-                target_language=target_language,
-                translation_context={
-                    'book_id': book_id,
-                    'book_title': book.title,
-                    'chapter_number': chapter_number,
-                    'line_number': line_number,
-                    'page_number': page_number,
-                    'translation_type': translation_type
-                }
+                source_language=result.get('source_language', source_language),
+                target_language=target_language
             )
             
             return JsonResponse({
                 'success': True,
                 'original_text': text,
                 'translated_text': result['translated_text'],
-                'source_language': result.get('detected_language', source_language),
+                'source_language': result.get('source_language', source_language),
                 'target_language': target_language,
                 'translation_type': translation_type,
                 'confidence': result.get('confidence', 0.8),
-                'cached': result.get('cached', False)
+                'cached': result.get('from_cache', False),
+                'model': result.get('model', 'unknown')
             })
         else:
             return JsonResponse({
@@ -1775,10 +1774,9 @@ def get_translation_history(request, book_id):
         
         from readify.translation_service.models import TranslationHistory
         
-        # 获取该书籍的翻译历史
+        # 获取用户的翻译历史（不按书籍过滤，因为模型中没有book_id字段）
         history = TranslationHistory.objects.filter(
-            user=request.user,
-            translation_context__book_id=str(book_id)
+            user=request.user
         ).order_by('-created_at')[:20]
         
         history_data = []
@@ -1790,7 +1788,7 @@ def get_translation_history(request, book_id):
                 'source_language': record.source_language,
                 'target_language': record.target_language,
                 'created_at': record.created_at.isoformat(),
-                'context': record.translation_context
+                'is_favorite': record.is_favorite
             })
         
         return JsonResponse({
@@ -1933,3 +1931,763 @@ def get_book_metadata_api(request, book_id):
             'success': False,
             'error': str(e)
         })
+
+
+@login_required
+@require_http_methods(["POST"])
+def toggle_book_favorite(request, book_id):
+    """切换书籍收藏状态"""
+    try:
+        book = get_object_or_404(Book, id=book_id, user=request.user)
+        
+        favorite, created = BookFavorite.objects.get_or_create(
+            user=request.user,
+            book=book,
+            defaults={'created_at': timezone.now()}
+        )
+        
+        if not created:
+            # 如果已存在，则删除（取消收藏）
+            favorite.delete()
+            is_favorited = False
+            message = '已取消收藏'
+        else:
+            # 如果是新创建的，则表示添加收藏
+            is_favorited = True
+            message = '已添加到收藏'
+        
+        return JsonResponse({
+            'success': True,
+            'is_favorited': is_favorited,
+            'message': message
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'操作失败: {str(e)}'
+        }, status=500)
+
+
+@login_required
+def favorite_books(request):
+    """收藏书籍列表页面"""
+    # 获取用户收藏的书籍
+    favorites = BookFavorite.objects.filter(user=request.user).select_related('book').order_by('-created_at')
+    
+    # 搜索功能
+    search_query = request.GET.get('search', '')
+    if search_query:
+        favorites = favorites.filter(
+            Q(book__title__icontains=search_query) |
+            Q(book__author__icontains=search_query) |
+            Q(book__description__icontains=search_query)
+        )
+    
+    # 分页
+    paginator = Paginator(favorites, 12)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    context = {
+        'favorites': page_obj,
+        'page_obj': page_obj,
+        'is_paginated': page_obj.has_other_pages(),
+        'search_query': search_query,
+        'total_favorites': favorites.count(),
+    }
+    
+    return render(request, 'books/favorite_books.html', context)
+
+
+@login_required
+def recent_books(request):
+    """最近阅读书籍列表页面"""
+    # 获取用户最近阅读的书籍
+    recent_readings = RecentReading.objects.filter(user=request.user).select_related('book').order_by('-last_read_at')
+    
+    # 分页
+    paginator = Paginator(recent_readings, 12)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    context = {
+        'recent_readings': page_obj,
+        'page_obj': page_obj,
+        'is_paginated': page_obj.has_other_pages(),
+        'total_recent': recent_readings.count(),
+    }
+    
+    return render(request, 'books/recent_books.html', context)
+
+
+@login_required
+def reading_statistics_charts(request):
+    """阅读统计图表页面"""
+    user = request.user
+    period = request.GET.get('period', '30')
+    period_days = int(period)
+    start_date = timezone.now() - timedelta(days=period_days)
+    
+    # 获取基本统计数据
+    total_books = Book.objects.filter(user=user).count()
+    total_favorites = BookFavorite.objects.filter(user=user).count()
+    total_reading_time = RecentReading.objects.filter(user=user).aggregate(
+        total_time=Sum('reading_duration')
+    )['total_time'] or 0
+    
+    # 获取最近阅读的书籍数量
+    recent_books_count = RecentReading.objects.filter(
+        user=user,
+        last_read_at__gte=start_date
+    ).count()
+    
+    # 获取总阅读会话数
+    total_sessions = ReadingSession.objects.filter(user=user).count()
+    
+    # 获取总笔记数
+    total_notes = BookNote.objects.filter(user=user).count()
+    
+    # 获取分类统计
+    category_stats = Book.objects.filter(user=user).values(
+        'category__name'
+    ).annotate(
+        count=Count('id'),
+        reading_time=Sum('recentreading__reading_duration')
+    ).order_by('-count')[:10]
+    
+    # 处理空分类
+    category_labels = []
+    category_data = []
+    category_reading_time = []
+    
+    for stat in category_stats:
+        category_name = stat['category__name'] or '未分类'
+        category_labels.append(category_name)
+        category_data.append(stat['count'])
+        category_reading_time.append(stat['reading_time'] or 0)
+    
+    # 获取每日阅读统计
+    daily_reading = RecentReading.objects.filter(
+        user=user,
+        last_read_at__gte=start_date
+    ).annotate(
+        day=TruncDate('last_read_at')
+    ).values('day').annotate(
+        reading_time=Sum('reading_duration'),
+        books_read=Count('book', distinct=True)
+    ).order_by('day')
+    
+    # 生成完整的日期序列
+    daily_labels = []
+    daily_duration_data = []
+    daily_books_data = []
+    
+    # 创建日期到数据的映射
+    daily_data_map = {item['day']: item for item in daily_reading}
+    
+    # 生成连续的日期序列
+    current_date = start_date.date()
+    end_date = timezone.now().date()
+    
+    while current_date <= end_date:
+        daily_labels.append(current_date.strftime('%m-%d'))
+        
+        if current_date in daily_data_map:
+            daily_duration_data.append(daily_data_map[current_date]['reading_time'] // 60)  # 转换为分钟
+            daily_books_data.append(daily_data_map[current_date]['books_read'])
+        else:
+            daily_duration_data.append(0)
+            daily_books_data.append(0)
+        
+        current_date += timedelta(days=1)
+    
+    # 获取月度趋势
+    monthly_data = RecentReading.objects.filter(
+        user=user,
+        last_read_at__gte=timezone.now() - timedelta(days=365)
+    ).annotate(
+        month=TruncMonth('last_read_at')
+    ).values('month').annotate(
+        reading_time=Sum('reading_duration'),
+        books_count=Count('book', distinct=True)
+    ).order_by('month')
+    
+    monthly_labels = [item['month'].strftime('%Y-%m') for item in monthly_data]
+    monthly_duration_data = [item['reading_time'] // 3600 for item in monthly_data]  # 转换为小时
+    monthly_books_data = [item['books_count'] for item in monthly_data]
+    
+    # 获取24小时阅读分布
+    hourly_data = RecentReading.objects.filter(
+        user=user,
+        last_read_at__gte=start_date
+    ).annotate(
+        hour=Extract('last_read_at', 'hour')
+    ).values('hour').annotate(
+        reading_time=Sum('reading_duration')
+    ).order_by('hour')
+    
+    # 生成24小时完整数据
+    hourly_labels = [f'{i:02d}:00' for i in range(24)]
+    hourly_distribution_data = [0] * 24
+    
+    for item in hourly_data:
+        hour = item['hour']
+        if hour is not None:
+            hourly_distribution_data[hour] = item['reading_time'] // 60  # 转换为分钟
+    
+    # 获取阅读进度统计
+    progress_stats = ReadingProgress.objects.filter(user=user).aggregate(
+        avg_progress=Avg('progress_percentage'),
+        total_chapters=Sum('current_chapter')
+    )
+    
+    # 获取阅读速度统计
+    reading_speed_stats = ReadingTimeTracker.objects.filter(user=user).aggregate(
+        avg_speed=Avg('reading_speed'),
+        max_speed=Max('reading_speed'),
+        min_speed=Min('reading_speed')
+    )
+    
+    # 获取完成的书籍数量
+    completed_books = ReadingProgress.objects.filter(
+        user=user,
+        progress_percentage__gte=95
+    ).count()
+    
+    # 计算完成率
+    completion_rate = (completed_books / total_books * 100) if total_books > 0 else 0
+    
+    # 构建图表数据
+    chart_data = {
+        'daily_reading': {
+            'labels': daily_labels,
+            'duration_data': daily_duration_data,
+            'books_data': daily_books_data
+        },
+        'category_stats': {
+            'labels': category_labels,
+            'data': category_data,
+            'reading_time': category_reading_time
+        },
+        'monthly_trends': {
+            'labels': monthly_labels,
+            'duration_data': monthly_duration_data,
+            'books_data': monthly_books_data
+        },
+        'hourly_distribution': {
+            'labels': hourly_labels,
+            'data': hourly_distribution_data
+        },
+        'progress_overview': {
+            'avg_progress': round(progress_stats['avg_progress'] or 0, 1),
+            'total_books': total_books,
+            'completed_books': completed_books,
+            'completion_rate': round(completion_rate, 1)
+        },
+        'reading_speed': {
+            'avg_speed': round(reading_speed_stats['avg_speed'] or 0, 0),
+            'max_speed': round(reading_speed_stats['max_speed'] or 0, 0),
+            'min_speed': round(reading_speed_stats['min_speed'] or 0, 0)
+        }
+    }
+    
+    # 总体统计
+    total_stats = {
+        'total_books': total_books,
+        'total_reading_hours': round(total_reading_time / 3600, 1),
+        'total_sessions': total_sessions,
+        'favorite_books': total_favorites,
+        'total_notes': total_notes,
+        'total_reading_minutes': total_reading_time // 60
+    }
+    
+    context = {
+        'total_stats': total_stats,
+        'chart_data': chart_data,
+        'period': period,
+        'start_date': start_date.strftime('%Y-%m-%d'),
+        'end_date': timezone.now().strftime('%Y-%m-%d'),
+    }
+    
+    return render(request, 'books/reading_statistics_charts.html', context)
+
+
+@login_required
+def get_reading_charts_data(request):
+    """获取阅读统计图表数据的API接口"""
+    try:
+        user = request.user
+        chart_type = request.GET.get('type', 'all')
+        period = request.GET.get('period', '30')  # 7, 30, 90, 365
+        
+        period_days = int(period)
+        start_date = timezone.now() - timedelta(days=period_days)
+        
+        response_data = {'success': True}
+        
+        if chart_type == 'all' or chart_type == 'daily':
+            # 每日阅读时长趋势
+            daily_reading = RecentReading.objects.filter(
+                user=user,
+                last_read_at__gte=start_date
+            ).annotate(
+                day=TruncDate('last_read_at')
+            ).values('day').annotate(
+                reading_time=Sum('reading_duration'),
+                books_count=Count('book', distinct=True)
+            ).order_by('day')
+            
+            # 生成完整的日期序列
+            daily_labels = []
+            daily_duration_data = []
+            daily_books_data = []
+            
+            # 创建日期到数据的映射
+            daily_data_map = {item['day']: item for item in daily_reading}
+            
+            # 生成连续的日期序列
+            current_date = start_date.date()
+            end_date = timezone.now().date()
+            
+            while current_date <= end_date:
+                daily_labels.append(current_date.strftime('%m-%d'))
+                
+                if current_date in daily_data_map:
+                    daily_duration_data.append(daily_data_map[current_date]['reading_time'] // 60)  # 转换为分钟
+                    daily_books_data.append(daily_data_map[current_date]['books_count'])
+                else:
+                    daily_duration_data.append(0)
+                    daily_books_data.append(0)
+                
+                current_date += timedelta(days=1)
+            
+            response_data['daily'] = {
+                'labels': daily_labels,
+                'datasets': [{
+                    'label': '阅读时长(分钟)',
+                    'data': daily_duration_data,
+                    'borderColor': '#667eea',
+                    'backgroundColor': 'rgba(102, 126, 234, 0.1)',
+                    'borderWidth': 2,
+                    'fill': True,
+                    'tension': 0.4
+                }]
+            }
+            
+        if chart_type == 'all' or chart_type == 'category':
+            # 分类阅读统计
+            category_stats = Book.objects.filter(user=user).values(
+                'category__name'
+            ).annotate(
+                count=Count('id'),
+                reading_time=Sum('recentreading__reading_duration')
+            ).order_by('-count')[:10]
+            
+            category_labels = []
+            category_data = []
+            
+            for stat in category_stats:
+                category_name = stat['category__name'] or '未分类'
+                category_labels.append(category_name)
+                category_data.append(stat['count'])
+            
+            response_data['category'] = {
+                'labels': category_labels,
+                'datasets': [{
+                    'data': category_data,
+                    'backgroundColor': [
+                        '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0',
+                        '#9966FF', '#FF9F40', '#FF6384', '#C9CBCF',
+                        '#4BC0C0', '#FF6384'
+                    ],
+                    'borderWidth': 2,
+                    'borderColor': '#fff'
+                }]
+            }
+            
+        if chart_type == 'all' or chart_type == 'monthly':
+            # 月度阅读趋势
+            monthly_data = RecentReading.objects.filter(
+                user=user,
+                last_read_at__gte=timezone.now() - timedelta(days=365)
+            ).annotate(
+                month=TruncMonth('last_read_at')
+            ).values('month').annotate(
+                reading_time=Sum('reading_duration'),
+                books_count=Count('book', distinct=True)
+            ).order_by('month')
+            
+            monthly_labels = [item['month'].strftime('%Y-%m') for item in monthly_data]
+            monthly_duration_data = [item['reading_time'] // 3600 for item in monthly_data]  # 转换为小时
+            
+            response_data['monthly'] = {
+                'labels': monthly_labels,
+                'datasets': [{
+                    'label': '阅读时长(小时)',
+                    'data': monthly_duration_data,
+                    'backgroundColor': 'rgba(102, 126, 234, 0.8)',
+                    'borderColor': '#667eea',
+                    'borderWidth': 1
+                }]
+            }
+            
+        if chart_type == 'all' or chart_type == 'hourly':
+            # 24小时阅读分布
+            hourly_data = RecentReading.objects.filter(
+                user=user,
+                last_read_at__gte=start_date
+            ).annotate(
+                hour=Extract('last_read_at', 'hour')
+            ).values('hour').annotate(
+                reading_time=Sum('reading_duration')
+            ).order_by('hour')
+            
+            # 生成24小时完整数据
+            hourly_labels = [f'{i:02d}:00' for i in range(24)]
+            hourly_distribution_data = [0] * 24
+            
+            for item in hourly_data:
+                hour = item['hour']
+                if hour is not None:
+                    hourly_distribution_data[hour] = item['reading_time'] // 60  # 转换为分钟
+            
+            response_data['hourly'] = {
+                'labels': hourly_labels,
+                'datasets': [{
+                    'label': '阅读时长(分钟)',
+                    'data': hourly_distribution_data,
+                    'borderColor': '#667eea',
+                    'backgroundColor': 'rgba(102, 126, 234, 0.2)',
+                    'borderWidth': 2,
+                    'pointBackgroundColor': '#667eea',
+                    'pointBorderColor': '#fff',
+                    'pointBorderWidth': 2
+                }]
+            }
+            
+        if chart_type == 'all' or chart_type == 'progress':
+            # 阅读进度统计
+            progress_data = ReadingProgress.objects.filter(user=user).select_related('book').order_by('-progress_percentage')[:10]
+            
+            progress_labels = [item.book.title[:20] + '...' if len(item.book.title) > 20 else item.book.title for item in progress_data]
+            progress_values = [item.progress_percentage for item in progress_data]
+            
+            response_data['progress'] = {
+                'labels': progress_labels,
+                'datasets': [{
+                    'label': '阅读进度(%)',
+                    'data': progress_values,
+                    'backgroundColor': 'rgba(102, 126, 234, 0.8)',
+                    'borderColor': '#667eea',
+                    'borderWidth': 1
+                }]
+            }
+        
+        # 添加统计摘要
+        total_books = Book.objects.filter(user=user).count()
+        total_favorites = BookFavorite.objects.filter(user=user).count()
+        total_reading_time = RecentReading.objects.filter(user=user).aggregate(
+            total_time=Sum('reading_duration')
+        )['total_time'] or 0
+        
+        response_data['summary'] = {
+            'total_books': total_books,
+            'total_favorites': total_favorites,
+            'total_reading_hours': round(total_reading_time / 3600, 1),
+            'period_days': period_days,
+            'start_date': start_date.strftime('%Y-%m-%d'),
+            'end_date': timezone.now().strftime('%Y-%m-%d')
+        }
+        
+        return JsonResponse(response_data)
+            
+    except Exception as e:
+        logger.error(f"获取图表数据失败: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': f'获取数据失败: {str(e)}'
+        }, status=500)
+
+
+@login_required
+def reading_goals(request):
+    """阅读目标管理页面"""
+    user = request.user
+    
+    # 获取用户的所有阅读目标
+    goals = ReadingGoal.objects.filter(user=user).order_by('-created_at')
+    
+    # 获取活跃的目标
+    active_goals = goals.filter(is_active=True)
+    
+    # 计算目标完成情况
+    for goal in active_goals:
+        # 根据目标类型计算当前值
+        if goal.metric_type == 'time':
+            # 阅读时间目标
+            if goal.goal_type == 'daily':
+                start_date = timezone.now().date()
+                end_date = start_date
+            elif goal.goal_type == 'weekly':
+                start_date = timezone.now().date() - timedelta(days=timezone.now().weekday())
+                end_date = start_date + timedelta(days=6)
+            elif goal.goal_type == 'monthly':
+                start_date = timezone.now().date().replace(day=1)
+                end_date = (start_date + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+            else:  # yearly
+                start_date = timezone.now().date().replace(month=1, day=1)
+                end_date = start_date.replace(year=start_date.year + 1) - timedelta(days=1)
+            
+            current_time = RecentReading.objects.filter(
+                user=user,
+                last_read_at__date__gte=start_date,
+                last_read_at__date__lte=end_date
+            ).aggregate(total_time=Sum('reading_duration'))['total_time'] or 0
+            
+            goal.current_value = current_time // 60  # 转换为分钟
+            
+        elif goal.metric_type == 'books':
+            # 阅读书籍数目标
+            completed_books = ReadingProgress.objects.filter(
+                user=user,
+                progress_percentage__gte=95,
+                last_read_at__gte=goal.start_date
+            ).count()
+            goal.current_value = completed_books
+            
+        goal.save()
+    
+    context = {
+        'goals': goals,
+        'active_goals': active_goals,
+        'goal_types': ReadingGoal.GOAL_TYPES,
+        'metric_types': ReadingGoal.GOAL_METRICS,
+    }
+    
+    return render(request, 'books/reading_goals.html', context)
+
+
+@login_required
+@require_http_methods(["POST"])
+def create_reading_goal(request):
+    """创建阅读目标"""
+    try:
+        goal_type = request.POST.get('goal_type')
+        metric_type = request.POST.get('metric_type')
+        target_value = int(request.POST.get('target_value'))
+        
+        # 计算开始和结束日期
+        today = timezone.now().date()
+        
+        if goal_type == 'daily':
+            start_date = today
+            end_date = today
+        elif goal_type == 'weekly':
+            start_date = today - timedelta(days=today.weekday())
+            end_date = start_date + timedelta(days=6)
+        elif goal_type == 'monthly':
+            start_date = today.replace(day=1)
+            end_date = (start_date + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+        else:  # yearly
+            start_date = today.replace(month=1, day=1)
+            end_date = start_date.replace(year=start_date.year + 1) - timedelta(days=1)
+        
+        # 检查是否已存在相同类型的目标
+        existing_goal = ReadingGoal.objects.filter(
+            user=request.user,
+            goal_type=goal_type,
+            metric_type=metric_type,
+            start_date=start_date,
+            is_active=True
+        ).first()
+        
+        if existing_goal:
+            return JsonResponse({
+                'success': False,
+                'error': '该时间段已存在相同类型的目标'
+            })
+        
+        # 创建新目标
+        goal = ReadingGoal.objects.create(
+            user=request.user,
+            goal_type=goal_type,
+            metric_type=metric_type,
+            target_value=target_value,
+            start_date=start_date,
+            end_date=end_date
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'message': '阅读目标创建成功',
+            'goal_id': goal.id
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'创建目标失败: {str(e)}'
+        }, status=500)
+
+
+@login_required
+@require_http_methods(["POST"])
+def update_reading_goal(request, goal_id):
+    """更新阅读目标"""
+    try:
+        goal = get_object_or_404(ReadingGoal, id=goal_id, user=request.user)
+        
+        target_value = request.POST.get('target_value')
+        if target_value:
+            goal.target_value = int(target_value)
+        
+        is_active = request.POST.get('is_active')
+        if is_active is not None:
+            goal.is_active = is_active.lower() == 'true'
+        
+        goal.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': '目标更新成功'
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'更新目标失败: {str(e)}'
+        }, status=500)
+
+
+@login_required
+@require_http_methods(["POST"])
+def delete_reading_goal(request, goal_id):
+    """删除阅读目标"""
+    try:
+        goal = get_object_or_404(ReadingGoal, id=goal_id, user=request.user)
+        goal.delete()
+        
+        return JsonResponse({
+            'success': True,
+            'message': '目标删除成功'
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'删除目标失败: {str(e)}'
+        }, status=500)
+
+
+@login_required
+def get_reading_goal_progress(request):
+    """获取阅读目标进度API"""
+    try:
+        user = request.user
+        active_goals = ReadingGoal.objects.filter(user=user, is_active=True)
+        
+        progress_data = []
+        for goal in active_goals:
+            progress_data.append({
+                'id': goal.id,
+                'goal_type': goal.get_goal_type_display(),
+                'metric_type': goal.get_metric_type_display(),
+                'target_value': goal.target_value,
+                'current_value': goal.current_value,
+                'progress_percentage': goal.progress_percentage,
+                'is_completed': goal.is_completed,
+                'start_date': goal.start_date.strftime('%Y-%m-%d'),
+                'end_date': goal.end_date.strftime('%Y-%m-%d'),
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'goals': progress_data
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'获取进度失败: {str(e)}'
+        }, status=500)
+
+
+@login_required
+def advanced_book_search(request):
+    """高级书籍搜索"""
+    user = request.user
+    
+    # 获取搜索参数
+    query = request.GET.get('q', '')
+    category = request.GET.get('category', '')
+    author = request.GET.get('author', '')
+    format_type = request.GET.get('format', '')
+    date_from = request.GET.get('date_from', '')
+    date_to = request.GET.get('date_to', '')
+    sort_by = request.GET.get('sort', 'uploaded_at')
+    
+    # 基础查询
+    books = Book.objects.filter(user=user)
+    
+    # 应用搜索过滤器
+    if query:
+        books = books.filter(
+            Q(title__icontains=query) |
+            Q(description__icontains=query) |
+            Q(tags__icontains=query)
+        )
+    
+    if category:
+        books = books.filter(category__code=category)
+    
+    if author:
+        books = books.filter(author__icontains=author)
+    
+    if format_type:
+        books = books.filter(format=format_type)
+    
+    if date_from:
+        books = books.filter(uploaded_at__date__gte=date_from)
+    
+    if date_to:
+        books = books.filter(uploaded_at__date__lte=date_to)
+    
+    # 排序
+    if sort_by == 'title':
+        books = books.order_by('title')
+    elif sort_by == 'author':
+        books = books.order_by('author')
+    elif sort_by == 'view_count':
+        books = books.order_by('-view_count')
+    elif sort_by == 'last_read':
+        books = books.order_by('-last_read_at')
+    else:
+        books = books.order_by('-uploaded_at')
+    
+    # 分页
+    paginator = Paginator(books, 12)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    # 获取分类列表
+    categories = BookCategory.objects.all()
+    
+    context = {
+        'books': page_obj,
+        'page_obj': page_obj,
+        'is_paginated': page_obj.has_other_pages(),
+        'categories': categories,
+        'search_params': {
+            'q': query,
+            'category': category,
+            'author': author,
+            'format': format_type,
+            'date_from': date_from,
+            'date_to': date_to,
+            'sort': sort_by,
+        },
+        'total_results': books.count(),
+    }
+    
+    return render(request, 'books/advanced_search.html', context)

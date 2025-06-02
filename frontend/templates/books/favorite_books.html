@@ -1,0 +1,351 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}我的收藏 - Readify{% endblock %}
+
+{% block extra_css %}
+<style>
+    .favorite-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem 0;
+        margin-bottom: 2rem;
+    }
+    
+    .book-card {
+        transition: all 0.3s ease;
+        border: none;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        height: 100%;
+    }
+    
+    .book-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+    }
+    
+    .book-cover {
+        width: 100%;
+        height: 200px;
+        object-fit: cover;
+        border-radius: 8px;
+    }
+    
+    .book-info {
+        padding: 1rem;
+    }
+    
+    .book-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        color: #333;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+    
+    .book-author {
+        color: #666;
+        font-size: 0.9rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .book-meta {
+        font-size: 0.8rem;
+        color: #888;
+        margin-bottom: 1rem;
+    }
+    
+    .favorite-date {
+        color: #e74c3c;
+        font-weight: 500;
+    }
+    
+    .search-section {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        margin-bottom: 2rem;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 3rem;
+        color: #666;
+    }
+    
+    .empty-state i {
+        font-size: 4rem;
+        color: #ddd;
+        margin-bottom: 1rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="favorite-header">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1 class="mb-0">
+                    <i class="fas fa-heart me-2"></i>
+                    我的收藏
+                </h1>
+                <p class="mb-0 mt-2 opacity-75">
+                    共收藏了 {{ favorites.paginator.count }} 本书籍
+                </p>
+            </div>
+            <div class="col-md-4 text-end">
+                <a href="{% url 'book_list' %}" class="btn btn-light">
+                    <i class="fas fa-books me-2"></i>
+                    浏览更多书籍
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <!-- 搜索区域 -->
+    <div class="search-section">
+        <form method="get" class="row g-3">
+            <div class="col-md-10">
+                <div class="input-group">
+                    <span class="input-group-text">
+                        <i class="fas fa-search"></i>
+                    </span>
+                    <input type="text" 
+                           class="form-control" 
+                           name="search" 
+                           value="{{ search_query }}" 
+                           placeholder="搜索收藏的书籍...">
+                </div>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="fas fa-search me-2"></i>
+                    搜索
+                </button>
+            </div>
+        </form>
+    </div>
+
+    {% if favorites %}
+        <!-- 书籍网格 -->
+        <div class="row">
+            {% for favorite in favorites %}
+                <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
+                    <div class="card book-card">
+                        <div class="position-relative">
+                            {% if favorite.book.cover %}
+                                <img src="{{ favorite.book.cover.url }}" 
+                                     class="book-cover" 
+                                     alt="{{ favorite.book.title }}">
+                            {% else %}
+                                <div class="book-cover d-flex align-items-center justify-content-center bg-light">
+                                    <i class="fas fa-book fa-3x text-muted"></i>
+                                </div>
+                            {% endif %}
+                            
+                            <!-- 收藏标识 -->
+                            <div class="position-absolute top-0 end-0 p-2">
+                                <span class="badge bg-danger">
+                                    <i class="fas fa-heart"></i>
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <div class="book-info">
+                            <h5 class="book-title">{{ favorite.book.title }}</h5>
+                            
+                            {% if favorite.book.author %}
+                                <p class="book-author">
+                                    <i class="fas fa-user me-1"></i>
+                                    {{ favorite.book.author }}
+                                </p>
+                            {% endif %}
+                            
+                            <div class="book-meta">
+                                <div class="mb-1">
+                                    <i class="fas fa-calendar me-1"></i>
+                                    收藏于: <span class="favorite-date">{{ favorite.created_at|date:"Y-m-d" }}</span>
+                                </div>
+                                
+                                {% if favorite.book.category %}
+                                    <div class="mb-1">
+                                        <i class="fas fa-tag me-1"></i>
+                                        {{ favorite.book.category.name }}
+                                    </div>
+                                {% endif %}
+                                
+                                <div class="mb-1">
+                                    <i class="fas fa-eye me-1"></i>
+                                    阅读 {{ favorite.book.view_count }} 次
+                                </div>
+                            </div>
+                            
+                            <div class="d-grid gap-2">
+                                <a href="{% url 'book_read' favorite.book.id %}" 
+                                   class="btn btn-primary btn-sm">
+                                    <i class="fas fa-book-open me-2"></i>
+                                    继续阅读
+                                </a>
+                                
+                                <div class="btn-group" role="group">
+                                    <a href="{% url 'book_detail' favorite.book.id %}" 
+                                       class="btn btn-outline-secondary btn-sm">
+                                        <i class="fas fa-info-circle me-1"></i>
+                                        详情
+                                    </a>
+                                    
+                                    <button type="button" 
+                                            class="btn btn-outline-danger btn-sm"
+                                            onclick="toggleFavorite({{ favorite.book.id }}, this)">
+                                        <i class="fas fa-heart-broken me-1"></i>
+                                        取消收藏
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+        <!-- 分页 -->
+        {% if is_paginated %}
+            <nav aria-label="收藏书籍分页">
+                <ul class="pagination justify-content-center">
+                    {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}">
+                                <i class="fas fa-angle-double-left"></i>
+                            </a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}">
+                                <i class="fas fa-angle-left"></i>
+                            </a>
+                        </li>
+                    {% endif %}
+
+                    {% for num in page_obj.paginator.page_range %}
+                        {% if page_obj.number == num %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ num }}</span>
+                            </li>
+                        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}">{{ num }}</a>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}">
+                                <i class="fas fa-angle-right"></i>
+                            </a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}">
+                                <i class="fas fa-angle-double-right"></i>
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        {% endif %}
+    {% else %}
+        <!-- 空状态 -->
+        <div class="empty-state">
+            <i class="fas fa-heart-broken"></i>
+            <h3>还没有收藏任何书籍</h3>
+            <p class="text-muted">去书库中发现喜欢的书籍并收藏吧！</p>
+            <a href="{% url 'book_list' %}" class="btn btn-primary">
+                <i class="fas fa-books me-2"></i>
+                浏览书库
+            </a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleFavorite(bookId, button) {
+    fetch(`/books/${bookId}/toggle-favorite/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            'Content-Type': 'application/json',
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // 移除整个卡片
+            const card = button.closest('.col-lg-3');
+            card.style.transition = 'all 0.3s ease';
+            card.style.opacity = '0';
+            card.style.transform = 'scale(0.8)';
+            
+            setTimeout(() => {
+                card.remove();
+                
+                // 检查是否还有书籍
+                const remainingCards = document.querySelectorAll('.book-card');
+                if (remainingCards.length === 0) {
+                    location.reload();
+                }
+            }, 300);
+            
+            // 显示成功消息
+            showToast(data.message, 'success');
+        } else {
+            showToast(data.error || '操作失败', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('网络错误，请重试', 'error');
+    });
+}
+
+function showToast(message, type) {
+    // 创建toast元素
+    const toast = document.createElement('div');
+    toast.className = `alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible fade show position-fixed`;
+    toast.style.top = '20px';
+    toast.style.right = '20px';
+    toast.style.zIndex = '9999';
+    toast.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(toast);
+    
+    // 3秒后自动移除
+    setTimeout(() => {
+        if (toast.parentNode) {
+            toast.parentNode.removeChild(toast);
+        }
+    }, 3000);
+}
+
+// 添加CSRF token
+document.addEventListener('DOMContentLoaded', function() {
+    if (!document.querySelector('[name=csrfmiddlewaretoken]')) {
+        const csrfToken = document.createElement('input');
+        csrfToken.type = 'hidden';
+        csrfToken.name = 'csrfmiddlewaretoken';
+        csrfToken.value = '{{ csrf_token }}';
+        document.body.appendChild(csrfToken);
+    }
+});
+</script>
+{% endblock %} 

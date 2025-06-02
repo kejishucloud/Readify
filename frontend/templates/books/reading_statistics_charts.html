@@ -1,0 +1,618 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}阅读统计图表 - Readify{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stats-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem 0;
+        margin-bottom: 2rem;
+    }
+    
+    .stats-card {
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        transition: all 0.3s ease;
+    }
+    
+    .stats-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+    }
+    
+    .stat-item {
+        text-align: center;
+        padding: 1rem;
+    }
+    
+    .stat-number {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: #667eea;
+        margin-bottom: 0.5rem;
+    }
+    
+    .stat-label {
+        color: #666;
+        font-size: 0.9rem;
+        font-weight: 500;
+    }
+    
+    .chart-container {
+        position: relative;
+        height: 400px;
+        margin: 1rem 0;
+    }
+    
+    .chart-title {
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 1rem;
+        text-align: center;
+    }
+    
+    .period-selector {
+        background: white;
+        border-radius: 10px;
+        padding: 1rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    
+    .btn-period {
+        margin: 0 0.25rem;
+        border-radius: 20px;
+        padding: 0.5rem 1rem;
+        font-size: 0.9rem;
+    }
+    
+    .btn-period.active {
+        background: #667eea;
+        border-color: #667eea;
+        color: white;
+    }
+    
+    .loading-spinner {
+        display: none;
+        text-align: center;
+        padding: 2rem;
+    }
+    
+    .chart-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+        gap: 2rem;
+        margin-bottom: 2rem;
+    }
+    
+    @media (max-width: 768px) {
+        .chart-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .chart-container {
+            height: 300px;
+        }
+        
+        .stat-number {
+            font-size: 2rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="stats-header">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1 class="mb-0">
+                    <i class="fas fa-chart-bar me-2"></i>
+                    阅读统计图表
+                </h1>
+                <p class="mb-0 mt-2 opacity-75">
+                    可视化你的阅读数据和趋势
+                </p>
+            </div>
+            <div class="col-md-4 text-end">
+                <a href="{% url 'reading_statistics' %}" class="btn btn-light">
+                    <i class="fas fa-list me-2"></i>
+                    详细统计
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <!-- 总体统计卡片 -->
+    <div class="stats-card">
+        <div class="row">
+            <div class="col-md-2 col-6">
+                <div class="stat-item">
+                    <div class="stat-number">{{ total_stats.total_books }}</div>
+                    <div class="stat-label">总书籍数</div>
+                </div>
+            </div>
+            <div class="col-md-2 col-6">
+                <div class="stat-item">
+                    <div class="stat-number">{{ total_stats.total_reading_hours }}</div>
+                    <div class="stat-label">阅读小时</div>
+                </div>
+            </div>
+            <div class="col-md-2 col-6">
+                <div class="stat-item">
+                    <div class="stat-number">{{ total_stats.total_sessions }}</div>
+                    <div class="stat-label">阅读会话</div>
+                </div>
+            </div>
+            <div class="col-md-2 col-6">
+                <div class="stat-item">
+                    <div class="stat-number">{{ total_stats.favorite_books }}</div>
+                    <div class="stat-label">收藏书籍</div>
+                </div>
+            </div>
+            <div class="col-md-2 col-6">
+                <div class="stat-item">
+                    <div class="stat-number">{{ total_stats.total_notes }}</div>
+                    <div class="stat-label">笔记数量</div>
+                </div>
+            </div>
+            <div class="col-md-2 col-6">
+                <div class="stat-item">
+                    <div class="stat-number">{{ total_stats.total_reading_minutes }}</div>
+                    <div class="stat-label">剩余分钟</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 时间范围选择器 -->
+    <div class="period-selector">
+        <div class="row align-items-center">
+            <div class="col-md-6">
+                <h5 class="mb-0">选择统计周期</h5>
+                <small class="text-muted">{{ start_date }} 至 {{ end_date }}</small>
+            </div>
+            <div class="col-md-6 text-end">
+                <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-outline-primary btn-period {% if period == '7' %}active{% endif %}" 
+                            onclick="changePeriod(7)">7天</button>
+                    <button type="button" class="btn btn-outline-primary btn-period {% if period == '30' %}active{% endif %}" 
+                            onclick="changePeriod(30)">30天</button>
+                    <button type="button" class="btn btn-outline-primary btn-period {% if period == '90' %}active{% endif %}" 
+                            onclick="changePeriod(90)">90天</button>
+                    <button type="button" class="btn btn-outline-primary btn-period {% if period == '365' %}active{% endif %}" 
+                            onclick="changePeriod(365)">1年</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 加载动画 -->
+    <div class="loading-spinner" id="loadingSpinner">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">加载中...</span>
+        </div>
+        <p class="mt-2">正在加载图表数据...</p>
+    </div>
+
+    <!-- 图表网格 -->
+    <div class="chart-grid" id="chartsContainer">
+        <!-- 每日阅读时长趋势 -->
+        <div class="stats-card">
+            <div class="chart-title">每日阅读时长趋势</div>
+            <div class="chart-container">
+                <canvas id="dailyReadingChart"></canvas>
+            </div>
+        </div>
+
+        <!-- 分类阅读统计 -->
+        <div class="stats-card">
+            <div class="chart-title">分类阅读统计</div>
+            <div class="chart-container">
+                <canvas id="categoryChart"></canvas>
+            </div>
+        </div>
+
+        <!-- 月度阅读趋势 -->
+        <div class="stats-card">
+            <div class="chart-title">月度阅读趋势</div>
+            <div class="chart-container">
+                <canvas id="monthlyTrendChart"></canvas>
+            </div>
+        </div>
+
+        <!-- 阅读时间分布 -->
+        <div class="stats-card">
+            <div class="chart-title">24小时阅读分布</div>
+            <div class="chart-container">
+                <canvas id="hourlyDistributionChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- 阅读进度概览 -->
+    <div class="stats-card">
+        <div class="chart-title">阅读进度概览</div>
+        <div class="row text-center">
+            <div class="col-md-3">
+                <div class="stat-item">
+                    <div class="stat-number text-success">{{ chart_data.progress_overview.avg_progress }}%</div>
+                    <div class="stat-label">平均进度</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-item">
+                    <div class="stat-number text-info">{{ chart_data.progress_overview.total_books }}</div>
+                    <div class="stat-label">总书籍数</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-item">
+                    <div class="stat-number text-warning">{{ chart_data.progress_overview.completed_books }}</div>
+                    <div class="stat-label">已完成</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-item">
+                    <div class="stat-number text-primary">{{ chart_data.progress_overview.completion_rate }}%</div>
+                    <div class="stat-label">完成率</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 阅读速度统计 -->
+    <div class="stats-card">
+        <div class="chart-title">阅读速度统计</div>
+        <div class="row text-center">
+            <div class="col-md-4">
+                <div class="stat-item">
+                    <div class="stat-number text-success">{{ chart_data.reading_speed.avg_speed }}</div>
+                    <div class="stat-label">平均速度 (字/分钟)</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="stat-item">
+                    <div class="stat-number text-danger">{{ chart_data.reading_speed.max_speed }}</div>
+                    <div class="stat-label">最高速度 (字/分钟)</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="stat-item">
+                    <div class="stat-number text-info">{{ chart_data.reading_speed.min_speed }}</div>
+                    <div class="stat-label">最低速度 (字/分钟)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// 图表数据
+const chartData = {{ chart_data|safe }};
+
+// 图表实例
+let charts = {};
+
+// 初始化所有图表
+document.addEventListener('DOMContentLoaded', function() {
+    initializeCharts();
+});
+
+function initializeCharts() {
+    // 每日阅读时长趋势图
+    const dailyCtx = document.getElementById('dailyReadingChart').getContext('2d');
+    charts.daily = new Chart(dailyCtx, {
+        type: 'line',
+        data: {
+            labels: chartData.daily_reading.labels,
+            datasets: [{
+                label: '阅读时长(分钟)',
+                data: chartData.daily_reading.duration_data,
+                borderColor: '#667eea',
+                backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                borderWidth: 2,
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return `阅读时长: ${context.parsed.y} 分钟`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: '分钟'
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: '日期'
+                    }
+                }
+            }
+        }
+    });
+
+    // 分类阅读统计饼图
+    const categoryCtx = document.getElementById('categoryChart').getContext('2d');
+    charts.category = new Chart(categoryCtx, {
+        type: 'doughnut',
+        data: {
+            labels: chartData.category_stats.labels,
+            datasets: [{
+                data: chartData.category_stats.data,
+                backgroundColor: [
+                    '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0',
+                    '#9966FF', '#FF9F40', '#FF6384', '#C9CBCF',
+                    '#4BC0C0', '#FF6384'
+                ],
+                borderWidth: 2,
+                borderColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            const value = context.parsed;
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = ((value / total) * 100).toFixed(1);
+                            return `${label}: ${value} 本 (${percentage}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // 月度趋势图
+    const monthlyCtx = document.getElementById('monthlyTrendChart').getContext('2d');
+    charts.monthly = new Chart(monthlyCtx, {
+        type: 'bar',
+        data: {
+            labels: chartData.monthly_trends.labels,
+            datasets: [{
+                label: '阅读时长(小时)',
+                data: chartData.monthly_trends.duration_data,
+                backgroundColor: 'rgba(102, 126, 234, 0.8)',
+                borderColor: '#667eea',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return `阅读时长: ${context.parsed.y} 小时`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: '小时'
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: '月份'
+                    }
+                }
+            }
+        }
+    });
+
+    // 24小时分布图
+    const hourlyCtx = document.getElementById('hourlyDistributionChart').getContext('2d');
+    charts.hourly = new Chart(hourlyCtx, {
+        type: 'radar',
+        data: {
+            labels: chartData.hourly_distribution.labels,
+            datasets: [{
+                label: '阅读时长(分钟)',
+                data: chartData.hourly_distribution.data,
+                borderColor: '#667eea',
+                backgroundColor: 'rgba(102, 126, 234, 0.2)',
+                borderWidth: 2,
+                pointBackgroundColor: '#667eea',
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return `${context.label}: ${context.parsed.r} 分钟`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                r: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: '分钟'
+                    }
+                }
+            }
+        }
+    });
+}
+
+function changePeriod(days) {
+    // 显示加载动画
+    document.getElementById('loadingSpinner').style.display = 'block';
+    document.getElementById('chartsContainer').style.opacity = '0.5';
+    
+    // 更新按钮状态
+    document.querySelectorAll('.btn-period').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    event.target.classList.add('active');
+    
+    // 获取新数据
+    fetch(`{% url 'get_reading_charts_data' %}?period=${days}&type=all`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // 更新图表数据
+                updateCharts(data);
+                
+                // 更新统计摘要
+                updateSummary(data.summary);
+            } else {
+                throw new Error(data.error || '获取数据失败');
+            }
+            
+            // 隐藏加载动画
+            document.getElementById('loadingSpinner').style.display = 'none';
+            document.getElementById('chartsContainer').style.opacity = '1';
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('loadingSpinner').style.display = 'none';
+            document.getElementById('chartsContainer').style.opacity = '1';
+            
+            // 显示错误消息
+            showToast('加载数据失败，请重试', 'error');
+        });
+}
+
+function updateCharts(newData) {
+    // 更新每日阅读图表
+    if (charts.daily && newData.daily) {
+        charts.daily.data.labels = newData.daily.labels;
+        charts.daily.data.datasets[0].data = newData.daily.datasets[0].data;
+        charts.daily.update();
+    }
+    
+    // 更新分类图表
+    if (charts.category && newData.category) {
+        charts.category.data.labels = newData.category.labels;
+        charts.category.data.datasets[0].data = newData.category.datasets[0].data;
+        charts.category.update();
+    }
+    
+    // 更新月度图表
+    if (charts.monthly && newData.monthly) {
+        charts.monthly.data.labels = newData.monthly.labels;
+        charts.monthly.data.datasets[0].data = newData.monthly.datasets[0].data;
+        charts.monthly.update();
+    }
+    
+    // 更新小时分布图表
+    if (charts.hourly && newData.hourly) {
+        charts.hourly.data.datasets[0].data = newData.hourly.datasets[0].data;
+        charts.hourly.update();
+    }
+}
+
+function updateSummary(summary) {
+    // 更新页面上的统计摘要信息
+    if (summary) {
+        // 这里可以添加更新统计摘要的逻辑
+        console.log('Summary updated:', summary);
+    }
+}
+
+function showToast(message, type) {
+    const toast = document.createElement('div');
+    toast.className = `alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible fade show position-fixed`;
+    toast.style.top = '20px';
+    toast.style.right = '20px';
+    toast.style.zIndex = '9999';
+    toast.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        if (toast.parentNode) {
+            toast.parentNode.removeChild(toast);
+        }
+    }, 3000);
+}
+
+// 响应式处理
+window.addEventListener('resize', function() {
+    Object.values(charts).forEach(chart => {
+        if (chart) {
+            chart.resize();
+        }
+    });
+});
+
+// 添加图表导出功能
+function exportChart(chartType) {
+    if (charts[chartType]) {
+        const canvas = charts[chartType].canvas;
+        const url = canvas.toDataURL('image/png');
+        const link = document.createElement('a');
+        link.download = `${chartType}_chart.png`;
+        link.href = url;
+        link.click();
+    }
+}
+
+// 添加数据刷新功能
+function refreshData() {
+    const currentPeriod = document.querySelector('.btn-period.active').textContent.replace('天', '');
+    changePeriod(parseInt(currentPeriod));
+}
+</script>
+{% endblock %} 

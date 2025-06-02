@@ -62,4 +62,13 @@ lxml==4.9.3
 opencv-python==4.8.1.78
 
 # 文本编码检测增强 - 使用标准chardet
-# cchardet==2.1.7 
+# cchardet==2.1.7
+
+# 图表和数据分析
+matplotlib==3.7.2
+seaborn==0.12.2
+pandas==2.0.3
+numpy==1.24.3
+
+# 时间处理
+python-dateutil==2.8.2 

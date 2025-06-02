@@ -1,0 +1,405 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}最近阅读 - Readify{% endblock %}
+
+{% block extra_css %}
+<style>
+    .recent-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem 0;
+        margin-bottom: 2rem;
+    }
+    
+    .book-card {
+        transition: all 0.3s ease;
+        border: none;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        height: 100%;
+    }
+    
+    .book-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+    }
+    
+    .book-cover {
+        width: 100%;
+        height: 200px;
+        object-fit: cover;
+        border-radius: 8px;
+    }
+    
+    .book-info {
+        padding: 1rem;
+    }
+    
+    .book-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        color: #333;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+    
+    .book-author {
+        color: #666;
+        font-size: 0.9rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .book-meta {
+        font-size: 0.8rem;
+        color: #888;
+        margin-bottom: 1rem;
+    }
+    
+    .last-read-time {
+        color: #28a745;
+        font-weight: 500;
+    }
+    
+    .reading-progress {
+        margin-bottom: 1rem;
+    }
+    
+    .progress-bar-custom {
+        height: 6px;
+        border-radius: 3px;
+    }
+    
+    .search-section {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        margin-bottom: 2rem;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 3rem;
+        color: #666;
+    }
+    
+    .empty-state i {
+        font-size: 4rem;
+        color: #ddd;
+        margin-bottom: 1rem;
+    }
+    
+    .recent-badge {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        background: rgba(40, 167, 69, 0.9);
+        color: white;
+        padding: 0.25rem 0.5rem;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="recent-header">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1 class="mb-0">
+                    <i class="fas fa-clock me-2"></i>
+                    最近阅读
+                </h1>
+                <p class="mb-0 mt-2 opacity-75">
+                    最近阅读了 {{ recent_readings.paginator.count }} 本书籍
+                </p>
+            </div>
+            <div class="col-md-4 text-end">
+                <a href="{% url 'book_list' %}" class="btn btn-light">
+                    <i class="fas fa-books me-2"></i>
+                    浏览更多书籍
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <!-- 搜索区域 -->
+    <div class="search-section">
+        <form method="get" class="row g-3">
+            <div class="col-md-10">
+                <div class="input-group">
+                    <span class="input-group-text">
+                        <i class="fas fa-search"></i>
+                    </span>
+                    <input type="text" 
+                           class="form-control" 
+                           name="search" 
+                           value="{{ search_query }}" 
+                           placeholder="搜索最近阅读的书籍...">
+                </div>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="fas fa-search me-2"></i>
+                    搜索
+                </button>
+            </div>
+        </form>
+    </div>
+
+    {% if recent_readings %}
+        <!-- 书籍网格 -->
+        <div class="row">
+            {% for recent in recent_readings %}
+                <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
+                    <div class="card book-card">
+                        <div class="position-relative">
+                            {% if recent.book.cover %}
+                                <img src="{{ recent.book.cover.url }}" 
+                                     class="book-cover" 
+                                     alt="{{ recent.book.title }}">
+                            {% else %}
+                                <div class="book-cover d-flex align-items-center justify-content-center bg-light">
+                                    <i class="fas fa-book fa-3x text-muted"></i>
+                                </div>
+                            {% endif %}
+                            
+                            <!-- 最近阅读标识 -->
+                            <div class="recent-badge">
+                                <i class="fas fa-clock me-1"></i>
+                                最近
+                            </div>
+                        </div>
+                        
+                        <div class="book-info">
+                            <h5 class="book-title">{{ recent.book.title }}</h5>
+                            
+                            {% if recent.book.author %}
+                                <p class="book-author">
+                                    <i class="fas fa-user me-1"></i>
+                                    {{ recent.book.author }}
+                                </p>
+                            {% endif %}
+                            
+                            <div class="book-meta">
+                                <div class="mb-1">
+                                    <i class="fas fa-clock me-1"></i>
+                                    最后阅读: <span class="last-read-time">{{ recent.last_read_at|timesince }}前</span>
+                                </div>
+                                
+                                <div class="mb-1">
+                                    <i class="fas fa-bookmark me-1"></i>
+                                    第 {{ recent.last_chapter }} 章
+                                </div>
+                                
+                                {% if recent.book.category %}
+                                    <div class="mb-1">
+                                        <i class="fas fa-tag me-1"></i>
+                                        {{ recent.book.category.name }}
+                                    </div>
+                                {% endif %}
+                                
+                                {% if recent.reading_duration %}
+                                    <div class="mb-1">
+                                        <i class="fas fa-stopwatch me-1"></i>
+                                        阅读时长: {{ recent.reading_duration|floatformat:0 }} 分钟
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <!-- 阅读进度条 -->
+                            {% if recent.book.readingprogress_set.first %}
+                                <div class="reading-progress">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <small class="text-muted">阅读进度</small>
+                                        <small class="text-muted">{{ recent.book.readingprogress_set.first.progress_percentage|floatformat:1 }}%</small>
+                                    </div>
+                                    <div class="progress progress-bar-custom">
+                                        <div class="progress-bar bg-success" 
+                                             role="progressbar" 
+                                             style="width: {{ recent.book.readingprogress_set.first.progress_percentage }}%">
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endif %}
+                            
+                            <div class="d-grid gap-2">
+                                <a href="{% url 'book_read' recent.book.id %}" 
+                                   class="btn btn-primary btn-sm">
+                                    <i class="fas fa-book-open me-2"></i>
+                                    继续阅读
+                                </a>
+                                
+                                <div class="btn-group" role="group">
+                                    <a href="{% url 'book_detail' recent.book.id %}" 
+                                       class="btn btn-outline-secondary btn-sm">
+                                        <i class="fas fa-info-circle me-1"></i>
+                                        详情
+                                    </a>
+                                    
+                                    <button type="button" 
+                                            class="btn btn-outline-primary btn-sm"
+                                            onclick="toggleFavorite({{ recent.book.id }}, this)"
+                                            data-favorited="false">
+                                        <i class="fas fa-heart me-1"></i>
+                                        收藏
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+        <!-- 分页 -->
+        {% if is_paginated %}
+            <nav aria-label="最近阅读分页">
+                <ul class="pagination justify-content-center">
+                    {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}">
+                                <i class="fas fa-angle-double-left"></i>
+                            </a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}">
+                                <i class="fas fa-angle-left"></i>
+                            </a>
+                        </li>
+                    {% endif %}
+
+                    {% for num in page_obj.paginator.page_range %}
+                        {% if page_obj.number == num %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ num }}</span>
+                            </li>
+                        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}">{{ num }}</a>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}">
+                                <i class="fas fa-angle-right"></i>
+                            </a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}">
+                                <i class="fas fa-angle-double-right"></i>
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        {% endif %}
+    {% else %}
+        <!-- 空状态 -->
+        <div class="empty-state">
+            <i class="fas fa-book-open"></i>
+            <h3>还没有阅读记录</h3>
+            <p class="text-muted">开始阅读一本书籍，建立你的阅读历史吧！</p>
+            <a href="{% url 'book_list' %}" class="btn btn-primary">
+                <i class="fas fa-books me-2"></i>
+                浏览书库
+            </a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleFavorite(bookId, button) {
+    fetch(`/books/${bookId}/toggle-favorite/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            'Content-Type': 'application/json',
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const icon = button.querySelector('i');
+            const text = button.querySelector('.me-1').nextSibling;
+            
+            if (data.is_favorited) {
+                button.className = 'btn btn-danger btn-sm';
+                icon.className = 'fas fa-heart me-1';
+                button.innerHTML = '<i class="fas fa-heart me-1"></i>已收藏';
+                button.setAttribute('data-favorited', 'true');
+            } else {
+                button.className = 'btn btn-outline-primary btn-sm';
+                icon.className = 'fas fa-heart me-1';
+                button.innerHTML = '<i class="fas fa-heart me-1"></i>收藏';
+                button.setAttribute('data-favorited', 'false');
+            }
+            
+            // 显示成功消息
+            showToast(data.message, 'success');
+        } else {
+            showToast(data.error || '操作失败', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('网络错误，请重试', 'error');
+    });
+}
+
+function showToast(message, type) {
+    // 创建toast元素
+    const toast = document.createElement('div');
+    toast.className = `alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible fade show position-fixed`;
+    toast.style.top = '20px';
+    toast.style.right = '20px';
+    toast.style.zIndex = '9999';
+    toast.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(toast);
+    
+    // 3秒后自动移除
+    setTimeout(() => {
+        if (toast.parentNode) {
+            toast.parentNode.removeChild(toast);
+        }
+    }, 3000);
+}
+
+// 添加CSRF token
+document.addEventListener('DOMContentLoaded', function() {
+    if (!document.querySelector('[name=csrfmiddlewaretoken]')) {
+        const csrfToken = document.createElement('input');
+        csrfToken.type = 'hidden';
+        csrfToken.name = 'csrfmiddlewaretoken';
+        csrfToken.value = '{{ csrf_token }}';
+        document.body.appendChild(csrfToken);
+    }
+    
+    // 检查收藏状态
+    document.querySelectorAll('[onclick*="toggleFavorite"]').forEach(button => {
+        const bookId = button.getAttribute('onclick').match(/\d+/)[0];
+        checkFavoriteStatus(bookId, button);
+    });
+});
+
+function checkFavoriteStatus(bookId, button) {
+    // 这里可以添加检查收藏状态的逻辑
+    // 暂时使用默认状态
+}
+</script>
+{% endblock %} 

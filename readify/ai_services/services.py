@@ -312,7 +312,31 @@ class AIService:
             if 'usage' in result:
                 tokens_used = result['usage'].get('total_tokens', 0)
         
+        # 删除思考过程标签
+        content = self._clean_ai_response(content)
+        
         return content, tokens_used
+    
+    def _clean_ai_response(self, content: str) -> str:
+        """清理AI回答，删除思考过程"""
+        import re
+        
+        # 删除 <think>...</think> 标签及其内容
+        content = re.sub(r'<think>.*?</think>', '', content, flags=re.DOTALL)
+        
+        # 删除 <thinking>...</thinking> 标签及其内容
+        content = re.sub(r'<thinking>.*?</thinking>', '', content, flags=re.DOTALL)
+        
+        # 删除其他可能的思考标签
+        content = re.sub(r'<thought>.*?</thought>', '', content, flags=re.DOTALL)
+        
+        # 清理多余的空行
+        content = re.sub(r'\n\s*\n\s*\n', '\n\n', content)
+        
+        # 去除首尾空白
+        content = content.strip()
+        
+        return content
     
     def generate_summary(self, book) -> Dict[str, Any]:
         """生成书籍摘要"""
