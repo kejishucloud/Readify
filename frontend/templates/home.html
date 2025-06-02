@@ -72,17 +72,17 @@
                 </p>
                 <div class="d-flex gap-3">
                     {% if user.is_authenticated %}
-                    <a href="/books/" class="btn btn-light btn-lg">
+                    <a href="{% url 'book_list' %}" class="btn btn-light btn-lg">
                         <i class="fas fa-book"></i> 我的书籍
                     </a>
-                    <a href="/books/batch-upload/" class="btn btn-outline-light btn-lg">
+                    <a href="{% url 'batch_upload' %}" class="btn btn-outline-light btn-lg">
                         <i class="fas fa-cloud-upload-alt"></i> 批量上传
                     </a>
                     {% else %}
                     <a href="{% url 'user_management:register' %}" class="btn btn-light btn-lg">
                         <i class="fas fa-user-plus"></i> 立即注册
                     </a>
-                    <a href="/user/login/" class="btn btn-outline-light btn-lg">
+                    <a href="{% url 'user_management:login' %}" class="btn btn-outline-light btn-lg">
                         <i class="fas fa-sign-in-alt"></i> 登录
                     </a>
                     {% endif %}
@@ -176,7 +176,7 @@
                                     </div>
                                     <div class="flex-grow-1 ms-3">
                                         <h6 class="mb-1">
-                                            <a href="/books/{{ book.id }}/" class="text-decoration-none">
+                                            <a href="{% url 'book_detail' book.id %}" class="text-decoration-none">
                                                 {{ book.title|truncatechars:30 }}
                                             </a>
                                         </h6>
@@ -184,7 +184,7 @@
                                         <p class="text-muted small mb-1">
                                             最后阅读：{{ book.last_read_at|date:"m-d H:i" }}
                                         </p>
-                                        <a href="/books/{{ book.id }}/read/" class="btn btn-sm btn-outline-primary">
+                                        <a href="{% url 'book_read' book.id %}" class="btn btn-sm btn-outline-primary">
                                             <i class="fas fa-book-open"></i> 继续阅读
                                         </a>
                                     </div>
@@ -196,7 +196,7 @@
                         <div class="text-center py-4">
                             <i class="fas fa-book fa-3x text-muted mb-3"></i>
                             <p class="text-muted">还没有阅读记录</p>
-                            <a href="/books/" class="btn btn-primary">
+                            <a href="{% url 'book_list' %}" class="btn btn-primary">
                                 <i class="fas fa-plus"></i> 开始阅读
                             </a>
                         </div>
@@ -228,7 +228,7 @@
                         </div>
                         {% endfor %}
                         <div class="text-center mt-3">
-                            <a href="/categories/" class="btn btn-sm btn-outline-success">
+                            <a href="{% url 'category_list' %}" class="btn btn-sm btn-outline-success">
                                 <i class="fas fa-tags"></i> 查看全部分类
                             </a>
                         </div>
@@ -380,7 +380,7 @@
             <a href="{% url 'user_management:register' %}" class="btn btn-light btn-lg">
                 <i class="fas fa-user-plus"></i> 免费注册
             </a>
-            <a href="/user/login/" class="btn btn-outline-light btn-lg">
+            <a href="{% url 'user_management:login' %}" class="btn btn-outline-light btn-lg">
                 <i class="fas fa-sign-in-alt"></i> 立即登录
             </a>
         </div>

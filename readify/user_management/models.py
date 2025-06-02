@@ -89,8 +89,15 @@ class UserAIConfig(models.Model):
             headers['Authorization'] = f'Bearer {self.api_key}'
         elif self.provider == 'azure':
             headers['api-key'] = self.api_key
-        else:  # custom
-            headers['Authorization'] = f'Bearer {self.api_key}'
+        else:  # custom - 支持多种认证方式
+            # 检查API密钥格式，支持不同的认证方式
+            if self.api_key.startswith('Bearer '):
+                headers['Authorization'] = self.api_key
+            elif self.api_key.startswith('sk-'):
+                headers['Authorization'] = f'Bearer {self.api_key}'
+            else:
+                # 对于自定义API，直接使用Bearer认证
+                headers['Authorization'] = f'Bearer {self.api_key}'
         
         return headers
     

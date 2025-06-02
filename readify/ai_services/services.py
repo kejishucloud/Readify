@@ -80,6 +80,11 @@ class AIService:
             endpoint = self.config.get('endpoint', f"{self.config['api_url'].rstrip('/')}/chat/completions")
             headers = self.config.get('headers', {'Authorization': f"Bearer {self.config['api_key']}", 'Content-Type': 'application/json'})
             
+            # 记录请求信息（不包含敏感信息）
+            logger.info(f"发送AI请求到: {endpoint}")
+            logger.info(f"模型: {self.config['model_id']}")
+            logger.info(f"提供商: {self.config['provider']}")
+            
             response = requests.post(
                 endpoint,
                 headers=headers,
@@ -87,13 +92,31 @@ class AIService:
                 timeout=self.config['timeout']
             )
             
-            response.raise_for_status()
-            result = response.json()
+            # 详细的错误信息
+            if response.status_code != 200:
+                error_detail = f"HTTP {response.status_code}"
+                try:
+                    error_json = response.json()
+                    if 'error' in error_json:
+                        error_detail += f": {error_json['error'].get('message', '未知错误')}"
+                    else:
+                        error_detail += f": {error_json}"
+                except:
+                    error_detail += f": {response.text[:200]}"
+                
+                logger.error(f"API请求失败: {error_detail}")
+                return {
+                    'success': False,
+                    'error': f'API请求失败: {error_detail}'
+                }
             
+            result = response.json()
             processing_time = time.time() - start_time
             
             # 解析响应
             content, tokens_used = self._parse_response(result)
+            
+            logger.info(f"AI请求成功，处理时间: {processing_time:.2f}秒，使用令牌: {tokens_used}")
             
             return {
                 'success': True,
@@ -102,6 +125,20 @@ class AIService:
                 'tokens_used': tokens_used
             }
             
+        except requests.exceptions.Timeout:
+            error_msg = f"请求超时（{self.config['timeout']}秒）"
+            logger.error(error_msg)
+            return {
+                'success': False,
+                'error': error_msg
+            }
+        except requests.exceptions.ConnectionError:
+            error_msg = f"无法连接到API服务器: {self.config['api_url']}"
+            logger.error(error_msg)
+            return {
+                'success': False,
+                'error': error_msg
+            }
         except requests.exceptions.RequestException as e:
             logger.error(f"API请求失败: {str(e)}")
             return {

@@ -18,17 +18,19 @@ def home(request):
     if request.user.is_authenticated:
         # 获取用户统计数据
         user_books = Book.objects.filter(user=request.user)
+        
+        # 计算阅读时间，处理可能的None值
+        reading_progresses = ReadingProgress.objects.filter(user=request.user)
+        total_reading_time = 0
+        for progress in reading_progresses:
+            if hasattr(progress, 'reading_time') and progress.reading_time:
+                total_reading_time += progress.reading_time
+        
         context['user_stats'] = {
             'total_books': user_books.count(),
-            'completed_books': ReadingProgress.objects.filter(
-                user=request.user, 
-                progress_percentage=100
-            ).count(),
-            'reading_time': sum([
-                progress.reading_time for progress in 
-                ReadingProgress.objects.filter(user=request.user)
-            ]) // 3600,  # 转换为小时
-            'questions_asked': BookQuestion.objects.filter(user=request.user).count(),
+            'categories_count': user_books.values('category').distinct().count(),
+            'total_views': sum([book.view_count for book in user_books if hasattr(book, 'view_count') and book.view_count]),
+            'notes_count': BookNote.objects.filter(user=request.user).count(),
         }
         
         # 获取最近阅读的书籍

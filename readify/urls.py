@@ -23,8 +23,8 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('readify.books.urls')),
     path('ai/', include('readify.ai_services.urls')),
-    path('tts/', include('readify.tts_service.urls')),
-    path('translation/', include('readify.translation_service.urls')),
+    # path('tts/', include('readify.tts_service.urls')),  # 暂时注释掉
+    # path('translation/', include('readify.translation_service.urls')),  # 暂时注释掉
     path('auth/', include('django.contrib.auth.urls')),
     path('user/', include('readify.user_management.urls')),
 ]

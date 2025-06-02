@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -12,7 +13,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     
     <!-- 自定义样式 -->
-    <link href="{% load static %}{% static 'css/main.css' %}" rel="stylesheet">
+    <link href="{% static 'css/main.css' %}" rel="stylesheet">
     
     {% block extra_css %}{% endblock %}
 </head>
@@ -31,13 +32,13 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="/books/">我的书籍</a>
+                        <a class="nav-link" href="{% url 'book_list' %}">我的书籍</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="/categories/">分类浏览</a>
+                        <a class="nav-link" href="{% url 'category_list' %}">分类浏览</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="/books/batch-upload/">批量上传</a>
+                        <a class="nav-link" href="{% url 'batch_upload' %}">批量上传</a>
                     </li>
                 </ul>
                 
@@ -48,21 +49,21 @@
                             <i class="fas fa-user"></i> {{ user.username }}
                         </a>
                         <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="/user/profile/">
+                            <li><a class="dropdown-item" href="{% url 'user_management:update_profile' %}">
                                 <i class="fas fa-user-circle"></i> 个人资料
                             </a></li>
-                            <li><a class="dropdown-item" href="/user/settings/">
+                            <li><a class="dropdown-item" href="{% url 'user_management:settings' %}">
                                 <i class="fas fa-cog"></i> 设置
                             </a></li>
                             <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="/user/logout/">
+                            <li><a class="dropdown-item" href="{% url 'user_management:logout' %}">
                                 <i class="fas fa-sign-out-alt"></i> 退出登录
                             </a></li>
                         </ul>
                     </li>
                     {% else %}
                     <li class="nav-item">
-                        <a class="nav-link" href="/user/login/">
+                        <a class="nav-link" href="{% url 'user_management:login' %}">
                             <i class="fas fa-sign-in-alt"></i> 登录
                         </a>
                     </li>

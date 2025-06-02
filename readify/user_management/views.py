@@ -13,6 +13,9 @@ import logging
 
 from .models import UserProfile, UserPreferences, UserAIConfig
 from readify.books.models import Book, ReadingProgress, BookNote, BookQuestion
+from readify.ai_services.models import AIRequest
+from readify.translation_service.models import TranslationRequest
+from readify.tts_service.models import ChatTTSRequest
 from readify.ai_services.services import AIService
 
 logger = logging.getLogger(__name__)
