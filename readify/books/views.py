@@ -185,7 +185,16 @@ def batch_upload(request):
         files = request.FILES.getlist('files')
         batch_name = request.POST.get('batch_name', '')
         
+        # 检查是否为AJAX请求
+        is_ajax = (
+            request.headers.get('X-Requested-With') == 'XMLHttpRequest' or
+            'application/json' in request.headers.get('Accept', '') or
+            request.content_type == 'application/json'
+        )
+        
         if not files:
+            if is_ajax:
+                return JsonResponse({'success': False, 'error': '请选择要上传的文件'})
             messages.error(request, '请选择要上传的文件')
             return render(request, 'books/batch_upload.html')
         
@@ -194,10 +203,21 @@ def batch_upload(request):
             processing_service = BookProcessingService(request.user)
             batch_upload = processing_service.process_batch_upload(files, batch_name)
             
+            # 检查请求是否期望JSON响应
+            if is_ajax:
+                return JsonResponse({
+                    'success': True, 
+                    'batch_id': batch_upload.id,
+                    'message': f'批量上传已开始，共{len(files)}个文件。批次ID：{batch_upload.id}'
+                })
+            
             messages.success(request, f'批量上传已开始，共{len(files)}个文件。批次ID：{batch_upload.id}')
             return redirect('batch_upload_status', batch_id=batch_upload.id)
             
         except Exception as e:
+            logger.error(f"批量上传失败: {str(e)}")
+            if is_ajax:
+                return JsonResponse({'success': False, 'error': f'批量上传失败：{str(e)}'})
             messages.error(request, f'批量上传失败：{str(e)}')
     
     return render(request, 'books/batch_upload.html')
@@ -208,9 +228,21 @@ def batch_upload_status(request, batch_id):
     """批量上传状态视图"""
     batch_upload = get_object_or_404(BatchUpload, id=batch_id, user=request.user)
     
+    # 获取与此批量上传相关的书籍
+    # 使用更精确的时间范围，考虑到批量上传可能需要一些时间
+    time_buffer = timedelta(minutes=5)  # 给5分钟的缓冲时间
+    start_time = batch_upload.created_at - time_buffer
+    end_time = batch_upload.completed_at + time_buffer if batch_upload.completed_at else timezone.now() + time_buffer
+    
+    books = Book.objects.filter(
+        user=request.user, 
+        uploaded_at__gte=start_time,
+        uploaded_at__lte=end_time
+    ).order_by('-uploaded_at')
+    
     context = {
         'batch_upload': batch_upload,
-        'books': Book.objects.filter(user=request.user, uploaded_at__gte=batch_upload.created_at)
+        'books': books
     }
     
     return render(request, 'books/batch_upload_status.html', context)

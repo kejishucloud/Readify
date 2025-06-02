@@ -51,9 +51,28 @@ def update_profile(request):
         # 显示个人资料页面
         try:
             profile, created = UserProfile.objects.get_or_create(user=request.user)
+            
+            # 获取用户统计数据，与主页保持一致
+            user_books = Book.objects.filter(user=request.user)
+            
+            # 计算阅读时间，处理可能的None值
+            reading_progresses = ReadingProgress.objects.filter(user=request.user)
+            total_reading_time = 0
+            for progress in reading_progresses:
+                if hasattr(progress, 'reading_time') and progress.reading_time:
+                    total_reading_time += progress.reading_time
+            
+            user_stats = {
+                'total_books': user_books.count(),
+                'categories_count': user_books.values('category').distinct().count(),
+                'total_views': sum([book.view_count for book in user_books if hasattr(book, 'view_count') and book.view_count]),
+                'notes_count': BookNote.objects.filter(user=request.user).count(),
+            }
+            
             context = {
                 'profile': profile,
                 'user': request.user,
+                'user_stats': user_stats,
             }
             return render(request, 'user_management/profile.html', context)
         except Exception as e:
@@ -67,7 +86,15 @@ def update_profile(request):
             
             profile, created = UserProfile.objects.get_or_create(user=request.user)
             
-            # 更新字段
+            # 更新用户基本信息
+            user = request.user
+            if 'first_name' in data:
+                user.first_name = data['first_name']
+            if 'last_name' in data:
+                user.last_name = data['last_name']
+            user.save()
+            
+            # 更新配置文件字段
             if 'bio' in data:
                 profile.bio = data['bio']
             if 'location' in data:
@@ -81,7 +108,7 @@ def update_profile(request):
             
             return JsonResponse({
                 'success': True,
-                'message': '配置文件更新成功'
+                'message': '个人资料更新成功'
             })
             
         except Exception as e:

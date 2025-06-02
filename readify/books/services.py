@@ -94,6 +94,13 @@ class BookProcessingService:
             title = self._extract_title_from_filename(file.name)
             file_ext = os.path.splitext(file.name)[1].lower()
             
+            logger.info(f"开始处理文件: {file.name}, 标题: {title}, 用户: {self.user.username}")
+            
+            # 检查文件格式
+            if not self._is_supported_format(file.name):
+                logger.error(f"不支持的文件格式: {file.name}")
+                return None
+            
             # 创建书籍记录
             book = Book.objects.create(
                 user=self.user,
@@ -103,6 +110,8 @@ class BookProcessingService:
                 format=file_ext.replace('.', ''),  # 移除点号
                 processing_status='pending'
             )
+            
+            logger.info(f"书籍记录已创建: ID={book.id}, 标题={book.title}, 用户={book.user.username}")
             
             # 提取文本内容
             content = self._extract_text_content(book)
@@ -119,6 +128,7 @@ class BookProcessingService:
                 )
                 book.word_count = len(content)
                 book.processing_status = 'completed'
+                logger.info(f"成功提取内容: {book.title}, 字数: {len(content)}")
             else:
                 # 提取失败，创建默认内容
                 default_content = f"抱歉，无法自动解析《{title}》的文本内容。\n\n可能的原因：\n1. 文件格式不支持自动解析\n2. 文件内容为图片或扫描版\n3. 文件已加密或损坏\n\n请尝试：\n- 转换为TXT格式后重新上传\n- 联系管理员获取帮助"
@@ -132,12 +142,21 @@ class BookProcessingService:
                 )
                 book.word_count = len(default_content)
                 book.processing_status = 'failed'
+                logger.warning(f"内容提取失败，使用默认内容: {book.title}")
             
             book.save()
+            logger.info(f"书籍处理完成: {book.title}, 状态: {book.processing_status}")
             return book
             
         except Exception as e:
-            logger.error(f"处理单个文件失败: {str(e)}")
+            logger.error(f"处理单个文件失败: {file.name}, 错误: {str(e)}", exc_info=True)
+            # 如果书籍已创建但处理失败，尝试删除
+            try:
+                if 'book' in locals():
+                    book.delete()
+                    logger.info(f"已删除失败的书籍记录: {file.name}")
+            except:
+                pass
             return None
     
     def _extract_title_from_filename(self, filename: str) -> str:

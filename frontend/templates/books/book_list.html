@@ -1,104 +1,479 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}我的书籍 - Readify{% endblock %}
 
+{% block extra_css %}
+<style>
+    .books-hero {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 60px 0;
+        margin-bottom: 40px;
+    }
+    
+    .books-avatar {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        border: 3px solid white;
+        background: rgba(255,255,255,0.2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 40px;
+        margin: 0 auto 20px;
+        transition: all 0.3s ease;
+    }
+    
+    .books-avatar:hover {
+        transform: scale(1.05);
+        background: rgba(255,255,255,0.3);
+    }
+    
+    .book-card {
+        border: none;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        border-radius: 15px;
+        transition: all 0.3s ease;
+        margin-bottom: 30px;
+        overflow: hidden;
+    }
+    
+    .book-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    }
+    
+    .stat-card {
+        border: none;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        border-radius: 15px;
+        transition: all 0.3s ease;
+        text-align: center;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    }
+    
+    .stat-icon {
+        font-size: 2.5rem;
+        margin-bottom: 15px;
+    }
+    
+    .stat-number {
+        font-size: 2rem;
+        font-weight: bold;
+        margin-bottom: 5px;
+    }
+    
+    .section-title {
+        color: #333;
+        font-weight: bold;
+        margin-bottom: 30px;
+        padding-bottom: 10px;
+        border-bottom: 3px solid #667eea;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .section-title i {
+        color: #667eea;
+        font-size: 1.2rem;
+    }
+    
+    .form-control, .form-select {
+        border-radius: 10px;
+        border: 2px solid #e9ecef;
+        padding: 12px 15px;
+        transition: all 0.3s ease;
+    }
+    
+    .form-control:focus, .form-select:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+    }
+    
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        border-radius: 10px;
+        padding: 12px 30px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+    
+    .btn-outline-primary {
+        border: 2px solid #667eea;
+        color: #667eea;
+        border-radius: 10px;
+        padding: 10px 25px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-outline-primary:hover {
+        background: #667eea;
+        border-color: #667eea;
+        transform: translateY(-2px);
+    }
+    
+    .btn-secondary {
+        background: #6c757d;
+        border: none;
+        border-radius: 10px;
+        padding: 12px 30px;
+        font-weight: 600;
+    }
+    
+    .breadcrumb {
+        background: transparent;
+        padding: 0;
+        margin-bottom: 20px;
+    }
+    
+    .breadcrumb-item a {
+        color: white;
+        text-decoration: none;
+    }
+    
+    .breadcrumb-item.active {
+        color: rgba(255,255,255,0.8);
+    }
+    
+    .book-cover {
+        width: 100%;
+        height: 120px;
+        object-fit: cover;
+        border-radius: 8px;
+    }
+    
+    .book-cover-placeholder {
+        width: 100%;
+        height: 120px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        border: 2px dashed #dee2e6;
+    }
+    
+    .filter-section {
+        background: #f8f9fa;
+        border-radius: 15px;
+        padding: 25px;
+        margin-bottom: 30px;
+    }
+    
+    .category-filter {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 15px;
+    }
+    
+    .category-btn {
+        padding: 8px 16px;
+        border: 2px solid #e9ecef;
+        border-radius: 20px;
+        background: white;
+        color: #495057;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        font-size: 0.9rem;
+    }
+    
+    .category-btn:hover, .category-btn.active {
+        border-color: #667eea;
+        background: #667eea;
+        color: white;
+        transform: translateY(-2px);
+    }
+    
+    .reading-progress {
+        height: 4px;
+        background: #e9ecef;
+        border-radius: 2px;
+        overflow: hidden;
+        margin-top: 10px;
+    }
+    
+    .reading-progress-bar {
+        height: 100%;
+        background: linear-gradient(90deg, #667eea, #764ba2);
+        transition: width 0.3s ease;
+    }
+    
+    .book-status-badge {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 1;
+    }
+    
+    .book-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 15px;
+    }
+    
+    .book-actions .btn {
+        flex: 1;
+        font-size: 0.85rem;
+        padding: 8px 12px;
+    }
+    
+    .pagination {
+        justify-content: center;
+        margin-top: 40px;
+    }
+    
+    .pagination .page-link {
+        border-radius: 8px;
+        border: 2px solid #e9ecef;
+        color: #667eea;
+        margin: 0 2px;
+        transition: all 0.3s ease;
+    }
+    
+    .pagination .page-link:hover {
+        background: #667eea;
+        border-color: #667eea;
+        color: white;
+        transform: translateY(-2px);
+    }
+    
+    .pagination .page-item.active .page-link {
+        background: #667eea;
+        border-color: #667eea;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #6c757d;
+    }
+    
+    .empty-state i {
+        font-size: 4rem;
+        margin-bottom: 20px;
+        color: #dee2e6;
+    }
+    
+    .view-toggle {
+        display: flex;
+        gap: 5px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 5px;
+    }
+    
+    .view-toggle .btn {
+        border: none;
+        background: transparent;
+        color: #6c757d;
+        padding: 8px 12px;
+        border-radius: 6px;
+        transition: all 0.3s ease;
+    }
+    
+    .view-toggle .btn.active {
+        background: white;
+        color: #667eea;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container mt-4">
-    <div class="row">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h2><i class="fas fa-book"></i> 我的书籍</h2>
-                <div>
-                    <a href="{% url 'book_upload' %}" class="btn btn-primary">
+<!-- 书籍页面英雄区域 -->
+<section class="books-hero">
+    <div class="container">
+        <!-- 面包屑导航 -->
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'home' %}"><i class="fas fa-home"></i> 首页</a></li>
+                <li class="breadcrumb-item active">我的书籍</li>
+            </ol>
+        </nav>
+        
+        <div class="row align-items-center">
+            <div class="col-lg-3 text-center">
+                <div class="books-avatar">
+                    <i class="fas fa-book"></i>
+                </div>
+            </div>
+            <div class="col-lg-9">
+                <h1 class="display-5 fw-bold mb-3">我的书籍</h1>
+                <p class="lead mb-3">
+                    <i class="fas fa-user me-2"></i>{{ user.username }} 的个人图书馆
+                </p>
+                <p class="mb-4">
+                    <i class="fas fa-info-circle me-2"></i>
+                    管理您的电子书籍，享受智能阅读体验
+                </p>
+                <div class="d-flex gap-3">
+                    <a href="{% url 'book_upload' %}" class="btn btn-light btn-lg">
                         <i class="fas fa-plus"></i> 上传书籍
                     </a>
-                    <a href="{% url 'batch_upload' %}" class="btn btn-outline-primary">
+                    <a href="{% url 'batch_upload' %}" class="btn btn-outline-light btn-lg">
                         <i class="fas fa-cloud-upload-alt"></i> 批量上传
                     </a>
+                    <a href="{% url 'user_management:settings' %}" class="btn btn-outline-light btn-lg">
+                        <i class="fas fa-cog"></i> 设置
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<div class="container">
+    <!-- 统计卡片 -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <h2 class="section-title">
+                <i class="fas fa-chart-bar"></i> 书籍统计
+            </h2>
+        </div>
+        <div class="col-md-3 mb-4">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <i class="fas fa-book stat-icon text-primary"></i>
+                    <div class="stat-number text-primary">{{ total_books|default:0 }}</div>
+                    <p class="text-muted mb-0">总书籍数</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-4">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <i class="fas fa-check-circle stat-icon text-success"></i>
+                    <div class="stat-number text-success">{{ completed_books|default:0 }}</div>
+                    <p class="text-muted mb-0">已完成处理</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-4">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <i class="fas fa-spinner stat-icon text-warning"></i>
+                    <div class="stat-number text-warning">{{ processing_books|default:0 }}</div>
+                    <p class="text-muted mb-0">处理中</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-4">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <i class="fas fa-tags stat-icon text-info"></i>
+                    <div class="stat-number text-info">{{ categories_count|default:0 }}</div>
+                    <p class="text-muted mb-0">分类数量</p>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- 搜索和筛选 -->
-    <div class="row mb-4">
-        <div class="col-md-6">
-            <div class="input-group">
-                <input type="text" class="form-control" id="searchInput" placeholder="搜索书名、作者..." 
-                       value="{{ request.GET.search }}">
-                <button class="btn btn-outline-secondary" type="button" onclick="performSearch()">
-                    <i class="fas fa-search"></i>
-                </button>
+    <div class="filter-section">
+        <h3 class="section-title">
+            <i class="fas fa-filter"></i> 搜索与筛选
+        </h3>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="input-group">
+                    <input type="text" class="form-control" id="searchInput" placeholder="搜索书名、作者..." 
+                           value="{{ request.GET.search }}">
+                    <button class="btn btn-outline-primary" type="button" onclick="performSearch()">
+                        <i class="fas fa-search"></i> 搜索
+                    </button>
+                </div>
             </div>
-        </div>
-        <div class="col-md-3">
-            <select class="form-select" id="categoryFilter" onchange="filterByCategory()">
-                <option value="">所有分类</option>
-                {% for category in categories %}
-                <option value="{{ category.code }}" {% if request.GET.category == category.code %}selected{% endif %}>
-                    {{ category.name }}
-                </option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="col-md-3">
-            <select class="form-select" id="statusFilter" onchange="filterByStatus()">
-                <option value="">所有状态</option>
-                <option value="completed" {% if request.GET.status == 'completed' %}selected{% endif %}>已处理</option>
-                <option value="processing" {% if request.GET.status == 'processing' %}selected{% endif %}>处理中</option>
-                <option value="failed" {% if request.GET.status == 'failed' %}selected{% endif %}>处理失败</option>
-                <option value="pending" {% if request.GET.status == 'pending' %}selected{% endif %}>待处理</option>
-            </select>
-        </div>
-    </div>
-
-    <!-- 统计信息 -->
-    <div class="row mb-4">
-        <div class="col-md-3">
-            <div class="card text-center">
-                <div class="card-body">
-                    <h4 class="text-primary">{{ total_books }}</h4>
-                    <small class="text-muted">总书籍数</small>
+            <div class="col-md-3">
+                <select class="form-select" id="statusFilter" onchange="filterByStatus()">
+                    <option value="">所有状态</option>
+                    <option value="completed" {% if request.GET.status == 'completed' %}selected{% endif %}>已处理</option>
+                    <option value="processing" {% if request.GET.status == 'processing' %}selected{% endif %}>处理中</option>
+                    <option value="failed" {% if request.GET.status == 'failed' %}selected{% endif %}>处理失败</option>
+                    <option value="pending" {% if request.GET.status == 'pending' %}selected{% endif %}>待处理</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <div class="view-toggle">
+                    <button class="btn active" onclick="setView('grid')">
+                        <i class="fas fa-th"></i> 网格
+                    </button>
+                    <button class="btn" onclick="setView('list')">
+                        <i class="fas fa-list"></i> 列表
+                    </button>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card text-center">
-                <div class="card-body">
-                    <h4 class="text-success">{{ completed_books }}</h4>
-                    <small class="text-muted">已处理</small>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card text-center">
-                <div class="card-body">
-                    <h4 class="text-warning">{{ processing_books }}</h4>
-                    <small class="text-muted">处理中</small>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card text-center">
-                <div class="card-body">
-                    <h4 class="text-info">{{ categories_count }}</h4>
-                    <small class="text-muted">分类数</small>
-                </div>
-            </div>
+        
+        <!-- 分类筛选 -->
+        <div class="category-filter">
+            <a href="?{% if request.GET.search %}search={{ request.GET.search }}&{% endif %}{% if request.GET.status %}status={{ request.GET.status }}{% endif %}" 
+               class="category-btn {% if not request.GET.category %}active{% endif %}">
+                <i class="fas fa-globe"></i> 全部
+            </a>
+            {% for category in categories %}
+            <a href="?category={{ category.code }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}" 
+               class="category-btn {% if request.GET.category == category.code %}active{% endif %}">
+                <i class="fas fa-tag"></i> {{ category.name }}
+            </a>
+            {% endfor %}
         </div>
     </div>
 
     <!-- 书籍列表 -->
-    <div class="row">
+    <div class="row mb-5">
+        <div class="col-12">
+            <h2 class="section-title">
+                <i class="fas fa-books"></i> 书籍列表
+                <small class="text-muted ms-2">({{ books|length }} 本书籍)</small>
+            </h2>
+        </div>
+    </div>
+
+    {% if books %}
+    <div class="row" id="booksContainer">
         {% for book in books %}
-        <div class="col-md-6 col-lg-4 mb-4">
-            <div class="card book-card h-100">
+        <div class="col-md-6 col-lg-4 mb-4 book-item">
+            <div class="card book-card h-100 position-relative">
+                <!-- 状态标识 -->
+                <div class="book-status-badge">
+                    <span class="badge 
+                        {% if book.processing_status == 'completed' %}bg-success
+                        {% elif book.processing_status == 'processing' %}bg-warning
+                        {% elif book.processing_status == 'failed' %}bg-danger
+                        {% else %}bg-secondary{% endif %}">
+                        {% if book.processing_status == 'completed' %}
+                        <i class="fas fa-check"></i> 完成
+                        {% elif book.processing_status == 'processing' %}
+                        <i class="fas fa-spinner fa-spin"></i> 处理中
+                        {% elif book.processing_status == 'failed' %}
+                        <i class="fas fa-times"></i> 失败
+                        {% else %}
+                        <i class="fas fa-clock"></i> 待处理
+                        {% endif %}
+                    </span>
+                </div>
+                
                 <div class="card-body">
                     <!-- 封面和基本信息 -->
                     <div class="row">
                         <div class="col-4">
                             {% if book.cover %}
-                            <img src="{{ book.cover.url }}" class="img-fluid rounded book-cover" alt="{{ book.title }}">
+                            <img src="{{ book.cover.url }}" class="book-cover" alt="{{ book.title }}">
                             {% else %}
                             <div class="book-cover-placeholder d-flex align-items-center justify-content-center">
                                 <i class="fas fa-book fa-2x text-muted"></i>
@@ -107,7 +482,7 @@
                         </div>
                         <div class="col-8">
                             <h6 class="card-title mb-2">
-                                <a href="{% url 'book_detail' book.id %}" class="text-decoration-none">
+                                <a href="{% url 'book_detail' book.id %}" class="text-decoration-none text-dark">
                                     {{ book.title|truncatechars:30 }}
                                 </a>
                             </h6>
@@ -122,40 +497,23 @@
                             </p>
                             {% if book.word_count %}
                             <p class="text-muted small mb-1">
-                                <i class="fas fa-align-left"></i> {{ book.word_count }} 字
+                                <i class="fas fa-align-left"></i> {{ book.word_count|floatformat:0 }} 字
                             </p>
                             {% endif %}
                         </div>
                     </div>
 
-                    <!-- 分类和状态 -->
-                    <div class="mt-3">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <div>
-                                {% if book.category %}
-                                <span class="badge bg-primary">{{ book.category.name }}</span>
-                                {% else %}
-                                <span class="badge bg-secondary">未分类</span>
-                                {% endif %}
-                            </div>
-                            <div>
-                                <span class="badge 
-                                    {% if book.processing_status == 'completed' %}bg-success
-                                    {% elif book.processing_status == 'processing' %}bg-warning
-                                    {% elif book.processing_status == 'failed' %}bg-danger
-                                    {% else %}bg-secondary{% endif %}">
-                                    {% if book.processing_status == 'completed' %}
-                                    <i class="fas fa-check"></i> 完成
-                                    {% elif book.processing_status == 'processing' %}
-                                    <i class="fas fa-spinner fa-spin"></i> 处理中
-                                    {% elif book.processing_status == 'failed' %}
-                                    <i class="fas fa-times"></i> 失败
-                                    {% else %}
-                                    <i class="fas fa-clock"></i> 待处理
-                                    {% endif %}
-                                </span>
-                            </div>
-                        </div>
+                    <!-- 分类标签 -->
+                    <div class="mt-3 mb-2">
+                        {% if book.category %}
+                        <span class="badge bg-primary">
+                            <i class="fas fa-tag"></i> {{ book.category.name }}
+                        </span>
+                        {% else %}
+                        <span class="badge bg-secondary">
+                            <i class="fas fa-question"></i> 未分类
+                        </span>
+                        {% endif %}
                     </div>
 
                     <!-- 摘要 -->
@@ -175,18 +533,31 @@
                     </div>
                     {% endif %}
 
+                    <!-- 阅读进度 -->
+                    {% if book.reading_progress %}
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <small class="text-muted">阅读进度</small>
+                            <small class="text-muted">{{ book.reading_progress.progress_percentage|floatformat:1 }}%</small>
+                        </div>
+                        <div class="reading-progress">
+                            <div class="reading-progress-bar" style="width: {{ book.reading_progress.progress_percentage }}%"></div>
+                        </div>
+                    </div>
+                    {% endif %}
+
                     <!-- 阅读信息 -->
                     <div class="mb-3">
                         <div class="d-flex justify-content-between text-muted small">
                             <span>
-                                <i class="fas fa-eye"></i> {{ book.view_count }} 次阅读
+                                <i class="fas fa-eye"></i> {{ book.view_count|default:0 }} 次阅读
                             </span>
                             <span>
                                 <i class="fas fa-calendar"></i> {{ book.uploaded_at|date:"m-d" }}
                             </span>
                         </div>
                         {% if book.last_read_at %}
-                        <div class="text-muted small">
+                        <div class="text-muted small mt-1">
                             <i class="fas fa-clock"></i> 最后阅读：{{ book.last_read_at|date:"m-d H:i" }}
                         </div>
                         {% endif %}
@@ -195,54 +566,39 @@
 
                 <!-- 操作按钮 -->
                 <div class="card-footer bg-transparent">
-                    <div class="d-grid gap-2">
+                    <div class="book-actions">
+                        {% if book.processing_status == 'completed' %}
                         <a href="{% url 'book_read' book.id %}" class="btn btn-primary btn-sm">
-                            <i class="fas fa-book-open"></i> 开始阅读
+                            <i class="fas fa-book-open"></i> 阅读
                         </a>
-                        <div class="btn-group btn-group-sm">
-                            <a href="{% url 'book_detail' book.id %}" class="btn btn-outline-secondary">
-                                <i class="fas fa-info-circle"></i> 详情
-                            </a>
-                            {% if book.processing_status == 'failed' %}
-                            <button class="btn btn-outline-warning" onclick="retryClassification({{ book.id }})">
-                                <i class="fas fa-redo"></i> 重试
+                        {% else %}
+                        <button class="btn btn-secondary btn-sm" disabled>
+                            <i class="fas fa-hourglass-half"></i> 处理中
+                        </button>
+                        {% endif %}
+                        
+                        <a href="{% url 'book_detail' book.id %}" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-info-circle"></i> 详情
+                        </a>
+                        
+                        <div class="dropdown">
+                            <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                <i class="fas fa-ellipsis-v"></i>
                             </button>
-                            {% endif %}
-                            <div class="btn-group btn-group-sm">
-                                <button type="button" class="btn btn-outline-secondary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown">
-                                    <span class="visually-hidden">更多</span>
-                                </button>
-                                <ul class="dropdown-menu">
-                                    <li><a class="dropdown-item" href="{% url 'notes_list' book.id %}">
-                                        <i class="fas fa-sticky-note"></i> 笔记
-                                    </a></li>
-                                    <li><a class="dropdown-item" href="#" onclick="downloadBook({{ book.id }})">
-                                        <i class="fas fa-download"></i> 下载
-                                    </a></li>
-                                    <li><hr class="dropdown-divider"></li>
-                                    <li><a class="dropdown-item text-danger" href="{% url 'book_delete' book.id %}">
-                                        <i class="fas fa-trash"></i> 删除
-                                    </a></li>
-                                </ul>
-                            </div>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="{% url 'book_edit' book.id %}">
+                                    <i class="fas fa-edit"></i> 编辑
+                                </a></li>
+                                <li><a class="dropdown-item" href="#" onclick="downloadBook({{ book.id }})">
+                                    <i class="fas fa-download"></i> 下载
+                                </a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item text-danger" href="#" onclick="deleteBook({{ book.id }})">
+                                    <i class="fas fa-trash"></i> 删除
+                                </a></li>
+                            </ul>
                         </div>
                     </div>
-                </div>
-            </div>
-        </div>
-        {% empty %}
-        <div class="col-12">
-            <div class="text-center py-5">
-                <i class="fas fa-book fa-3x text-muted mb-3"></i>
-                <h4>还没有书籍</h4>
-                <p class="text-muted">开始上传您的第一本书籍吧！</p>
-                <div class="mt-4">
-                    <a href="{% url 'book_upload' %}" class="btn btn-primary me-2">
-                        <i class="fas fa-plus"></i> 上传书籍
-                    </a>
-                    <a href="{% url 'batch_upload' %}" class="btn btn-outline-primary">
-                        <i class="fas fa-cloud-upload-alt"></i> 批量上传
-                    </a>
                 </div>
             </div>
         </div>
@@ -251,155 +607,154 @@
 
     <!-- 分页 -->
     {% if is_paginated %}
-    <div class="row mt-4">
-        <div class="col-12">
-            <nav aria-label="书籍分页">
-                <ul class="pagination justify-content-center">
-                    {% if page_obj.has_previous %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page=1{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}">首页</a>
-                    </li>
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}">上一页</a>
-                    </li>
-                    {% endif %}
+    <nav aria-label="书籍分页">
+        <ul class="pagination">
+            {% if page_obj.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page=1{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}">
+                    <i class="fas fa-angle-double-left"></i>
+                </a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}">
+                    <i class="fas fa-angle-left"></i>
+                </a>
+            </li>
+            {% endif %}
+            
+            {% for num in page_obj.paginator.page_range %}
+            {% if page_obj.number == num %}
+            <li class="page-item active">
+                <span class="page-link">{{ num }}</span>
+            </li>
+            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ num }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}">{{ num }}</a>
+            </li>
+            {% endif %}
+            {% endfor %}
+            
+            {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}">
+                    <i class="fas fa-angle-right"></i>
+                </a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}">
+                    <i class="fas fa-angle-double-right"></i>
+                </a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
 
-                    {% for num in page_obj.paginator.page_range %}
-                    {% if page_obj.number == num %}
-                    <li class="page-item active">
-                        <span class="page-link">{{ num }}</span>
-                    </li>
-                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ num }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}">{{ num }}</a>
-                    </li>
-                    {% endif %}
-                    {% endfor %}
-
-                    {% if page_obj.has_next %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}">下一页</a>
-                    </li>
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}">末页</a>
-                    </li>
-                    {% endif %}
-                </ul>
-            </nav>
-        </div>
+    {% else %}
+    <!-- 空状态 -->
+    <div class="empty-state">
+        <i class="fas fa-book-open"></i>
+        <h3>还没有书籍</h3>
+        <p class="text-muted mb-4">开始上传您的第一本电子书，享受智能阅读体验</p>
+        <a href="{% url 'book_upload' %}" class="btn btn-primary btn-lg">
+            <i class="fas fa-plus"></i> 上传第一本书
+        </a>
     </div>
     {% endif %}
 </div>
 
-<style>
-.book-card {
-    transition: all 0.3s ease;
-    border: none;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-}
-
-.book-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-}
-
-.book-cover {
-    width: 100%;
-    height: 120px;
-    object-fit: cover;
-}
-
-.book-cover-placeholder {
-    width: 100%;
-    height: 120px;
-    background-color: #f8f9fa;
-    border: 1px solid #dee2e6;
-    border-radius: 0.375rem;
-}
-
-.card-title a {
-    color: inherit;
-}
-
-.card-title a:hover {
-    color: #007bff;
-}
-</style>
-
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-function performSearch() {
-    const searchTerm = document.getElementById('searchInput').value;
-    const category = document.getElementById('categoryFilter').value;
-    const status = document.getElementById('statusFilter').value;
-    
-    let url = new URL(window.location.href);
-    url.searchParams.set('page', '1'); // 重置到第一页
-    
-    if (searchTerm) {
-        url.searchParams.set('search', searchTerm);
-    } else {
-        url.searchParams.delete('search');
+    // 搜索功能
+    function performSearch() {
+        const searchTerm = document.getElementById('searchInput').value;
+        const currentUrl = new URL(window.location);
+        
+        if (searchTerm) {
+            currentUrl.searchParams.set('search', searchTerm);
+        } else {
+            currentUrl.searchParams.delete('search');
+        }
+        
+        window.location.href = currentUrl.toString();
     }
     
-    if (category) {
-        url.searchParams.set('category', category);
-    } else {
-        url.searchParams.delete('category');
+    // 回车搜索
+    document.getElementById('searchInput').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            performSearch();
+        }
+    });
+    
+    // 状态筛选
+    function filterByStatus() {
+        const status = document.getElementById('statusFilter').value;
+        const currentUrl = new URL(window.location);
+        
+        if (status) {
+            currentUrl.searchParams.set('status', status);
+        } else {
+            currentUrl.searchParams.delete('status');
+        }
+        
+        window.location.href = currentUrl.toString();
     }
     
-    if (status) {
-        url.searchParams.set('status', status);
-    } else {
-        url.searchParams.delete('status');
+    // 视图切换
+    function setView(viewType) {
+        const buttons = document.querySelectorAll('.view-toggle .btn');
+        buttons.forEach(btn => btn.classList.remove('active'));
+        event.target.classList.add('active');
+        
+        const container = document.getElementById('booksContainer');
+        if (viewType === 'list') {
+            container.classList.add('list-view');
+        } else {
+            container.classList.remove('list-view');
+        }
     }
     
-    window.location.href = url.toString();
-}
-
-function filterByCategory() {
-    performSearch();
-}
-
-function filterByStatus() {
-    performSearch();
-}
-
-function retryClassification(bookId) {
-    if (confirm('确定要重新进行AI分类吗？')) {
-        fetch(`/api/books/${bookId}/classify/`, {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
-                'Content-Type': 'application/json'
+    // 下载书籍
+    function downloadBook(bookId) {
+        window.location.href = `/books/${bookId}/download/`;
+    }
+    
+    // 删除书籍
+    function deleteBook(bookId) {
+        if (confirm('确定要删除这本书籍吗？此操作不可撤销。')) {
+            fetch(`/books/${bookId}/delete/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            })
+            .then(response => {
+                if (response.ok) {
+                    location.reload();
+                } else {
+                    alert('删除失败，请稍后重试');
+                }
+            })
+            .catch(error => {
+                alert('删除失败：' + error.message);
+            });
+        }
+    }
+    
+    // 获取CSRF令牌
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
             }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert('重新分类请求已提交，请稍后刷新页面查看结果');
-                setTimeout(() => {
-                    window.location.reload();
-                }, 2000);
-            } else {
-                alert('重新分类失败：' + (data.error || '未知错误'));
-            }
-        })
-        .catch(error => {
-            console.error('重新分类失败:', error);
-            alert('重新分类失败，请重试');
-        });
+        }
+        return cookieValue;
     }
-}
-
-function downloadBook(bookId) {
-    window.open(`/api/books/${bookId}/download/`, '_blank');
-}
-
-// 搜索框回车事件
-document.getElementById('searchInput').addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') {
-        performSearch();
-    }
-});
 </script>
 {% endblock %} 

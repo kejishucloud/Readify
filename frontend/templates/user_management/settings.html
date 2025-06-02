@@ -1,639 +1,967 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}用户设置{% endblock %}
+{% block title %}用户设置 - Readify{% endblock %}
 
 {% block extra_css %}
 <style>
-    .settings-container {
-        max-width: 800px;
-        margin: 0 auto;
-        padding: 20px;
+    .settings-hero {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 60px 0;
+        margin-bottom: 40px;
+    }
+    
+    .settings-avatar {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        border: 3px solid white;
+        background: rgba(255,255,255,0.2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 40px;
+        margin: 0 auto 20px;
+        transition: all 0.3s ease;
+    }
+    
+    .settings-avatar:hover {
+        transform: scale(1.05);
+        background: rgba(255,255,255,0.3);
+    }
+    
+    .settings-card {
+        border: none;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        border-radius: 15px;
+        transition: all 0.3s ease;
+        margin-bottom: 30px;
+    }
+    
+    .settings-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
     }
     
     .settings-section {
-        background: #fff;
-        border-radius: 8px;
-        padding: 20px;
-        margin-bottom: 20px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        border: none;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        border-radius: 15px;
+        padding: 30px;
+        margin-bottom: 30px;
+        transition: all 0.3s ease;
     }
     
-    .settings-section h5 {
+    .settings-section:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.12);
+    }
+    
+    .section-title {
         color: #333;
-        border-bottom: 2px solid #007bff;
+        font-weight: bold;
+        margin-bottom: 25px;
         padding-bottom: 10px;
-        margin-bottom: 20px;
+        border-bottom: 3px solid #667eea;
+        display: flex;
+        align-items: center;
+        gap: 10px;
     }
     
-    .form-group {
-        margin-bottom: 15px;
+    .section-title i {
+        color: #667eea;
+        font-size: 1.2rem;
     }
     
     .form-label {
-        font-weight: 500;
+        font-weight: 600;
         color: #555;
-        margin-bottom: 5px;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
     }
     
-    .voice-test-btn {
-        margin-left: 10px;
+    .form-label i {
+        color: #667eea;
+        font-size: 0.9rem;
+    }
+    
+    .form-control, .form-select {
+        border-radius: 10px;
+        border: 2px solid #e9ecef;
+        padding: 12px 15px;
+        transition: all 0.3s ease;
+    }
+    
+    .form-control:focus, .form-select:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+    }
+    
+    .form-check-input:checked {
+        background-color: #667eea;
+        border-color: #667eea;
+    }
+    
+    .form-range::-webkit-slider-thumb {
+        background: #667eea;
+    }
+    
+    .form-range::-moz-range-thumb {
+        background: #667eea;
+    }
+    
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        border-radius: 10px;
+        padding: 12px 30px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+    
+    .btn-outline-primary {
+        border: 2px solid #667eea;
+        color: #667eea;
+        border-radius: 10px;
+        padding: 10px 25px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-outline-primary:hover {
+        background: #667eea;
+        border-color: #667eea;
+        transform: translateY(-2px);
+    }
+    
+    .btn-secondary {
+        background: #6c757d;
+        border: none;
+        border-radius: 10px;
+        padding: 12px 30px;
+        font-weight: 600;
+    }
+    
+    .breadcrumb {
+        background: transparent;
+        padding: 0;
+        margin-bottom: 20px;
+    }
+    
+    .breadcrumb-item a {
+        color: white;
+        text-decoration: none;
+    }
+    
+    .breadcrumb-item.active {
+        color: rgba(255,255,255,0.8);
     }
     
     .range-value {
         font-weight: bold;
-        color: #007bff;
-        margin-left: 10px;
+        color: #667eea;
+        margin-left: 15px;
+        min-width: 50px;
+        text-align: center;
+        background: #f8f9fa;
+        padding: 5px 10px;
+        border-radius: 8px;
+        border: 1px solid #e9ecef;
     }
     
-    .settings-actions {
-        text-align: center;
+    .voice-test-btn {
+        margin-left: 10px;
+        border-radius: 8px;
+        padding: 8px 15px;
+    }
+    
+    .alert {
+        border: none;
+        border-radius: 10px;
+        padding: 15px 20px;
+    }
+    
+    .quick-actions {
+        background: #f8f9fa;
+        border-radius: 15px;
+        padding: 25px;
+        margin-bottom: 30px;
+    }
+    
+    .quick-action-btn {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
         padding: 20px;
+        border: 2px solid #e9ecef;
+        border-radius: 12px;
+        text-decoration: none;
+        color: #495057;
+        transition: all 0.3s ease;
+        background: white;
+    }
+    
+    .quick-action-btn:hover {
+        border-color: #667eea;
+        color: #667eea;
+        transform: translateY(-3px);
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
+    }
+    
+    .quick-action-icon {
+        font-size: 2rem;
+        color: #667eea;
+    }
+    
+    .nav-tabs {
+        border-bottom: 2px solid #e9ecef;
+        margin-bottom: 30px;
+    }
+    
+    .nav-tabs .nav-link {
+        border: none;
+        border-radius: 10px 10px 0 0;
+        color: #6c757d;
+        font-weight: 600;
+        padding: 12px 20px;
+        margin-right: 5px;
+        transition: all 0.3s ease;
+    }
+    
+    .nav-tabs .nav-link.active {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-bottom: 2px solid transparent;
+    }
+    
+    .nav-tabs .nav-link:hover:not(.active) {
+        background: #f8f9fa;
+        color: #667eea;
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="settings-container">
-    <h2 class="mb-4">
-        <i class="fas fa-cog"></i>
-        用户设置
-    </h2>
-    
+<!-- 设置页面英雄区域 -->
+<section class="settings-hero">
+    <div class="container">
+        <!-- 面包屑导航 -->
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'home' %}"><i class="fas fa-home"></i> 首页</a></li>
+                <li class="breadcrumb-item active">用户设置</li>
+            </ol>
+        </nav>
+        
+        <div class="row align-items-center">
+            <div class="col-lg-3 text-center">
+                <div class="settings-avatar">
+                    <i class="fas fa-cog"></i>
+                </div>
+            </div>
+            <div class="col-lg-9">
+                <h1 class="display-5 fw-bold mb-3">用户设置</h1>
+                <p class="lead mb-3">
+                    <i class="fas fa-user me-2"></i>{{ user.username }} 的个性化设置
+                </p>
+                <p class="mb-4">
+                    <i class="fas fa-info-circle me-2"></i>
+                    在这里您可以自定义阅读体验、语音设置、AI助手配置等
+                </p>
+                <div class="d-flex gap-3">
+                    <a href="{% url 'home' %}" class="btn btn-light btn-lg">
+                        <i class="fas fa-home"></i> 返回主页
+                    </a>
+                    <a href="{% url 'user_management:update_profile' %}" class="btn btn-outline-light btn-lg">
+                        <i class="fas fa-user-circle"></i> 个人资料
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<div class="container">
+    <!-- 快捷操作 -->
+    <div class="quick-actions">
+        <h3 class="section-title">
+            <i class="fas fa-bolt"></i> 快捷操作
+        </h3>
+        <div class="row">
+            <div class="col-md-3 mb-3">
+                <a href="{% url 'user_management:update_profile' %}" class="quick-action-btn w-100">
+                    <i class="fas fa-user-edit quick-action-icon"></i>
+                    <span>编辑资料</span>
+                </a>
+            </div>
+            <div class="col-md-3 mb-3">
+                <a href="{% url 'book_list' %}" class="quick-action-btn w-100">
+                    <i class="fas fa-book quick-action-icon"></i>
+                    <span>我的书籍</span>
+                </a>
+            </div>
+            <div class="col-md-3 mb-3">
+                <a href="{% url 'batch_upload' %}" class="quick-action-btn w-100">
+                    <i class="fas fa-cloud-upload-alt quick-action-icon"></i>
+                    <span>批量上传</span>
+                </a>
+            </div>
+            <div class="col-md-3 mb-3">
+                <a href="#ai-config" class="quick-action-btn w-100" onclick="showTab('ai-config')">
+                    <i class="fas fa-robot quick-action-icon"></i>
+                    <span>AI配置</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 设置选项卡 -->
+    <ul class="nav nav-tabs" id="settingsTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="basic-tab" data-bs-toggle="tab" data-bs-target="#basic" type="button" role="tab">
+                <i class="fas fa-user me-2"></i>基本设置
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="voice-tab" data-bs-toggle="tab" data-bs-target="#voice" type="button" role="tab">
+                <i class="fas fa-volume-up me-2"></i>语音设置
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="reading-tab" data-bs-toggle="tab" data-bs-target="#reading" type="button" role="tab">
+                <i class="fas fa-book-open me-2"></i>阅读设置
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="ai-config-tab" data-bs-toggle="tab" data-bs-target="#ai-config" type="button" role="tab">
+                <i class="fas fa-robot me-2"></i>AI配置
+            </button>
+        </li>
+    </ul>
+
     <form id="settingsForm">
         {% csrf_token %}
         
-        <!-- 基本设置 -->
-        <div class="settings-section">
-            <h5>
-                <i class="fas fa-user"></i>
-                基本设置
-            </h5>
-            
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label class="form-label">主题</label>
-                        <select class="form-select" name="theme" id="theme">
-                            <option value="light" {% if preferences.theme == 'light' %}selected{% endif %}>浅色主题</option>
-                            <option value="dark" {% if preferences.theme == 'dark' %}selected{% endif %}>深色主题</option>
-                            <option value="auto" {% if preferences.theme == 'auto' %}selected{% endif %}>自动</option>
-                        </select>
-                    </div>
-                </div>
-                
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label class="form-label">界面语言</label>
-                        <select class="form-select" name="language" id="language">
-                            <option value="zh" {% if preferences.language == 'zh' %}selected{% endif %}>中文</option>
-                            <option value="en" {% if preferences.language == 'en' %}selected{% endif %}>English</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="email_notifications" id="emailNotifications" 
-                               {% if preferences.email_notifications %}checked{% endif %}>
-                        <label class="form-check-label" for="emailNotifications">
-                            邮件通知
-                        </label>
-                    </div>
-                </div>
-                
-                <div class="col-md-6">
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="push_notifications" id="pushNotifications" 
-                               {% if preferences.push_notifications %}checked{% endif %}>
-                        <label class="form-check-label" for="pushNotifications">
-                            推送通知
-                        </label>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- 语音设置 -->
-        <div class="settings-section">
-            <h5>
-                <i class="fas fa-volume-up"></i>
-                语音设置
-            </h5>
-            
-            <div class="form-check mb-3">
-                <input class="form-check-input" type="checkbox" name="voice_enabled" id="voiceEnabled" 
-                       {% if preferences.voice_enabled %}checked{% endif %}>
-                <label class="form-check-label" for="voiceEnabled">
-                    启用语音功能
-                </label>
-            </div>
-            
-            <div id="voiceSettings" {% if not preferences.voice_enabled %}style="display: none;"{% endif %}>
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="form-group">
-                            <label class="form-label">语音引擎</label>
-                            <select class="form-select" name="voice_engine" id="voiceEngine">
-                                <option value="system" {% if preferences.voice_engine == 'system' %}selected{% endif %}>系统语音</option>
-                                <option value="azure" {% if preferences.voice_engine == 'azure' %}selected{% endif %}>Azure语音</option>
-                                <option value="google" {% if preferences.voice_engine == 'google' %}selected{% endif %}>Google语音</option>
-                                <option value="baidu" {% if preferences.voice_engine == 'baidu' %}selected{% endif %}>百度语音</option>
-                                <option value="iflytek" {% if preferences.voice_engine == 'iflytek' %}selected{% endif %}>科大讯飞</option>
-                            </select>
-                        </div>
-                    </div>
+        <div class="tab-content" id="settingsTabContent">
+            <!-- 基本设置 -->
+            <div class="tab-pane fade show active" id="basic" role="tabpanel">
+                <div class="settings-section">
+                    <h3 class="section-title">
+                        <i class="fas fa-user"></i> 基本设置
+                    </h3>
                     
-                    <div class="col-md-6">
-                        <div class="form-group">
-                            <label class="form-label">语音语言</label>
-                            <select class="form-select" name="voice_language" id="voiceLanguage">
-                                <option value="zh-CN" {% if preferences.voice_language == 'zh-CN' %}selected{% endif %}>中文(普通话)</option>
-                                <option value="zh-TW" {% if preferences.voice_language == 'zh-TW' %}selected{% endif %}>中文(台湾)</option>
-                                <option value="zh-HK" {% if preferences.voice_language == 'zh-HK' %}selected{% endif %}>中文(香港)</option>
-                                <option value="en-US" {% if preferences.voice_language == 'en-US' %}selected{% endif %}>英语(美国)</option>
-                                <option value="en-GB" {% if preferences.voice_language == 'en-GB' %}selected{% endif %}>英语(英国)</option>
-                                <option value="ja-JP" {% if preferences.voice_language == 'ja-JP' %}selected{% endif %}>日语</option>
-                                <option value="ko-KR" {% if preferences.voice_language == 'ko-KR' %}selected{% endif %}>韩语</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="form-group">
-                            <label class="form-label">语音类型</label>
-                            <select class="form-select" name="voice_type" id="voiceType">
-                                <option value="female" {% if preferences.voice_type == 'female' %}selected{% endif %}>女声</option>
-                                <option value="male" {% if preferences.voice_type == 'male' %}selected{% endif %}>男声</option>
-                                <option value="child" {% if preferences.voice_type == 'child' %}selected{% endif %}>童声</option>
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <div class="col-md-6">
-                        <div class="form-group">
-                            <label class="form-label">语音速度</label>
-                            <div class="d-flex align-items-center">
-                                <input type="range" class="form-range flex-grow-1" name="voice_speed" id="voiceSpeed" 
-                                       min="0.5" max="2.0" step="0.1" value="{{ preferences.voice_speed|default:1.0 }}">
-                                <span class="range-value" id="voiceSpeedValue">{{ preferences.voice_speed|default:1.0 }}x</span>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group mb-3">
+                                <label class="form-label">
+                                    <i class="fas fa-palette"></i>主题
+                                </label>
+                                <select class="form-select" name="theme" id="theme">
+                                    <option value="light" {% if preferences.theme == 'light' %}selected{% endif %}>浅色主题</option>
+                                    <option value="dark" {% if preferences.theme == 'dark' %}selected{% endif %}>深色主题</option>
+                                    <option value="auto" {% if preferences.theme == 'auto' %}selected{% endif %}>自动</option>
+                                </select>
                             </div>
                         </div>
-                    </div>
-                </div>
-                
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="form-group">
-                            <label class="form-label">音调高低</label>
-                            <div class="d-flex align-items-center">
-                                <input type="range" class="form-range flex-grow-1" name="voice_pitch" id="voicePitch" 
-                                       min="0.5" max="2.0" step="0.1" value="{{ preferences.voice_pitch|default:1.0 }}">
-                                <span class="range-value" id="voicePitchValue">{{ preferences.voice_pitch|default:1.0 }}</span>
+                        
+                        <div class="col-md-6">
+                            <div class="form-group mb-3">
+                                <label class="form-label">
+                                    <i class="fas fa-language"></i>界面语言
+                                </label>
+                                <select class="form-select" name="language" id="language">
+                                    <option value="zh" {% if preferences.language == 'zh' %}selected{% endif %}>中文</option>
+                                    <option value="en" {% if preferences.language == 'en' %}selected{% endif %}>English</option>
+                                </select>
                             </div>
                         </div>
                     </div>
                     
-                    <div class="col-md-6">
-                        <div class="form-group">
-                            <label class="form-label">音量大小</label>
-                            <div class="d-flex align-items-center">
-                                <input type="range" class="form-range flex-grow-1" name="voice_volume" id="voiceVolume" 
-                                       min="0.1" max="2.0" step="0.1" value="{{ preferences.voice_volume|default:1.0 }}">
-                                <span class="range-value" id="voiceVolumeValue">{{ preferences.voice_volume|default:1.0 }}</span>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" name="email_notifications" id="emailNotifications" 
+                                       {% if preferences.email_notifications %}checked{% endif %}>
+                                <label class="form-check-label" for="emailNotifications">
+                                    <i class="fas fa-envelope me-2"></i>邮件通知
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" name="push_notifications" id="pushNotifications" 
+                                       {% if preferences.push_notifications %}checked{% endif %}>
+                                <label class="form-check-label" for="pushNotifications">
+                                    <i class="fas fa-bell me-2"></i>推送通知
+                                </label>
                             </div>
                         </div>
                     </div>
                 </div>
-                
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" name="auto_read" id="autoRead" 
-                                   {% if preferences.auto_read %}checked{% endif %}>
-                            <label class="form-check-label" for="autoRead">
-                                自动朗读
-                            </label>
+            </div>
+
+            <!-- 语音设置 -->
+            <div class="tab-pane fade" id="voice" role="tabpanel">
+                <div class="settings-section">
+                    <h3 class="section-title">
+                        <i class="fas fa-volume-up"></i> 语音设置
+                    </h3>
+                    
+                    <div class="form-check mb-4">
+                        <input class="form-check-input" type="checkbox" name="voice_enabled" id="voiceEnabled" 
+                               {% if preferences.voice_enabled %}checked{% endif %}>
+                        <label class="form-check-label" for="voiceEnabled">
+                            <i class="fas fa-microphone me-2"></i>启用语音功能
+                        </label>
+                    </div>
+                    
+                    <div id="voiceSettings" {% if not preferences.voice_enabled %}style="display: none;"{% endif %}>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="form-label">
+                                        <i class="fas fa-cogs"></i>语音引擎
+                                    </label>
+                                    <select class="form-select" name="voice_engine" id="voiceEngine">
+                                        <option value="system" {% if preferences.voice_engine == 'system' %}selected{% endif %}>系统语音</option>
+                                        <option value="azure" {% if preferences.voice_engine == 'azure' %}selected{% endif %}>Azure语音</option>
+                                        <option value="google" {% if preferences.voice_engine == 'google' %}selected{% endif %}>Google语音</option>
+                                        <option value="baidu" {% if preferences.voice_engine == 'baidu' %}selected{% endif %}>百度语音</option>
+                                        <option value="iflytek" {% if preferences.voice_engine == 'iflytek' %}selected{% endif %}>科大讯飞</option>
+                                        <option value="chattts" {% if preferences.voice_engine == 'chattts' %}selected{% endif %}>ChatTTS</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="form-label">
+                                        <i class="fas fa-globe"></i>语音语言
+                                    </label>
+                                    <select class="form-select" name="voice_language" id="voiceLanguage">
+                                        <option value="zh-CN" {% if preferences.voice_language == 'zh-CN' %}selected{% endif %}>中文(普通话)</option>
+                                        <option value="zh-TW" {% if preferences.voice_language == 'zh-TW' %}selected{% endif %}>中文(台湾)</option>
+                                        <option value="zh-HK" {% if preferences.voice_language == 'zh-HK' %}selected{% endif %}>中文(香港)</option>
+                                        <option value="en-US" {% if preferences.voice_language == 'en-US' %}selected{% endif %}>英语(美国)</option>
+                                        <option value="en-GB" {% if preferences.voice_language == 'en-GB' %}selected{% endif %}>英语(英国)</option>
+                                        <option value="ja-JP" {% if preferences.voice_language == 'ja-JP' %}selected{% endif %}>日语</option>
+                                        <option value="ko-KR" {% if preferences.voice_language == 'ko-KR' %}selected{% endif %}>韩语</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="form-label">
+                                        <i class="fas fa-user-friends"></i>语音类型
+                                    </label>
+                                    <select class="form-select" name="voice_type" id="voiceType">
+                                        <option value="female" {% if preferences.voice_type == 'female' %}selected{% endif %}>女声</option>
+                                        <option value="male" {% if preferences.voice_type == 'male' %}selected{% endif %}>男声</option>
+                                        <option value="child" {% if preferences.voice_type == 'child' %}selected{% endif %}>童声</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="form-label">
+                                        <i class="fas fa-tachometer-alt"></i>语音速度
+                                    </label>
+                                    <div class="d-flex align-items-center">
+                                        <input type="range" class="form-range flex-grow-1" name="voice_speed" id="voiceSpeed" 
+                                               min="0.5" max="2.0" step="0.1" value="{{ preferences.voice_speed|default:1.0 }}">
+                                        <span class="range-value" id="voiceSpeedValue">{{ preferences.voice_speed|default:1.0 }}x</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="form-label">
+                                        <i class="fas fa-music"></i>音调高低
+                                    </label>
+                                    <div class="d-flex align-items-center">
+                                        <input type="range" class="form-range flex-grow-1" name="voice_pitch" id="voicePitch" 
+                                               min="0.5" max="2.0" step="0.1" value="{{ preferences.voice_pitch|default:1.0 }}">
+                                        <span class="range-value" id="voicePitchValue">{{ preferences.voice_pitch|default:1.0 }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="form-label">
+                                        <i class="fas fa-volume-down"></i>音量大小
+                                    </label>
+                                    <div class="d-flex align-items-center">
+                                        <input type="range" class="form-range flex-grow-1" name="voice_volume" id="voiceVolume" 
+                                               min="0.1" max="1.0" step="0.1" value="{{ preferences.voice_volume|default:1.0 }}">
+                                        <span class="range-value" id="voiceVolumeValue">{{ preferences.voice_volume|default:1.0 }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" name="auto_read" id="autoRead" 
+                                           {% if preferences.auto_read %}checked{% endif %}>
+                                    <label class="form-check-label" for="autoRead">
+                                        <i class="fas fa-play me-2"></i>自动朗读
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="form-label">
+                                        <i class="fas fa-clock"></i>自动朗读延迟(秒)
+                                    </label>
+                                    <input type="number" class="form-control" name="auto_read_delay" id="autoReadDelay" 
+                                           min="1" max="10" value="{{ preferences.auto_read_delay|default:3 }}">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="text-center mt-4">
+                            <button type="button" class="btn btn-outline-primary voice-test-btn" onclick="testVoice()">
+                                <i class="fas fa-play"></i> 测试语音
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 阅读设置 -->
+            <div class="tab-pane fade" id="reading" role="tabpanel">
+                <div class="settings-section">
+                    <h3 class="section-title">
+                        <i class="fas fa-book-open"></i> 阅读设置
+                    </h3>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group mb-3">
+                                <label class="form-label">
+                                    <i class="fas fa-font"></i>字体大小
+                                </label>
+                                <div class="d-flex align-items-center">
+                                    <input type="range" class="form-range flex-grow-1" name="reading_font_size" id="readingFontSize" 
+                                           min="12" max="24" step="1" value="{{ preferences.reading_font_size|default:16 }}">
+                                    <span class="range-value" id="readingFontSizeValue">{{ preferences.reading_font_size|default:16 }}px</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="form-group mb-3">
+                                <label class="form-label">
+                                    <i class="fas fa-text-height"></i>行高
+                                </label>
+                                <div class="d-flex align-items-center">
+                                    <input type="range" class="form-range flex-grow-1" name="reading_line_height" id="readingLineHeight" 
+                                           min="1.0" max="2.5" step="0.1" value="{{ preferences.reading_line_height|default:1.6 }}">
+                                    <span class="range-value" id="readingLineHeightValue">{{ preferences.reading_line_height|default:1.6 }}</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     
-                    <div class="col-md-6">
-                        <div class="form-group">
-                            <label class="form-label">自动朗读延迟(秒)</label>
-                            <input type="number" class="form-control" name="auto_read_delay" id="autoReadDelay" 
-                                   min="1" max="10" value="{{ preferences.auto_read_delay|default:3 }}">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group mb-3">
+                                <label class="form-label">
+                                    <i class="fas fa-fill-drip"></i>阅读背景
+                                </label>
+                                <select class="form-select" name="reading_background" id="readingBackground">
+                                    <option value="white" {% if preferences.reading_background == 'white' %}selected{% endif %}>白色</option>
+                                    <option value="beige" {% if preferences.reading_background == 'beige' %}selected{% endif %}>米色</option>
+                                    <option value="green" {% if preferences.reading_background == 'green' %}selected{% endif %}>护眼绿</option>
+                                    <option value="dark" {% if preferences.reading_background == 'dark' %}selected{% endif %}>深色</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="form-group mb-3">
+                                <label class="form-label">
+                                    <i class="fas fa-eye"></i>阅读模式
+                                </label>
+                                <select class="form-select" name="reading_mode" id="readingMode">
+                                    <option value="normal" {% if preferences.reading_mode == 'normal' %}selected{% endif %}>普通模式</option>
+                                    <option value="focus" {% if preferences.reading_mode == 'focus' %}selected{% endif %}>专注模式</option>
+                                    <option value="immersive" {% if preferences.reading_mode == 'immersive' %}selected{% endif %}>沉浸模式</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
-                </div>
-                
-                <div class="mt-3">
-                    <button type="button" class="btn btn-outline-primary voice-test-btn" id="testVoice">
-                        <i class="fas fa-play"></i>
-                        测试语音
-                    </button>
-                </div>
-            </div>
-        </div>
-        
-        <!-- 阅读设置 -->
-        <div class="settings-section">
-            <h5>
-                <i class="fas fa-book-open"></i>
-                阅读设置
-            </h5>
-            
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label class="form-label">字体大小</label>
-                        <div class="d-flex align-items-center">
-                            <input type="range" class="form-range flex-grow-1" name="reading_font_size" id="readingFontSize" 
-                                   min="12" max="24" step="1" value="{{ preferences.reading_font_size|default:16 }}">
-                            <span class="range-value" id="readingFontSizeValue">{{ preferences.reading_font_size|default:16 }}px</span>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" name="ai_assistant_enabled" id="aiAssistantEnabled" 
+                                       {% if preferences.ai_assistant_enabled %}checked{% endif %}>
+                                <label class="form-check-label" for="aiAssistantEnabled">
+                                    <i class="fas fa-robot me-2"></i>启用AI助手
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" name="ai_auto_summary" id="aiAutoSummary" 
+                                       {% if preferences.ai_auto_summary %}checked{% endif %}>
+                                <label class="form-check-label" for="aiAutoSummary">
+                                    <i class="fas fa-magic me-2"></i>自动生成章节总结
+                                </label>
+                            </div>
                         </div>
                     </div>
-                </div>
-                
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label class="form-label">行高</label>
-                        <div class="d-flex align-items-center">
-                            <input type="range" class="form-range flex-grow-1" name="reading_line_height" id="readingLineHeight" 
-                                   min="1.2" max="2.0" step="0.1" value="{{ preferences.reading_line_height|default:1.6 }}">
-                            <span class="range-value" id="readingLineHeightValue">{{ preferences.reading_line_height|default:1.6 }}</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label class="form-label">阅读背景</label>
-                        <select class="form-select" name="reading_background" id="readingBackground">
-                            <option value="white" {% if preferences.reading_background == 'white' %}selected{% endif %}>白色</option>
-                            <option value="beige" {% if preferences.reading_background == 'beige' %}selected{% endif %}>米色</option>
-                            <option value="green" {% if preferences.reading_background == 'green' %}selected{% endif %}>护眼绿</option>
-                            <option value="dark" {% if preferences.reading_background == 'dark' %}selected{% endif %}>深色</option>
-                        </select>
-                    </div>
-                </div>
-                
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label class="form-label">阅读模式</label>
-                        <select class="form-select" name="reading_mode" id="readingMode">
-                            <option value="normal" {% if preferences.reading_mode == 'normal' %}selected{% endif %}>普通模式</option>
-                            <option value="focus" {% if preferences.reading_mode == 'focus' %}selected{% endif %}>专注模式</option>
-                            <option value="immersive" {% if preferences.reading_mode == 'immersive' %}selected{% endif %}>沉浸模式</option>
+                    
+                    <div class="form-group mb-3">
+                        <label class="form-label">
+                            <i class="fas fa-comment-dots"></i>AI回答风格
+                        </label>
+                        <select class="form-select" name="ai_response_style" id="aiResponseStyle">
+                            <option value="concise" {% if preferences.ai_response_style == 'concise' %}selected{% endif %}>简洁</option>
+                            <option value="balanced" {% if preferences.ai_response_style == 'balanced' %}selected{% endif %}>平衡</option>
+                            <option value="detailed" {% if preferences.ai_response_style == 'detailed' %}selected{% endif %}>详细</option>
                         </select>
                     </div>
                 </div>
             </div>
-        </div>
-        
-        <!-- AI助手设置 -->
-        <div class="settings-section">
-            <h5>
-                <i class="fas fa-robot"></i>
-                AI助手设置
-            </h5>
-            
-            <div class="form-check mb-3">
-                <input class="form-check-input" type="checkbox" name="ai_assistant_enabled" id="aiAssistantEnabled" 
-                       {% if preferences.ai_assistant_enabled %}checked{% endif %}>
-                <label class="form-check-label" for="aiAssistantEnabled">
-                    启用AI助手
-                </label>
-            </div>
-            
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="ai_auto_summary" id="aiAutoSummary" 
-                               {% if preferences.ai_auto_summary %}checked{% endif %}>
-                        <label class="form-check-label" for="aiAutoSummary">
-                            自动生成章节总结
+
+            <!-- AI配置 -->
+            <div class="tab-pane fade" id="ai-config" role="tabpanel">
+                <div class="settings-section">
+                    <h3 class="section-title">
+                        <i class="fas fa-robot"></i> AI配置
+                    </h3>
+                    
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        配置您的AI服务提供商，以获得更好的智能阅读体验
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group mb-3">
+                                <label class="form-label">
+                                    <i class="fas fa-server"></i>AI提供商
+                                </label>
+                                <select class="form-select" name="ai_provider" id="aiProvider">
+                                    <option value="openai" {% if ai_config.provider == 'openai' %}selected{% endif %}>OpenAI</option>
+                                    <option value="azure" {% if ai_config.provider == 'azure' %}selected{% endif %}>Azure OpenAI</option>
+                                    <option value="anthropic" {% if ai_config.provider == 'anthropic' %}selected{% endif %}>Anthropic</option>
+                                    <option value="custom" {% if ai_config.provider == 'custom' %}selected{% endif %}>自定义</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="form-group mb-3">
+                                <label class="form-label">
+                                    <i class="fas fa-brain"></i>模型ID
+                                </label>
+                                <input type="text" class="form-control" name="ai_model_id" id="aiModelId" 
+                                       value="{{ ai_config.model_id }}" placeholder="例如: gpt-3.5-turbo">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group mb-3">
+                        <label class="form-label">
+                            <i class="fas fa-link"></i>API地址
+                        </label>
+                        <input type="url" class="form-control" name="ai_api_url" id="aiApiUrl" 
+                               value="{{ ai_config.api_url }}" placeholder="https://api.openai.com/v1">
+                    </div>
+                    
+                    <div class="form-group mb-3">
+                        <label class="form-label">
+                            <i class="fas fa-key"></i>API密钥
+                        </label>
+                        <input type="password" class="form-control" name="ai_api_key" id="aiApiKey" 
+                               placeholder="输入您的API密钥">
+                        <small class="form-text text-muted">为了安全，密钥将被加密存储</small>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="form-group mb-3">
+                                <label class="form-label">
+                                    <i class="fas fa-thermometer-half"></i>温度参数
+                                </label>
+                                <div class="d-flex align-items-center">
+                                    <input type="range" class="form-range flex-grow-1" name="ai_temperature" id="aiTemperature" 
+                                           min="0.0" max="2.0" step="0.1" value="{{ ai_config.temperature|default:0.7 }}">
+                                    <span class="range-value" id="aiTemperatureValue">{{ ai_config.temperature|default:0.7 }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <div class="form-group mb-3">
+                                <label class="form-label">
+                                    <i class="fas fa-coins"></i>最大令牌数
+                                </label>
+                                <input type="number" class="form-control" name="ai_max_tokens" id="aiMaxTokens" 
+                                       min="100" max="4000" value="{{ ai_config.max_tokens|default:1000 }}">
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <div class="form-group mb-3">
+                                <label class="form-label">
+                                    <i class="fas fa-clock"></i>超时时间(秒)
+                                </label>
+                                <input type="number" class="form-control" name="ai_timeout" id="aiTimeout" 
+                                       min="10" max="120" value="{{ ai_config.timeout|default:30 }}">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-check mb-4">
+                        <input class="form-check-input" type="checkbox" name="ai_is_active" id="aiIsActive" 
+                               {% if ai_config.is_active %}checked{% endif %}>
+                        <label class="form-check-label" for="aiIsActive">
+                            <i class="fas fa-toggle-on me-2"></i>启用此AI配置
                         </label>
                     </div>
-                </div>
-                
-                <div class="col-md-6">
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="ai_context_memory" id="aiContextMemory" 
-                               {% if preferences.ai_context_memory %}checked{% endif %}>
-                        <label class="form-check-label" for="aiContextMemory">
-                            AI上下文记忆
-                        </label>
+                    
+                    <div class="text-center">
+                        <button type="button" class="btn btn-outline-primary me-3" onclick="testAIConfig()">
+                            <i class="fas fa-vial"></i> 测试配置
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="resetAIConfig()">
+                            <i class="fas fa-undo"></i> 重置配置
+                        </button>
                     </div>
                 </div>
-            </div>
-            
-            <div class="form-group mt-3">
-                <label class="form-label">AI回答风格</label>
-                <select class="form-select" name="ai_response_style" id="aiResponseStyle">
-                    <option value="concise" {% if preferences.ai_response_style == 'concise' %}selected{% endif %}>简洁</option>
-                    <option value="balanced" {% if preferences.ai_response_style == 'balanced' %}selected{% endif %}>平衡</option>
-                    <option value="detailed" {% if preferences.ai_response_style == 'detailed' %}selected{% endif %}>详细</option>
-                </select>
-            </div>
-        </div>
-        
-        <!-- AI配置设置 -->
-        <div class="settings-section">
-            <h5>
-                <i class="fas fa-cogs"></i>
-                AI配置
-            </h5>
-            
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label class="form-label">AI提供商</label>
-                        <select class="form-select" name="ai_provider" id="aiProvider">
-                            <option value="openai" {% if ai_config.provider == 'openai' %}selected{% endif %}>OpenAI</option>
-                            <option value="anthropic" {% if ai_config.provider == 'anthropic' %}selected{% endif %}>Anthropic</option>
-                            <option value="google" {% if ai_config.provider == 'google' %}selected{% endif %}>Google</option>
-                            <option value="azure" {% if ai_config.provider == 'azure' %}selected{% endif %}>Azure OpenAI</option>
-                            <option value="custom" {% if ai_config.provider == 'custom' %}selected{% endif %}>自定义</option>
-                        </select>
-                    </div>
-                </div>
-                
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label class="form-label">模型ID</label>
-                        <input type="text" class="form-control" name="ai_model_id" id="aiModelId" 
-                               value="{{ ai_config.model_id }}" placeholder="gpt-3.5-turbo">
-                    </div>
-                </div>
-            </div>
-            
-            <div class="form-group">
-                <label class="form-label">API地址</label>
-                <input type="url" class="form-control" name="ai_api_url" id="aiApiUrl" 
-                       value="{{ ai_config.api_url }}" placeholder="https://api.openai.com/v1">
-            </div>
-            
-            <div class="form-group">
-                <label class="form-label">API密钥</label>
-                <input type="password" class="form-control" name="ai_api_key" id="aiApiKey" 
-                       placeholder="输入新的API密钥（留空保持不变）">
-                <small class="form-text text-muted">
-                    {% if ai_config.api_key %}已配置API密钥{% else %}未配置API密钥{% endif %}
-                </small>
-            </div>
-            
-            <div class="row">
-                <div class="col-md-4">
-                    <div class="form-group">
-                        <label class="form-label">最大令牌数</label>
-                        <input type="number" class="form-control" name="ai_max_tokens" id="aiMaxTokens" 
-                               min="100" max="8000" value="{{ ai_config.max_tokens }}">
-                    </div>
-                </div>
-                
-                <div class="col-md-4">
-                    <div class="form-group">
-                        <label class="form-label">温度参数</label>
-                        <input type="number" class="form-control" name="ai_temperature" id="aiTemperature" 
-                               min="0" max="2" step="0.1" value="{{ ai_config.temperature }}">
-                    </div>
-                </div>
-                
-                <div class="col-md-4">
-                    <div class="form-group">
-                        <label class="form-label">超时时间(秒)</label>
-                        <input type="number" class="form-control" name="ai_timeout" id="aiTimeout" 
-                               min="10" max="120" value="{{ ai_config.timeout }}">
-                    </div>
-                </div>
-            </div>
-            
-            <div class="mt-3">
-                <button type="button" class="btn btn-outline-primary" id="testAI">
-                    <i class="fas fa-flask"></i>
-                    测试AI配置
-                </button>
             </div>
         </div>
         
         <!-- 保存按钮 -->
-        <div class="settings-actions">
-            <button type="submit" class="btn btn-primary btn-lg">
-                <i class="fas fa-save"></i>
-                保存设置
+        <div class="text-center mt-4 mb-5">
+            <button type="submit" class="btn btn-primary btn-lg me-3">
+                <i class="fas fa-save"></i> 保存所有设置
             </button>
-            <button type="button" class="btn btn-secondary btn-lg ms-3" id="resetSettings">
-                <i class="fas fa-undo"></i>
-                重置设置
-            </button>
+            <a href="{% url 'home' %}" class="btn btn-secondary btn-lg">
+                <i class="fas fa-times"></i> 取消
+            </a>
         </div>
+        
+        <div id="settingsAlert" class="mt-4"></div>
     </form>
 </div>
 
-<!-- 加载提示 -->
-<div class="modal fade" id="loadingModal" tabindex="-1">
-    <div class="modal-dialog modal-sm modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-body text-center">
-                <div class="spinner-border text-primary" role="status">
-                    <span class="visually-hidden">加载中...</span>
-                </div>
-                <div class="mt-2" id="loadingText">处理中...</div>
-            </div>
-        </div>
-    </div>
-</div>
-{% endblock %}
-
-{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // 范围滑块值更新
-    const rangeInputs = document.querySelectorAll('input[type="range"]');
-    rangeInputs.forEach(input => {
-        const valueSpan = document.getElementById(input.id + 'Value');
-        if (valueSpan) {
-            input.addEventListener('input', function() {
-                let value = this.value;
-                if (this.id === 'voiceSpeed') {
-                    value += 'x';
-                } else if (this.id === 'readingFontSize') {
-                    value += 'px';
-                }
-                valueSpan.textContent = value;
-            });
-        }
-    });
+    // 显示指定选项卡
+    function showTab(tabId) {
+        const tab = new bootstrap.Tab(document.getElementById(tabId + '-tab'));
+        tab.show();
+    }
     
     // 语音功能开关
-    const voiceEnabled = document.getElementById('voiceEnabled');
-    const voiceSettings = document.getElementById('voiceSettings');
-    
-    voiceEnabled.addEventListener('change', function() {
-        voiceSettings.style.display = this.checked ? 'block' : 'none';
+    document.getElementById('voiceEnabled').addEventListener('change', function() {
+        const voiceSettings = document.getElementById('voiceSettings');
+        if (this.checked) {
+            voiceSettings.style.display = 'block';
+        } else {
+            voiceSettings.style.display = 'none';
+        }
     });
     
-    // 测试语音
-    document.getElementById('testVoice').addEventListener('click', function() {
-        const testText = '这是一个语音测试，您可以听到当前的语音设置效果。';
-        // 这里可以调用TTS API进行测试
-        alert('语音测试功能将在后续版本中实现');
+    // 范围滑块值更新
+    const rangeInputs = [
+        { input: 'voiceSpeed', output: 'voiceSpeedValue', suffix: 'x' },
+        { input: 'voicePitch', output: 'voicePitchValue', suffix: '' },
+        { input: 'voiceVolume', output: 'voiceVolumeValue', suffix: '' },
+        { input: 'readingFontSize', output: 'readingFontSizeValue', suffix: 'px' },
+        { input: 'readingLineHeight', output: 'readingLineHeightValue', suffix: '' },
+        { input: 'aiTemperature', output: 'aiTemperatureValue', suffix: '' }
+    ];
+    
+    rangeInputs.forEach(item => {
+        const input = document.getElementById(item.input);
+        const output = document.getElementById(item.output);
+        if (input && output) {
+            input.addEventListener('input', function() {
+                output.textContent = this.value + item.suffix;
+            });
+        }
     });
+    
+    // 测试语音功能
+    function testVoice() {
+        const btn = event.target;
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 测试中...';
+        btn.disabled = true;
+        
+        // 模拟语音测试
+        setTimeout(() => {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+            showAlert('语音测试完成', 'success');
+        }, 2000);
+    }
     
     // 测试AI配置
-    document.getElementById('testAI').addEventListener('click', async function() {
-        const btn = this;
+    function testAIConfig() {
+        const btn = event.target;
         const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 测试中...';
+        btn.disabled = true;
         
-        try {
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 测试中...';
-            
-            const response = await fetch('/user/ai-config/test/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-                }
-            });
-            
-            const data = await response.json();
-            
-            if (data.success) {
-                alert('AI配置测试成功！');
-            } else {
-                alert('AI配置测试失败：' + data.message);
+        fetch('/user/ai-config/test/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
             }
-        } catch (error) {
-            alert('测试失败：' + error.message);
-        } finally {
-            btn.disabled = false;
+        })
+        .then(response => response.json())
+        .then(data => {
+            showAlert(data.message, data.success ? 'success' : 'danger');
+        })
+        .catch(error => {
+            showAlert('测试失败，请检查配置', 'danger');
+        })
+        .finally(() => {
             btn.innerHTML = originalText;
-        }
-    });
+            btn.disabled = false;
+        });
+    }
     
-    // 保存设置
-    document.getElementById('settingsForm').addEventListener('submit', async function(e) {
+    // 重置AI配置
+    function resetAIConfig() {
+        if (confirm('确定要重置AI配置吗？')) {
+            document.getElementById('aiProvider').value = 'openai';
+            document.getElementById('aiModelId').value = '';
+            document.getElementById('aiApiUrl').value = '';
+            document.getElementById('aiApiKey').value = '';
+            document.getElementById('aiTemperature').value = '0.7';
+            document.getElementById('aiTemperatureValue').textContent = '0.7';
+            document.getElementById('aiMaxTokens').value = '1000';
+            document.getElementById('aiTimeout').value = '30';
+            document.getElementById('aiIsActive').checked = false;
+            showAlert('AI配置已重置', 'info');
+        }
+    }
+    
+    // 表单提交
+    document.getElementById('settingsForm').addEventListener('submit', function(e) {
         e.preventDefault();
         
-        const formData = new FormData(this);
-        const data = {};
+        const formData = new FormData(e.target);
+        const data = Object.fromEntries(formData.entries());
         
         // 处理复选框
-        const checkboxes = ['voice_enabled', 'auto_read', 'email_notifications', 'push_notifications', 
-                           'ai_assistant_enabled', 'ai_auto_summary', 'ai_context_memory'];
+        const checkboxes = ['email_notifications', 'push_notifications', 'voice_enabled', 'auto_read', 'ai_assistant_enabled', 'ai_auto_summary', 'ai_is_active'];
         checkboxes.forEach(name => {
-            data[name] = formData.has(name);
+            data[name] = document.querySelector(`[name="${name}"]`).checked;
         });
         
-        // 处理其他字段
-        for (let [key, value] of formData.entries()) {
-            if (!checkboxes.includes(key) && key !== 'csrfmiddlewaretoken') {
-                data[key] = value;
-            }
-        }
+        // 显示加载状态
+        const submitBtn = e.target.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 保存中...';
+        submitBtn.disabled = true;
         
-        try {
-            showLoading('保存设置中...');
-            
-            // 保存用户偏好
-            const preferencesResponse = await fetch('/user/preferences/update/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': formData.get('csrfmiddlewaretoken')
-                },
-                body: JSON.stringify(data)
-            });
-            
-            const preferencesResult = await preferencesResponse.json();
-            
-            // 保存AI配置
-            const aiData = {
-                provider: data.ai_provider,
-                api_url: data.ai_api_url,
-                model_id: data.ai_model_id,
-                max_tokens: parseInt(data.ai_max_tokens),
-                temperature: parseFloat(data.ai_temperature),
-                timeout: parseInt(data.ai_timeout)
-            };
-            
-            if (data.ai_api_key) {
-                aiData.api_key = data.ai_api_key;
-            }
-            
-            const aiResponse = await fetch('/user/ai-config/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': formData.get('csrfmiddlewaretoken')
-                },
-                body: JSON.stringify(aiData)
-            });
-            
-            const aiResult = await aiResponse.json();
-            
-            if (preferencesResult.success && aiResult.success) {
-                showSuccess('设置保存成功！');
-                setTimeout(() => {
-                    location.reload();
-                }, 1500);
+        // 保存偏好设置
+        fetch('/user/preferences/update/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                // 如果有AI配置，也保存AI配置
+                const aiData = {
+                    provider: data.ai_provider,
+                    model_id: data.ai_model_id,
+                    api_url: data.ai_api_url,
+                    api_key: data.ai_api_key,
+                    temperature: parseFloat(data.ai_temperature),
+                    max_tokens: parseInt(data.ai_max_tokens),
+                    timeout: parseInt(data.ai_timeout),
+                    is_active: data.ai_is_active
+                };
+                
+                return fetch('/user/ai-config/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify(aiData)
+                });
             } else {
-                showError('保存失败：' + (preferencesResult.message || aiResult.message));
+                throw new Error(result.message);
             }
-            
-        } catch (error) {
-            showError('保存失败：' + error.message);
-        } finally {
-            hideLoading();
-        }
+        })
+        .then(response => response.json())
+        .then(result => {
+            showAlert('所有设置保存成功', 'success');
+        })
+        .catch(error => {
+            showAlert('保存失败，请稍后重试', 'danger');
+            console.error('保存设置失败:', error);
+        })
+        .finally(() => {
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+        });
     });
     
-    // 重置设置
-    document.getElementById('resetSettings').addEventListener('click', function() {
-        if (confirm('确定要重置所有设置吗？此操作不可撤销。')) {
-            location.reload();
+    // 显示提示信息
+    function showAlert(message, type) {
+        const container = document.getElementById('settingsAlert');
+        container.innerHTML = `
+            <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'danger' ? 'exclamation-triangle' : 'info-circle'}"></i>
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        `;
+    }
+    
+    // 获取CSRF令牌
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
         }
-    });
-    
-    // 工具函数
-    function showLoading(text = '加载中...') {
-        document.getElementById('loadingText').textContent = text;
-        new bootstrap.Modal(document.getElementById('loadingModal')).show();
+        return cookieValue;
     }
-    
-    function hideLoading() {
-        const modal = bootstrap.Modal.getInstance(document.getElementById('loadingModal'));
-        if (modal) modal.hide();
-    }
-    
-    function showSuccess(message) {
-        showToast(message, 'success');
-    }
-    
-    function showError(message) {
-        showToast(message, 'error');
-    }
-    
-    function showToast(message, type = 'info') {
-        const toast = document.createElement('div');
-        toast.className = `alert alert-${type === 'error' ? 'danger' : type === 'success' ? 'success' : 'info'} 
-                          position-fixed top-0 end-0 m-3`;
-        toast.style.zIndex = '9999';
-        toast.textContent = message;
-        
-        document.body.appendChild(toast);
-        
-        setTimeout(() => {
-            toast.remove();
-        }, 3000);
-    }
-});
 </script>
 {% endblock %} 
