@@ -15,6 +15,9 @@
                             <a href="{% url 'book_read' book.id %}" class="btn btn-primary">
                                 <i class="fas fa-book-open"></i> 开始阅读
                             </a>
+                            <a href="{% url 'optimized_book_reader' book.id %}" class="btn btn-success">
+                                <i class="fas fa-rocket"></i> 优化阅读器
+                            </a>
                             <button type="button" class="btn btn-outline-secondary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown">
                                 <span class="visually-hidden">更多操作</span>
                             </button>

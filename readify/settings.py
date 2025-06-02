@@ -318,3 +318,13 @@ LOGGING = {
 LOGIN_URL = '/user/login/'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/'
+
+# 优化渲染器设置
+OPTIMIZED_RENDERER_SETTINGS = {
+    'ENABLE_MUPDF': True,
+    'ENABLE_CALIBRE_CONVERSION': True,
+    'TEMP_DIR': os.path.join(BASE_DIR, 'temp', 'renderer'),
+    'MAX_FILE_SIZE': 100 * 1024 * 1024,  # 100MB
+    'CACHE_RENDERED_CONTENT': True,
+    'CACHE_TIMEOUT': 3600,  # 1小时
+}

@@ -67,4 +67,9 @@ urlpatterns = [
     path('translate/<int:book_id>/', views.translate_text_selection, name='translate_text_selection'),
     path('translation-languages/', views.get_translation_languages, name='get_translation_languages'),
     path('translation-history/<int:book_id>/', views.get_translation_history, name='get_translation_history'),
+    
+    # 优化渲染器相关路由
+    path('books/<int:book_id>/optimized-reader/', views.optimized_book_reader, name='optimized_book_reader'),
+    path('books/<int:book_id>/optimized-content/', views.get_optimized_chapter_content, name='get_optimized_chapter_content'),
+    path('books/<int:book_id>/metadata-api/', views.get_book_metadata_api, name='get_book_metadata_api'),
 ] 

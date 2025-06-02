@@ -1,6 +1,7 @@
 from django import template
 from django.utils.safestring import mark_safe
 import re
+import base64
 
 register = template.Library()
 
@@ -166,4 +167,14 @@ def get_book_type(book):
     """获取书籍类型"""
     if hasattr(book, 'category') and book.category:
         return book.category.code
-    return 'general' 
+    return 'general'
+
+
+@register.filter
+def b64encode(value):
+    """Base64编码过滤器"""
+    if isinstance(value, bytes):
+        return base64.b64encode(value).decode('utf-8')
+    elif isinstance(value, str):
+        return base64.b64encode(value.encode('utf-8')).decode('utf-8')
+    return '' 

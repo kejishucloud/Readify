@@ -11,10 +11,12 @@ from django.utils import timezone
 from django.db import models
 import os
 import logging
+from datetime import timedelta
 
 from .models import Book, BookContent, ReadingProgress, BookNote, BookQuestion, BookCategory, BatchUpload, ReadingSession, ReadingStatistics, NoteCollection, ParagraphSummary, BookSummary, ReadingAssistant, ReadingQA, ChapterSummary, ReadingTimeTracker
 from .services import BookProcessingService, CategoryService, ReadingStatisticsService, BookNoteService, AISummaryService
 from .reading_assistant import ReadingAssistantService
+from .renderers import OptimizedBookRenderer, RendererFactory
 
 logger = logging.getLogger(__name__)
 
@@ -1693,3 +1695,132 @@ def get_translation_history(request, book_id):
             'success': False,
             'error': '获取翻译历史失败'
         }, status=500)
+
+
+@login_required
+def optimized_book_reader(request, book_id):
+    """优化的书籍阅读器视图"""
+    try:
+        book = get_object_or_404(Book, id=book_id, user=request.user)
+        
+        # 获取章节和页面参数
+        chapter_number = int(request.GET.get('chapter', 1))
+        page_number = int(request.GET.get('page', 1))
+        
+        # 创建优化渲染器
+        renderer = OptimizedBookRenderer(book)
+        
+        # 渲染内容
+        render_result = renderer.render_chapter(chapter_number, page_number)
+        
+        # 获取目录
+        table_of_contents = renderer.get_table_of_contents()
+        
+        # 获取元数据
+        metadata = renderer.get_book_metadata()
+        
+        # 更新阅读进度
+        reading_progress, created = ReadingProgress.objects.get_or_create(
+            user=request.user,
+            book=book,
+            defaults={'current_chapter': chapter_number, 'current_page': page_number}
+        )
+        if not created:
+            reading_progress.current_chapter = chapter_number
+            reading_progress.current_page = page_number
+            reading_progress.last_read_at = timezone.now()
+            reading_progress.save()
+        
+        # 更新阅读会话
+        session, created = ReadingSession.objects.get_or_create(
+            user=request.user,
+            book=book,
+            session_date=timezone.now().date(),
+            defaults={'duration': timedelta(0)}
+        )
+        
+        context = {
+            'book': book,
+            'render_result': render_result,
+            'table_of_contents': table_of_contents,
+            'metadata': metadata,
+            'current_chapter': chapter_number,
+            'current_page': page_number,
+            'reading_progress': reading_progress,
+            'renderer_type': render_result.get('renderer_type', 'unknown'),
+            'supports_pagination': render_result.get('supports_pagination', False),
+        }
+        
+        # 清理渲染器资源
+        renderer.cleanup()
+        
+        return render(request, 'books/optimized_reader.html', context)
+        
+    except Exception as e:
+        logger.error(f"优化阅读器错误: {str(e)}")
+        messages.error(request, f'阅读器加载失败: {str(e)}')
+        return redirect('book_detail', book_id=book_id)
+
+
+@login_required
+def get_optimized_chapter_content(request, book_id):
+    """AJAX获取优化渲染的章节内容"""
+    try:
+        book = get_object_or_404(Book, id=book_id, user=request.user)
+        
+        chapter_number = int(request.GET.get('chapter', 1))
+        page_number = int(request.GET.get('page', 1))
+        
+        # 创建优化渲染器
+        renderer = OptimizedBookRenderer(book)
+        
+        # 渲染内容
+        render_result = renderer.render_chapter(chapter_number, page_number)
+        
+        # 清理资源
+        renderer.cleanup()
+        
+        return JsonResponse({
+            'success': True,
+            'data': render_result
+        })
+        
+    except Exception as e:
+        logger.error(f"获取章节内容失败: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        })
+
+
+@login_required
+def get_book_metadata_api(request, book_id):
+    """API获取书籍元数据"""
+    try:
+        book = get_object_or_404(Book, id=book_id, user=request.user)
+        
+        # 创建优化渲染器
+        renderer = OptimizedBookRenderer(book)
+        
+        # 获取元数据
+        metadata = renderer.get_book_metadata()
+        
+        # 获取目录
+        table_of_contents = renderer.get_table_of_contents()
+        
+        # 清理资源
+        renderer.cleanup()
+        
+        return JsonResponse({
+            'success': True,
+            'metadata': metadata,
+            'table_of_contents': table_of_contents,
+            'supported_formats': RendererFactory.get_supported_formats()
+        })
+        
+    except Exception as e:
+        logger.error(f"获取书籍元数据失败: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        })
