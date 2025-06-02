@@ -37,6 +37,8 @@ body {
 .navbar {
     box-shadow: var(--shadow-sm);
     backdrop-filter: blur(10px);
+    position: relative;
+    z-index: 1030;
 }
 
 .navbar-brand {
@@ -51,6 +53,34 @@ body {
 
 .navbar-nav .nav-link:hover {
     color: rgba(255,255,255,0.8) !important;
+}
+
+/* 修复用户下拉框被遮挡的问题 */
+.navbar .dropdown-menu {
+    z-index: 1050 !important;
+    border: none;
+    box-shadow: var(--shadow-lg);
+    border-radius: var(--border-radius);
+    margin-top: 0.5rem;
+}
+
+.navbar .dropdown-toggle {
+    z-index: 1051 !important;
+}
+
+.navbar .dropdown-item {
+    padding: 0.75rem 1.5rem;
+    transition: var(--transition);
+}
+
+.navbar .dropdown-item:hover {
+    background-color: var(--light-color);
+    color: var(--primary-color);
+}
+
+.navbar .dropdown-item i {
+    width: 20px;
+    margin-right: 8px;
 }
 
 /* 主要内容区域 */

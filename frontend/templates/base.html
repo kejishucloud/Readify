@@ -45,10 +45,10 @@
                 <ul class="navbar-nav">
                     {% if user.is_authenticated %}
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" style="z-index: 1050;">
                             <i class="fas fa-user"></i> {{ user.username }}
                         </a>
-                        <ul class="dropdown-menu">
+                        <ul class="dropdown-menu" style="z-index: 1051;">
                             <li><a class="dropdown-item" href="{% url 'user_management:update_profile' %}">
                                 <i class="fas fa-user-circle"></i> 个人资料
                             </a></li>

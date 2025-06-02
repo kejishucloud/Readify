@@ -34,6 +34,7 @@
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
             line-height: 1.8;
             font-size: 16px;
+            font-family: 'Microsoft YaHei', 'PingFang SC', 'Hiragino Sans GB', sans-serif;
         }
         
         .sidebar {
@@ -89,13 +90,109 @@
         }
         
         .selected-text {
-            background-color: yellow;
+            background-color: #ffeb3b;
             cursor: pointer;
+            padding: 2px 4px;
+            border-radius: 3px;
         }
         
         .reading-timer {
             font-size: 14px;
             color: #666;
+        }
+        
+        /* 改进的文本排版 */
+        .chapter-content {
+            text-align: justify;
+            text-justify: inter-ideograph;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+        }
+        
+        .chapter-content p {
+            margin-bottom: 1.2em;
+            text-indent: 2em;
+        }
+        
+        .chapter-content h1, .chapter-content h2, .chapter-content h3 {
+            margin: 1.5em 0 1em 0;
+            text-indent: 0;
+            font-weight: bold;
+        }
+        
+        /* 根据书籍类型调整样式 */
+        .book-type-novel .chapter-content {
+            line-height: 2.0;
+            font-size: 18px;
+        }
+        
+        .book-type-technical .chapter-content {
+            line-height: 1.6;
+            font-size: 16px;
+        }
+        
+        .book-type-poetry .chapter-content {
+            line-height: 2.2;
+            text-align: center;
+            text-indent: 0;
+        }
+        
+        .book-type-poetry .chapter-content p {
+            text-indent: 0;
+            margin-bottom: 1.5em;
+        }
+        
+        /* 翻译功能样式 */
+        .translation-panel {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            padding: 20px;
+            max-width: 600px;
+            width: 90%;
+            z-index: 1000;
+            display: none;
+        }
+        
+        .translation-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+            display: none;
+        }
+        
+        .translation-result {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            border-left: 4px solid #007bff;
+        }
+        
+        .line-number {
+            color: #999;
+            font-size: 12px;
+            margin-right: 10px;
+            user-select: none;
+        }
+        
+        .page-indicator {
+            position: sticky;
+            top: 0;
+            background: rgba(255,255,255,0.9);
+            padding: 5px 10px;
+            border-radius: 0 0 10px 10px;
+            font-size: 12px;
+            color: #666;
+            text-align: center;
         }
         
         @media (max-width: 768px) {
@@ -145,12 +242,22 @@
             
             <div class="reading-content">
                 <!-- 主要内容区域 -->
-                <div class="main-content" id="mainContent">
-                    <div id="chapterTitle">
-                        <h3>{{ current_chapter.chapter_title|default:"第"|add:current_chapter.chapter_number|add:"章" }}</h3>
+                <div class="main-content book-type-{{ book.category.code|default:'general' }}" id="mainContent">
+                    <div class="page-indicator" id="pageIndicator">
+                        第 <span id="currentPage">1</span> 页 / 共 <span id="totalPages">1</span> 页
                     </div>
-                    <div id="chapterContent">
-                        {{ current_chapter.content|linebreaks }}
+                    
+                    <div id="chapterTitle">
+                        <h3>{% if current_chapter %}{{ current_chapter.chapter_title|default:"第"|add:current_chapter.chapter_number|add:"章" }}{% else %}内容加载中...{% endif %}</h3>
+                    </div>
+                    
+                    <div class="chapter-content" id="chapterContent">
+                        {% if current_chapter %}
+                            {% load custom_filters %}
+                            {{ current_chapter.content|format_book_content:book.category.code|default:"general"|safe }}
+                        {% else %}
+                            正在加载内容，请稍候...
+                        {% endif %}
                     </div>
                 </div>
                 
@@ -210,16 +317,20 @@
                             </button>
                         </div>
                         <select class="form-select" id="chapterSelect" onchange="goToChapter(this.value)">
-                            {% for chapter in chapters %}
-                            <option value="{{ chapter.chapter_number }}" 
-                                    {% if chapter.chapter_number == progress.current_chapter %}selected{% endif %}>
-                                第{{ chapter.chapter_number }}章 - {{ chapter.chapter_title|default:"无标题" }}
-                            </option>
-                            {% endfor %}
+                            {% if chapters %}
+                                {% for chapter in chapters %}
+                                <option value="{{ chapter.chapter_number }}" 
+                                        {% if chapter.chapter_number == progress.current_chapter %}selected{% endif %}>
+                                    第{{ chapter.chapter_number }}章 - {{ chapter.chapter_title|default:"无标题" }}
+                                </option>
+                                {% endfor %}
+                            {% else %}
+                                <option value="1" selected>第1章 - 内容解析中</option>
+                            {% endif %}
                         </select>
                     </div>
                     
-                    <!-- AI总结 -->
+                    <!-- AI助手 -->
                     <div class="ai-summary">
                         <h6><i class="fas fa-robot"></i> AI助手</h6>
                         <button class="btn btn-info btn-sm w-100 mb-2" onclick="generateSummary()">
@@ -228,6 +339,22 @@
                         <button class="btn btn-success btn-sm w-100 mb-2" onclick="generateBookSummary()">
                             <i class="fas fa-book"></i> 生成全书概要
                         </button>
+                        
+                        <!-- AI问答区域 -->
+                        <div class="ai-qa-section mt-3">
+                            <h6><i class="fas fa-question-circle"></i> AI问答</h6>
+                            <div class="mb-2">
+                                <textarea class="form-control form-control-sm" id="aiQuestion" 
+                                         placeholder="选择文本后输入问题，或直接提问..." rows="2"></textarea>
+                            </div>
+                            <button class="btn btn-primary btn-sm w-100 mb-2" onclick="askAIQuestion()">
+                                <i class="fas fa-paper-plane"></i> 提问
+                            </button>
+                            <div id="selectedTextInfo" class="text-muted small mb-2" style="display: none;">
+                                已选择文本: <span id="selectedTextPreview"></span>
+                            </div>
+                        </div>
+                        
                         <div id="summaryContent" class="mt-2" style="display: none;">
                             <div class="alert alert-info">
                                 <div id="summaryText"></div>
@@ -235,16 +362,104 @@
                         </div>
                     </div>
                     
-                    <!-- 笔记功能 -->
+                    <!-- 翻译功能 -->
                     <div class="note-section">
-                        <h6><i class="fas fa-sticky-note"></i> 笔记</h6>
-                        <textarea class="form-control mb-2" id="noteContent" rows="3" 
-                                  placeholder="在这里记录你的想法..."></textarea>
-                        <button class="btn btn-warning btn-sm w-100" onclick="saveNote()">
-                            <i class="fas fa-save"></i> 保存笔记
+                        <h6><i class="fas fa-language"></i> 翻译功能</h6>
+                        <div class="mb-2">
+                            <label class="form-label">目标语言</label>
+                            <select class="form-select form-select-sm" id="targetLanguage">
+                                <option value="en">英语</option>
+                                <option value="ja">日语</option>
+                                <option value="ko">韩语</option>
+                                <option value="fr">法语</option>
+                                <option value="de">德语</option>
+                                <option value="es">西班牙语</option>
+                                <option value="ru">俄语</option>
+                                <option value="ar">阿拉伯语</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-primary btn-sm w-100 mb-2" onclick="translateText()">
+                            <i class="fas fa-language"></i> 翻译
+                        </button>
+                        <div id="translationInfo" class="text-muted small mb-2" style="display: none;">
+                            翻译模式: <span id="translationMode">全文翻译</span>
+                        </div>
+                        <button class="btn btn-outline-secondary btn-sm w-100" onclick="showTranslationHistory()">
+                            <i class="fas fa-history"></i> 翻译历史
                         </button>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI问答结果面板 -->
+    <div class="translation-overlay" id="aiResultOverlay" onclick="closeAIResultPanel()"></div>
+    <div class="translation-panel" id="aiResultPanel">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5><i class="fas fa-robot"></i> AI回答</h5>
+            <button type="button" class="btn-close" onclick="closeAIResultPanel()"></button>
+        </div>
+        
+        <div class="mb-3" id="aiQuestionDisplay" style="display: none;">
+            <label class="form-label">问题</label>
+            <div class="form-control" id="displayedQuestion" style="background: #f8f9fa;"></div>
+        </div>
+        
+        <div class="mb-3" id="aiSelectedTextDisplay" style="display: none;">
+            <label class="form-label">选中文本</label>
+            <div class="form-control" id="displayedSelectedText" style="min-height: 60px; background: #f8f9fa;"></div>
+        </div>
+        
+        <div class="mb-3">
+            <label class="form-label">AI回答</label>
+            <div class="translation-result" id="aiAnswerText"></div>
+        </div>
+        
+        <div class="d-flex justify-content-between">
+            <small class="text-muted">
+                <span id="aiProcessingInfo"></span>
+            </small>
+            <div>
+                <button class="btn btn-outline-primary btn-sm" onclick="copyAIAnswer()">
+                    <i class="fas fa-copy"></i> 复制
+                </button>
+                <button class="btn btn-primary btn-sm" onclick="closeAIResultPanel()">
+                    关闭
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 翻译面板 -->
+    <div class="translation-overlay" id="translationOverlay" onclick="closeTranslationPanel()"></div>
+    <div class="translation-panel" id="translationPanel">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5><i class="fas fa-language"></i> 翻译结果</h5>
+            <button type="button" class="btn-close" onclick="closeTranslationPanel()"></button>
+        </div>
+        
+        <div class="mb-3">
+            <label class="form-label">原文</label>
+            <div class="form-control" id="originalText" style="min-height: 80px; background: #f8f9fa;"></div>
+        </div>
+        
+        <div class="mb-3">
+            <label class="form-label">译文</label>
+            <div class="translation-result" id="translatedText"></div>
+        </div>
+        
+        <div class="d-flex justify-content-between">
+            <small class="text-muted">
+                <span id="translationInfo"></span>
+            </small>
+            <div>
+                <button class="btn btn-outline-primary btn-sm" onclick="copyTranslation()">
+                    <i class="fas fa-copy"></i> 复制
+                </button>
+                <button class="btn btn-primary btn-sm" onclick="closeTranslationPanel()">
+                    关闭
+                </button>
             </div>
         </div>
     </div>
@@ -259,6 +474,10 @@
         let readingTimer;
         let speechSynthesis = window.speechSynthesis;
         let currentUtterance = null;
+        let selectedText = '';
+        let currentLine = 1;
+        let currentPage = 1;
+        let linesPerPage = 30;
         
         // 页面加载时初始化
         document.addEventListener('DOMContentLoaded', function() {
@@ -267,11 +486,14 @@
             
             // 监听文本选择
             document.addEventListener('mouseup', handleTextSelection);
+            
+            // 初始化翻译模式
+            updateTranslationMode();
         });
         
         // 开始阅读会话
         function startReadingSession() {
-            fetch(`/start-session/${bookId}/`, {
+            fetch(`/books/start-session/${bookId}/`, {
                 method: 'POST',
                 headers: {
                     'X-CSRFToken': getCookie('csrftoken')
@@ -302,7 +524,7 @@
                 clearInterval(readingTimer);
             }
             
-            fetch('/end-session/', {
+            fetch('/books/end-session/', {
                 method: 'POST',
                 headers: {
                     'X-CSRFToken': getCookie('csrftoken')
@@ -324,23 +546,41 @@
         }
         
         function goToChapter(chapterNumber) {
-            fetch(`/api/books/${bookId}/chapters/${chapterNumber}/`)
+            fetch(`/books/api/books/${bookId}/chapters/${chapterNumber}/`)
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
                         document.getElementById('chapterTitle').innerHTML = 
                             `<h3>${data.title || '第' + chapterNumber + '章'}</h3>`;
-                        document.getElementById('chapterContent').innerHTML = 
-                            data.content.replace(/\n/g, '<br>');
+                        
+                        // 重新格式化内容
+                        const formattedContent = formatBookContent(data.content);
+                        document.getElementById('chapterContent').innerHTML = formattedContent;
                         
                         currentChapter = parseInt(chapterNumber);
                         updateProgress();
-                        
-                        // 更新导航按钮状态
                         updateNavigationButtons();
+                        updateTranslationMode();
                     }
                 })
                 .catch(error => console.error('加载章节失败:', error));
+        }
+        
+        // 格式化书籍内容
+        function formatBookContent(content) {
+            const lines = content.split('\n');
+            let formattedLines = [];
+            
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (line) {
+                    formattedLines.push(`<p class="general-paragraph" data-line="${i + 1}">${line}</p>`);
+                } else {
+                    formattedLines.push('<br>');
+                }
+            }
+            
+            return `<div class="general-content">${formattedLines.join('')}</div>`;
         }
         
         // 更新导航按钮状态
@@ -348,15 +588,15 @@
             const prevBtn = document.querySelector('button[onclick="previousChapter()"]');
             const nextBtn = document.querySelector('button[onclick="nextChapter()"]');
             
-            prevBtn.disabled = currentChapter <= 1;
-            nextBtn.disabled = currentChapter >= totalChapters;
+            if (prevBtn) prevBtn.disabled = currentChapter <= 1;
+            if (nextBtn) nextBtn.disabled = currentChapter >= totalChapters;
         }
         
         // 更新阅读进度
         function updateProgress() {
             const progress = (currentChapter / totalChapters) * 100;
             
-            fetch(`/api/books/${bookId}/progress/`, {
+            fetch(`/books/api/books/${bookId}/progress/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -370,8 +610,10 @@
             });
             
             // 更新进度条
-            document.getElementById('progressBar').style.width = progress + '%';
-            document.getElementById('progressText').textContent = progress.toFixed(1) + '%';
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
+            if (progressBar) progressBar.style.width = progress + '%';
+            if (progressText) progressText.textContent = progress.toFixed(1) + '%';
         }
         
         // 字体大小调整
@@ -408,6 +650,159 @@
             speechSynthesis.cancel();
         }
         
+        // 文本选择处理
+        function handleTextSelection() {
+            const selection = window.getSelection();
+            if (selection.toString().length > 0) {
+                selectedText = selection.toString().trim();
+                
+                // 更新选中文本显示
+                const selectedTextInfo = document.getElementById('selectedTextInfo');
+                const selectedTextPreview = document.getElementById('selectedTextPreview');
+                
+                if (selectedTextInfo && selectedTextPreview) {
+                    selectedTextPreview.textContent = selectedText.length > 50 ? 
+                        selectedText.substring(0, 50) + '...' : selectedText;
+                    selectedTextInfo.style.display = 'block';
+                }
+                
+                // 更新翻译模式
+                updateTranslationMode();
+                
+                console.log('选中文本:', selectedText);
+            } else {
+                // 清除选择
+                selectedText = '';
+                const selectedTextInfo = document.getElementById('selectedTextInfo');
+                if (selectedTextInfo) {
+                    selectedTextInfo.style.display = 'none';
+                }
+                updateTranslationMode();
+            }
+        }
+        
+        // 更新翻译模式
+        function updateTranslationMode() {
+            const translationMode = document.getElementById('translationMode');
+            const translationInfo = document.getElementById('translationInfo');
+            
+            if (translationMode && translationInfo) {
+                if (selectedText) {
+                    translationMode.textContent = '选中文本';
+                    translationInfo.style.display = 'block';
+                } else {
+                    translationMode.textContent = '全文翻译';
+                    translationInfo.style.display = 'block';
+                }
+            }
+        }
+        
+        // AI问答功能
+        function askAIQuestion() {
+            const question = document.getElementById('aiQuestion').value.trim();
+            
+            if (!question) {
+                alert('请输入问题');
+                return;
+            }
+            
+            const btn = event.target;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 思考中...';
+            btn.disabled = true;
+            
+            const requestData = {
+                question: question,
+                chapter_number: currentChapter,
+                analysis_type: 'question'
+            };
+            
+            // 如果有选中文本，添加到请求中
+            if (selectedText) {
+                requestData.selected_text = selectedText;
+            }
+            
+            fetch(`/books/ai-analysis/${bookId}/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify(requestData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.result) {
+                    showAIResult(question, selectedText, data.result.answer || data.result.summary || '无法获取回答');
+                } else {
+                    alert('AI问答失败: ' + (data.error || '未知错误'));
+                }
+            })
+            .catch(error => {
+                console.error('AI问答失败:', error);
+                alert('AI问答失败，请稍后重试');
+            })
+            .finally(() => {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+                // 清空问题输入框
+                document.getElementById('aiQuestion').value = '';
+            });
+        }
+        
+        // 显示AI回答结果
+        function showAIResult(question, selectedText, answer) {
+            // 显示问题
+            const questionDisplay = document.getElementById('aiQuestionDisplay');
+            const displayedQuestion = document.getElementById('displayedQuestion');
+            if (questionDisplay && displayedQuestion) {
+                displayedQuestion.textContent = question;
+                questionDisplay.style.display = 'block';
+            }
+            
+            // 显示选中文本（如果有）
+            const selectedTextDisplay = document.getElementById('aiSelectedTextDisplay');
+            const displayedSelectedText = document.getElementById('displayedSelectedText');
+            if (selectedText && selectedTextDisplay && displayedSelectedText) {
+                displayedSelectedText.textContent = selectedText;
+                selectedTextDisplay.style.display = 'block';
+            } else if (selectedTextDisplay) {
+                selectedTextDisplay.style.display = 'none';
+            }
+            
+            // 显示AI回答
+            const aiAnswerText = document.getElementById('aiAnswerText');
+            if (aiAnswerText) {
+                aiAnswerText.textContent = answer;
+            }
+            
+            // 显示处理信息
+            const aiProcessingInfo = document.getElementById('aiProcessingInfo');
+            if (aiProcessingInfo) {
+                aiProcessingInfo.textContent = `处理时间: ${new Date().toLocaleTimeString()}`;
+            }
+            
+            // 显示面板
+            document.getElementById('aiResultOverlay').style.display = 'block';
+            document.getElementById('aiResultPanel').style.display = 'block';
+        }
+        
+        // 关闭AI结果面板
+        function closeAIResultPanel() {
+            document.getElementById('aiResultOverlay').style.display = 'none';
+            document.getElementById('aiResultPanel').style.display = 'none';
+        }
+        
+        // 复制AI回答
+        function copyAIAnswer() {
+            const aiAnswerText = document.getElementById('aiAnswerText').textContent;
+            navigator.clipboard.writeText(aiAnswerText).then(() => {
+                alert('AI回答已复制到剪贴板');
+            }).catch(err => {
+                console.error('复制失败:', err);
+            });
+        }
+        
         // AI总结功能
         function generateSummary() {
             const btn = event.target;
@@ -415,24 +810,25 @@
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 生成中...';
             btn.disabled = true;
             
-            fetch(`/${bookId}/summaries/create/`, {
+            fetch(`/books/smart-summary/${bookId}/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRFToken': getCookie('csrftoken')
                 },
                 body: JSON.stringify({
+                    summary_type: 'chapter',
                     chapter_number: currentChapter,
-                    summary_type: 'brief'
+                    summary_style: 'balanced'
                 })
             })
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    document.getElementById('summaryText').innerHTML = data.summary;
+                    document.getElementById('summaryText').innerHTML = data.summary || '生成总结失败';
                     document.getElementById('summaryContent').style.display = 'block';
                 } else {
-                    alert('生成总结失败: ' + data.message);
+                    alert('生成总结失败: ' + (data.error || '未知错误'));
                 }
             })
             .catch(error => {
@@ -451,23 +847,24 @@
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 生成中...';
             btn.disabled = true;
             
-            fetch(`/${bookId}/summaries/create/`, {
+            fetch(`/books/smart-summary/${bookId}/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRFToken': getCookie('csrftoken')
                 },
                 body: JSON.stringify({
-                    summary_type: 'overview'
+                    summary_type: 'book',
+                    summary_style: 'balanced'
                 })
             })
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    document.getElementById('summaryText').innerHTML = data.summary;
+                    document.getElementById('summaryText').innerHTML = data.summary || '生成概要失败';
                     document.getElementById('summaryContent').style.display = 'block';
                 } else {
-                    alert('生成概要失败: ' + data.message);
+                    alert('生成概要失败: ' + (data.error || '未知错误'));
                 }
             })
             .catch(error => {
@@ -480,49 +877,99 @@
             });
         }
         
-        // 文本选择处理
-        function handleTextSelection() {
-            const selection = window.getSelection();
-            if (selection.toString().length > 0) {
-                const selectedText = selection.toString();
-                // 可以在这里添加高亮或其他处理
-                console.log('选中文本:', selectedText);
+        // 翻译功能
+        function translateText() {
+            const targetLanguage = document.getElementById('targetLanguage').value;
+            
+            let textToTranslate = '';
+            let translationType = 'chapter';
+            
+            if (selectedText) {
+                textToTranslate = selectedText;
+                translationType = 'selection';
+            } else {
+                // 获取整章内容
+                textToTranslate = document.getElementById('chapterContent').textContent;
+                translationType = 'chapter';
             }
-        }
-        
-        // 保存笔记
-        function saveNote() {
-            const content = document.getElementById('noteContent').value.trim();
-            if (!content) {
-                alert('请输入笔记内容');
+            
+            if (!textToTranslate.trim()) {
+                alert('没有可翻译的内容');
                 return;
             }
             
-            fetch(`/api/books/${bookId}/notes/`, {
+            // 显示加载状态
+            showTranslationPanel();
+            document.getElementById('originalText').textContent = textToTranslate.length > 200 ? 
+                textToTranslate.substring(0, 200) + '...' : textToTranslate;
+            document.getElementById('translatedText').innerHTML = '<i class="fas fa-spinner fa-spin"></i> 正在翻译...';
+            
+            const requestData = {
+                text: textToTranslate,
+                target_language: targetLanguage,
+                source_language: 'auto',
+                translation_type: translationType,
+                chapter_number: currentChapter
+            };
+            
+            fetch(`/books/translate/${bookId}/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRFToken': getCookie('csrftoken')
                 },
-                body: JSON.stringify({
-                    book_id: bookId,
-                    content: content,
-                    chapter_number: currentChapter
-                })
+                body: JSON.stringify(requestData)
             })
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    alert('笔记保存成功');
-                    document.getElementById('noteContent').value = '';
+                    document.getElementById('originalText').textContent = data.original_text;
+                    document.getElementById('translatedText').textContent = data.translated_text;
+                    document.getElementById('translationInfo').textContent = 
+                        `${data.source_language} → ${data.target_language} | 置信度: ${(data.confidence * 100).toFixed(1)}%`;
                 } else {
-                    alert('保存失败: ' + data.error);
+                    document.getElementById('translatedText').innerHTML = 
+                        `<div class="alert alert-danger">${data.error}</div>`;
                 }
             })
             .catch(error => {
-                console.error('保存笔记失败:', error);
-                alert('保存笔记失败');
+                console.error('翻译失败:', error);
+                document.getElementById('translatedText').innerHTML = 
+                    '<div class="alert alert-danger">翻译失败，请稍后重试</div>';
             });
+        }
+        
+        function showTranslationPanel() {
+            document.getElementById('translationOverlay').style.display = 'block';
+            document.getElementById('translationPanel').style.display = 'block';
+        }
+        
+        function closeTranslationPanel() {
+            document.getElementById('translationOverlay').style.display = 'none';
+            document.getElementById('translationPanel').style.display = 'none';
+        }
+        
+        function copyTranslation() {
+            const translatedText = document.getElementById('translatedText').textContent;
+            navigator.clipboard.writeText(translatedText).then(() => {
+                alert('翻译结果已复制到剪贴板');
+            }).catch(err => {
+                console.error('复制失败:', err);
+            });
+        }
+        
+        function showTranslationHistory() {
+            fetch(`/books/translation-history/${bookId}/`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // 这里可以显示翻译历史，暂时用alert代替
+                        alert(`找到 ${data.history.length} 条翻译记录`);
+                    }
+                })
+                .catch(error => {
+                    console.error('获取翻译历史失败:', error);
+                });
         }
         
         // 获取CSRF token

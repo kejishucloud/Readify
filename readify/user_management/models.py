@@ -49,6 +49,7 @@ class UserPreferences(models.Model):
         ('google', 'Google语音'),
         ('baidu', '百度语音'),
         ('iflytek', '科大讯飞'),
+        ('chattts', 'ChatTTS'),
     ], verbose_name='语音引擎')
     voice_language = models.CharField(max_length=10, default='zh-CN', choices=[
         ('zh-CN', '中文(普通话)'),
@@ -63,6 +64,34 @@ class UserPreferences(models.Model):
     voice_volume = models.FloatField(default=1.0, verbose_name='音量大小')
     auto_read = models.BooleanField(default=False, verbose_name='自动朗读')
     auto_read_delay = models.IntegerField(default=3, verbose_name='自动朗读延迟(秒)')
+    
+    # ChatTTS 特定设置
+    chattts_speaker = models.CharField(max_length=50, default='default', verbose_name='ChatTTS说话人')
+    chattts_temperature = models.FloatField(default=0.3, verbose_name='ChatTTS温度参数')
+    chattts_top_p = models.FloatField(default=0.7, verbose_name='ChatTTS Top-P参数')
+    chattts_top_k = models.IntegerField(default=20, verbose_name='ChatTTS Top-K参数')
+    chattts_refine_text = models.BooleanField(default=True, verbose_name='ChatTTS文本优化')
+    chattts_oral = models.IntegerField(default=2, choices=[
+        (0, '书面语'),
+        (1, '轻微口语化'),
+        (2, '口语化'),
+        (3, '强烈口语化'),
+    ], verbose_name='ChatTTS口语化程度')
+    chattts_laugh = models.IntegerField(default=0, choices=[
+        (0, '无笑声'),
+        (1, '轻微笑声'),
+        (2, '适中笑声'),
+    ], verbose_name='ChatTTS笑声')
+    chattts_break = models.IntegerField(default=4, choices=[
+        (0, '无停顿'),
+        (1, '短停顿'),
+        (2, '中等停顿'),
+        (3, '长停顿'),
+        (4, '很长停顿'),
+        (5, '极长停顿'),
+        (6, '超长停顿'),
+        (7, '最长停顿'),
+    ], verbose_name='ChatTTS停顿')
     
     # 阅读设置
     reading_font_size = models.IntegerField(default=16, verbose_name='阅读字体大小')

@@ -399,7 +399,8 @@ class AIService:
                 prompt = f"请对以下文本进行全面分析，包括主题、结构、风格等方面：\n\n{text}"
             
             messages = [{"role": "user", "content": prompt}]
-            system_prompt = "你是一个专业的文本分析师，能够从多个角度深入分析文本内容。"
+            
+            system_prompt = "你是一个专业的文本分析助手，能够从多个角度深入分析文本内容。"
             
             result = self._make_api_request(messages, system_prompt)
             
@@ -414,8 +415,22 @@ class AIService:
                 return result
                 
         except Exception as e:
-            logger.error(f"文本分析失败: {str(e)}")
+            logger.error(f"分析文本失败: {str(e)}")
             return {'success': False, 'error': str(e)}
+    
+    def chat(self, messages: list, system_prompt: str = None) -> str:
+        """基本聊天功能"""
+        try:
+            result = self._make_api_request(messages, system_prompt)
+            
+            if result['success']:
+                return result['content']
+            else:
+                raise Exception(result.get('error', '未知错误'))
+                
+        except Exception as e:
+            logger.error(f"聊天请求失败: {str(e)}")
+            raise e
     
     def _get_book_content(self, book) -> str:
         """获取书籍内容"""
@@ -429,7 +444,7 @@ class AIService:
                 # 如果有章节内容，合并所有章节
                 content_parts = []
                 for chapter in chapters[:5]:  # 限制前5章
-                    content_parts.append(f"第{chapter.chapter_number}章 {chapter.title}\n{chapter.content}")
+                    content_parts.append(f"第{chapter.chapter_number}章 {chapter.chapter_title}\n{chapter.content}")
                 return "\n\n".join(content_parts)
             else:
                 # 如果没有章节内容，返回书籍描述

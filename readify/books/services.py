@@ -106,8 +106,10 @@ class BookProcessingService:
             
             # 提取文本内容
             content = self._extract_text_content(book)
+            
+            # 无论是否成功提取内容，都创建BookContent记录
             if content:
-                # 创建书籍内容记录
+                # 成功提取到内容
                 BookContent.objects.create(
                     book=book,
                     chapter_number=1,
@@ -115,10 +117,23 @@ class BookProcessingService:
                     content=content[:50000],  # 限制长度
                     word_count=len(content)
                 )
-                
                 book.word_count = len(content)
-                book.save()
+                book.processing_status = 'completed'
+            else:
+                # 提取失败，创建默认内容
+                default_content = f"抱歉，无法自动解析《{title}》的文本内容。\n\n可能的原因：\n1. 文件格式不支持自动解析\n2. 文件内容为图片或扫描版\n3. 文件已加密或损坏\n\n请尝试：\n- 转换为TXT格式后重新上传\n- 联系管理员获取帮助"
+                
+                BookContent.objects.create(
+                    book=book,
+                    chapter_number=1,
+                    chapter_title="内容解析说明",
+                    content=default_content,
+                    word_count=len(default_content)
+                )
+                book.word_count = len(default_content)
+                book.processing_status = 'failed'
             
+            book.save()
             return book
             
         except Exception as e:
@@ -250,6 +265,37 @@ class BookProcessingService:
         try:
             # 获取书籍内容
             content = self._get_book_text_for_classification(book)
+            
+            # 如果没有BookContent记录，尝试提取文本内容
+            if not BookContent.objects.filter(book=book).exists():
+                extracted_content = self._extract_text_content(book)
+                
+                if extracted_content:
+                    # 成功提取到内容，创建BookContent记录
+                    BookContent.objects.create(
+                        book=book,
+                        chapter_number=1,
+                        chapter_title="全文内容",
+                        content=extracted_content[:50000],  # 限制长度
+                        word_count=len(extracted_content)
+                    )
+                    book.word_count = len(extracted_content)
+                    content = extracted_content[:3000]  # 用于分类的内容
+                else:
+                    # 提取失败，创建默认内容
+                    default_content = f"抱歉，无法自动解析《{book.title}》的文本内容。\n\n可能的原因：\n1. 文件格式不支持自动解析\n2. 文件内容为图片或扫描版\n3. 文件已加密或损坏\n\n请尝试：\n- 转换为TXT格式后重新上传\n- 联系管理员获取帮助"
+                    
+                    BookContent.objects.create(
+                        book=book,
+                        chapter_number=1,
+                        chapter_title="内容解析说明",
+                        content=default_content,
+                        word_count=len(default_content)
+                    )
+                    book.word_count = len(default_content)
+                    # 对于无法解析的文件，仍然使用基本信息进行分类
+                    content = f"书名：{book.title}\n作者：{book.author or '未知'}\n描述：{book.description or '无描述'}"
+            
             if not content:
                 return {'success': False, 'error': '无法获取书籍内容'}
             
@@ -665,7 +711,7 @@ class AISummaryService:
     
     @staticmethod
     def create_paragraph_summary(book, chapter_number, paragraph_start, paragraph_end, 
-                               original_text, summary_type='brief'):
+                               original_text, summary_type='brief', user=None):
         """创建段落总结"""
         from readify.ai_services.services import AIService
         
@@ -682,7 +728,30 @@ class AISummaryService:
         - 突出重点信息
         """
         
-        ai_response = AIService.generate_summary(prompt)
+        # 创建AI服务实例并调用
+        ai_service = AIService(user=user)
+        # 创建一个临时的书籍对象用于AI处理
+        temp_book = type('TempBook', (), {
+            'title': book.title,
+            'author': book.author,
+            'description': original_text,
+            'contents': type('Contents', (), {
+                'all': lambda: [type('Content', (), {
+                    'chapter_number': chapter_number,
+                    'title': f'第{chapter_number}章',
+                    'content': original_text
+                })()],
+                'filter': lambda **kwargs: type('QuerySet', (), {
+                    'order_by': lambda *args: [type('Content', (), {
+                        'chapter_number': chapter_number,
+                        'title': f'第{chapter_number}章',
+                        'content': original_text
+                    })()]
+                })()
+            })()
+        })()
+        
+        ai_response = ai_service.generate_summary(temp_book)
         
         summary = ParagraphSummary.objects.create(
             book=book,
@@ -705,97 +774,73 @@ class AISummaryService:
         # 获取书籍内容
         contents = book.contents.all().order_by('chapter_number')
         
+        # 创建AI服务实例
+        ai_service = AIService(user=user)
+        
         if summary_type == 'overview':
-            # 概览总结
-            full_text = '\n\n'.join([content.content for content in contents[:5]])  # 前5章
-            prompt = f"""
-            请为《{book.title}》这本书写一个概览总结。
-            
-            书籍信息：
-            - 作者：{book.author}
-            - 描述：{book.description}
-            
-            部分内容：
-            {full_text[:5000]}...
-            
-            要求：
-            1. 总结书籍的主要内容和观点
-            2. 提取核心主题和关键信息
-            3. 分析书籍的价值和意义
-            4. 字数控制在500-800字
-            """
+            # 概览总结 - 直接使用书籍对象
+            ai_response = ai_service.generate_summary(book)
             
         elif summary_type == 'chapter_wise':
             # 分章总结
             chapter_summaries = []
             for content in contents:
-                chapter_prompt = f"""
-                请总结第{content.chapter_number}章的主要内容：
+                # 为每章创建临时书籍对象
+                temp_book = type('TempBook', (), {
+                    'title': f"{book.title} - 第{content.chapter_number}章",
+                    'author': book.author,
+                    'description': content.chapter_title,
+                    'contents': type('Contents', (), {
+                        'all': lambda: [content],
+                        'filter': lambda **kwargs: type('QuerySet', (), {
+                            'order_by': lambda *args: [content]
+                        })()
+                    })()
+                })()
                 
-                章节标题：{content.chapter_title}
-                内容：{content.content[:2000]}...
-                
-                要求：简洁明了，突出重点，100-200字。
-                """
-                chapter_summary = AIService.generate_summary(chapter_prompt)
-                chapter_summaries.append(f"第{content.chapter_number}章：{chapter_summary.get('summary', '')}")
+                chapter_summary_result = ai_service.generate_summary(temp_book)
+                chapter_summaries.append(f"第{content.chapter_number}章：{chapter_summary_result.get('summary', '')}")
             
-            prompt = f"""
-            基于以下各章节总结，为《{book.title}》生成完整的分章总结：
-            
-            {chr(10).join(chapter_summaries)}
-            
-            要求：
-            1. 整合各章节内容
-            2. 突出章节间的逻辑关系
-            3. 提供整体结构分析
-            """
+            # 合并所有章节总结
+            combined_summary = '\n\n'.join(chapter_summaries)
+            ai_response = {
+                'success': True,
+                'summary': combined_summary,
+                'model': 'combined'
+            }
         
         elif summary_type == 'thematic':
-            # 主题总结
-            full_text = '\n'.join([content.content for content in contents])
-            prompt = f"""
-            请对《{book.title}》进行主题分析和总结：
-            
-            内容：{full_text[:8000]}...
-            
-            要求：
-            1. 识别书籍的主要主题
-            2. 分析各主题的内容和观点
-            3. 探讨主题间的关联性
-            4. 提供深度见解
-            """
+            # 主题总结 - 直接使用书籍对象
+            ai_response = ai_service.generate_summary(book)
         
         elif summary_type == 'key_insights':
-            # 核心洞察
-            full_text = '\n'.join([content.content for content in contents])
-            prompt = f"""
-            请提取《{book.title}》的核心洞察和要点：
-            
-            内容：{full_text[:8000]}...
-            
-            要求：
-            1. 提取最重要的观点和结论
-            2. 分析作者的核心思想
-            3. 总结可行动的建议
-            4. 突出独特见解
-            """
+            # 核心洞察 - 直接使用书籍对象
+            ai_response = ai_service.generate_summary(book)
         
-        # 调用AI服务
-        ai_response = AIService.generate_summary(prompt)
+        # 提取关键要点和主题（简化处理）
+        summary_text = ai_response.get('summary', '')
+        key_points = []
+        themes = []
         
-        # 提取关键要点和主题
-        key_points = AIService.extract_key_points(ai_response.get('summary', ''))
-        themes = AIService.extract_themes(ai_response.get('summary', ''))
+        # 简单的关键要点提取
+        lines = summary_text.split('\n')
+        for line in lines:
+            line = line.strip()
+            if line.startswith(('1.', '2.', '3.', '4.', '5.', '-', '•')):
+                key_points.append(line.lstrip('12345.-• ').strip())
+        
+        # 如果没有找到要点，创建默认要点
+        if not key_points:
+            key_points = [summary_text[:100] + '...' if len(summary_text) > 100 else summary_text]
         
         summary = BookSummary.objects.create(
             book=book,
             summary_type=summary_type,
             title=f"《{book.title}》{dict(BookSummary.SUMMARY_TYPES)[summary_type]}",
-            content=ai_response.get('summary', ''),
+            content=summary_text,
             key_points=key_points,
             themes=themes,
-            word_count=len(ai_response.get('summary', '')),
+            word_count=len(summary_text),
             ai_model_used=ai_response.get('model', ''),
             created_by=user
         )

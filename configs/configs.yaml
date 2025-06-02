@@ -32,16 +32,16 @@ DEV:
     username: ''
     password: ''
   llm:
-    base_url: ''
-    model_id: ''
-    key: ''
+    base_url: 'http://serving-soagrp-656.cd001-2176.idc-2.saas.gzzsy.com.cn/v1'
+    model_id: 'Qwen3-30B-A3B'
+    key: '90a07e44-8cb3-4e83-bb92-056e271b0307'
   embedding:
-    base_url: ''
-    model_id: ''
+    base_url: 'http://container-xv73xx-3080-8082.cd001-2176.idc-2.saas.gzzsy.com.cn/v1'
+    model_id: 'embedding'
     key: ''
   reranker:
-    base_url: ''
-    model_id: ''
+    base_url: 'http://container-xv73xx-3080-8081.cd001-2176.idc-2.saas.gzzsy.com.cn/v1'
+    model_id: 'bge-reranker-v2-m3'
     key: ''
 
   service:

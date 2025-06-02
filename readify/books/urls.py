@@ -67,4 +67,19 @@ urlpatterns = [
     path('<int:book_id>/summaries/', views.book_summaries, name='book_summaries'),
     path('<int:book_id>/summaries/create/', views.create_book_summary, name='create_book_summary'),
     path('summaries/paragraph/create/', views.create_paragraph_summary, name='create_paragraph_summary'),
+    
+    # 阅读相关
+    path('read/<int:book_id>/', views.book_read, name='book_read'),
+    path('smart-reader/<int:book_id>/', views.smart_reader, name='smart_reader'),
+    
+    # AI助手功能
+    path('ai-analysis/<int:book_id>/', views.ai_text_analysis, name='ai_text_analysis'),
+    path('smart-summary/<int:book_id>/', views.generate_smart_summary, name='generate_smart_summary'),
+    path('update-reading-time/<int:book_id>/', views.update_reading_time, name='update_reading_time'),
+    path('reading-analytics/<int:book_id>/', views.get_reading_analytics, name='get_reading_analytics'),
+    
+    # 翻译功能
+    path('translate/<int:book_id>/', views.translate_text_selection, name='translate_text_selection'),
+    path('translation-languages/', views.get_translation_languages, name='get_translation_languages'),
+    path('translation-history/<int:book_id>/', views.get_translation_history, name='get_translation_history'),
 ] 
