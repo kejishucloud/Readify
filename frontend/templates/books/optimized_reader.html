@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>优化阅读器 - {{ book.title }} - Readify</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- EPUB.js for EPUB rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.93/dist/epub.min.js"></script>
+    
+    <!-- PDF.js for PDF rendering -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    
+    <style>
+        .optimized-reader {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .reader-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 1000;
+        }
+        
+        .reader-body {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+        
+        .reader-sidebar {
+            width: 300px;
+            background: #f8f9fa;
+            border-right: 1px solid #dee2e6;
+            overflow-y: auto;
+            transition: transform 0.3s ease;
+        }
+        
+        .reader-sidebar.collapsed {
+            transform: translateX(-100%);
+        }
+        
+        .reader-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: white;
+        }
+        
+        .content-toolbar {
+            padding: 10px 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .content-area {
+            flex: 1;
+            padding: 30px;
+            overflow-y: auto;
+            line-height: 1.8;
+            font-size: 16px;
+            font-family: 'Microsoft YaHei', 'PingFang SC', 'Hiragino Sans GB', sans-serif;
+        }
+        
+        /* 不同渲染器的样式 */
+        .epub-content {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .pdf-content {
+            text-align: center;
+        }
+        
+        .pdf-content img {
+            max-width: 100%;
+            height: auto;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        .text-content p {
+            margin-bottom: 1.2em;
+            text-indent: 2em;
+        }
+        
+        .fb2-content p {
+            margin-bottom: 1em;
+            text-indent: 2em;
+        }
+        
+        .markdown-content {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        
+        .markdown-content h1, .markdown-content h2, .markdown-content h3 {
+            margin-top: 2em;
+            margin-bottom: 1em;
+            color: #333;
+        }
+        
+        .markdown-content pre {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        
+        .toc-item {
+            padding: 8px 15px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+            transition: background-color 0.2s;
+        }
+        
+        .toc-item:hover {
+            background-color: #e9ecef;
+        }
+        
+        .toc-item.active {
+            background-color: #007bff;
+            color: white;
+        }
+        
+        .renderer-info {
+            background: #e3f2fd;
+            border: 1px solid #bbdefb;
+            border-radius: 5px;
+            padding: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .renderer-info .badge {
+            margin-right: 5px;
+        }
+        
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        
+        .error-message {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        
+        @media (max-width: 768px) {
+            .reader-sidebar {
+                position: absolute;
+                top: 0;
+                left: 0;
+                height: 100%;
+                z-index: 999;
+            }
+            
+            .content-area {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="optimized-reader">
+        <!-- 阅读器头部 -->
+        <div class="reader-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center">
+                    <button class="btn btn-outline-light btn-sm me-3" id="toggleSidebar">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <h5 class="mb-0">{{ book.title }}</h5>
+                    <span class="badge bg-light text-dark ms-2">{{ book.author|default:"未知作者" }}</span>
+                </div>
+                <div class="d-flex align-items-center">
+                    <span class="me-3">
+                        <i class="fas fa-book-open"></i> 
+                        第 {{ current_chapter }} 章
+                        {% if supports_pagination %}
+                        / 第 {{ current_page }} 页
+                        {% endif %}
+                    </span>
+                    <a href="{% url 'book_detail' book.id %}" class="btn btn-outline-light btn-sm">
+                        <i class="fas fa-arrow-left"></i> 返回
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 阅读器主体 -->
+        <div class="reader-body">
+            <!-- 侧边栏 -->
+            <div class="reader-sidebar" id="readerSidebar">
+                <!-- 渲染器信息 -->
+                <div class="p-3">
+                    <div class="renderer-info">
+                        <h6><i class="fas fa-cog"></i> 渲染引擎</h6>
+                        <div>
+                            <span class="badge bg-primary">{{ renderer_type|upper }}</span>
+                            {% if render_result.renderer_type == 'epub_webkit' %}
+                                <span class="badge bg-success">WebKit</span>
+                            {% elif render_result.renderer_type == 'pdf_mupdf' %}
+                                <span class="badge bg-warning">MuPDF</span>
+                            {% elif render_result.renderer_type == 'pdf_pypdf2' %}
+                                <span class="badge bg-secondary">PyPDF2</span>
+                            {% elif render_result.renderer_type == 'mobi_to_epub' %}
+                                <span class="badge bg-info">EPUB转换</span>
+                            {% elif render_result.renderer_type == 'fb2_xhtml' %}
+                                <span class="badge bg-dark">XHTML</span>
+                            {% endif %}
+                        </div>
+                        <small class="text-muted">
+                            格式: {{ book.format|upper }}
+                            {% if supports_pagination %}
+                            | 支持分页
+                            {% endif %}
+                        </small>
+                    </div>
+                </div>
+                
+                <!-- 目录 -->
+                <div class="p-3">
+                    <h6><i class="fas fa-list"></i> 目录</h6>
+                    <div id="tableOfContents">
+                        {% for item in table_of_contents %}
+                        <div class="toc-item {% if item.chapter_number == current_chapter %}active{% endif %}" 
+                             data-chapter="{{ item.chapter_number }}">
+                            <div class="fw-bold">第{{ item.chapter_number }}章</div>
+                            <div class="text-muted small">{{ item.title }}</div>
+                        </div>
+                        {% empty %}
+                        <div class="text-muted">暂无目录信息</div>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <!-- 元数据 -->
+                {% if metadata %}
+                <div class="p-3">
+                    <h6><i class="fas fa-info-circle"></i> 书籍信息</h6>
+                    <div class="small">
+                        {% for key, value in metadata.items %}
+                        {% if value %}
+                        <div class="mb-1">
+                            <strong>{{ key|title }}:</strong> {{ value }}
+                        </div>
+                        {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            
+            <!-- 内容区域 -->
+            <div class="reader-content">
+                <!-- 工具栏 -->
+                <div class="content-toolbar">
+                    <div class="d-flex align-items-center">
+                        <button class="btn btn-outline-secondary btn-sm me-2" id="prevChapter" 
+                                {% if current_chapter <= 1 %}disabled{% endif %}>
+                            <i class="fas fa-chevron-left"></i> 上一章
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm" id="nextChapter"
+                                {% if current_chapter >= render_result.total_chapters %}disabled{% endif %}>
+                            下一章 <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="d-flex align-items-center">
+                        <div class="me-3">
+                            <small class="text-muted">
+                                章节: {{ current_chapter }} / {{ render_result.total_chapters }}
+                            </small>
+                        </div>
+                        
+                        <!-- 字体大小控制 -->
+                        <div class="btn-group btn-group-sm me-2">
+                            <button class="btn btn-outline-secondary" id="decreaseFontSize">
+                                <i class="fas fa-minus"></i>
+                            </button>
+                            <button class="btn btn-outline-secondary" id="increaseFontSize">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                        
+                        <!-- 主题切换 -->
+                        <button class="btn btn-outline-secondary btn-sm" id="toggleTheme">
+                            <i class="fas fa-moon"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 内容显示区域 -->
+                <div class="content-area" id="contentArea">
+                    {% if render_result.error %}
+                    <div class="error-message">
+                        <h5><i class="fas fa-exclamation-triangle"></i> 渲染错误</h5>
+                        <p>{{ render_result.error }}</p>
+                        <button class="btn btn-primary" onclick="location.reload()">重新加载</button>
+                    </div>
+                    {% else %}
+                    <div class="chapter-title mb-4">
+                        <h3>{{ render_result.chapter_title|default:"章节内容" }}</h3>
+                    </div>
+                    
+                    <div class="chapter-content {{ render_result.renderer_type }}-content">
+                        {% if render_result.page_image %}
+                        <!-- PDF图片渲染 -->
+                        <img src="data:image/png;base64,{{ render_result.page_image|b64encode }}" 
+                             alt="PDF页面" class="img-fluid">
+                        {% else %}
+                        <!-- HTML内容渲染 -->
+                        {{ render_result.content|safe }}
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <!-- 加载遮罩 -->
+                <div class="loading-overlay d-none" id="loadingOverlay">
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">加载中...</span>
+                        </div>
+                        <div class="mt-2">正在渲染内容...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        class OptimizedBookReader {
+            constructor() {
+                this.bookId = {{ book.id }};
+                this.currentChapter = {{ current_chapter }};
+                this.currentPage = {{ current_page }};
+                this.totalChapters = {{ render_result.total_chapters }};
+                this.supportsPagination = {{ supports_pagination|yesno:"true,false" }};
+                this.rendererType = '{{ render_result.renderer_type }}';
+                
+                this.initializeEventListeners();
+                this.initializeTheme();
+            }
+            
+            initializeEventListeners() {
+                // 侧边栏切换
+                document.getElementById('toggleSidebar').addEventListener('click', () => {
+                    const sidebar = document.getElementById('readerSidebar');
+                    sidebar.classList.toggle('collapsed');
+                });
+                
+                // 章节导航
+                document.getElementById('prevChapter').addEventListener('click', () => {
+                    this.navigateToChapter(this.currentChapter - 1);
+                });
+                
+                document.getElementById('nextChapter').addEventListener('click', () => {
+                    this.navigateToChapter(this.currentChapter + 1);
+                });
+                
+                // 目录点击
+                document.querySelectorAll('.toc-item').forEach(item => {
+                    item.addEventListener('click', () => {
+                        const chapter = parseInt(item.dataset.chapter);
+                        this.navigateToChapter(chapter);
+                    });
+                });
+                
+                // 字体大小控制
+                document.getElementById('increaseFontSize').addEventListener('click', () => {
+                    this.adjustFontSize(2);
+                });
+                
+                document.getElementById('decreaseFontSize').addEventListener('click', () => {
+                    this.adjustFontSize(-2);
+                });
+                
+                // 主题切换
+                document.getElementById('toggleTheme').addEventListener('click', () => {
+                    this.toggleTheme();
+                });
+                
+                // 键盘快捷键
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'ArrowLeft' && this.currentChapter > 1) {
+                        this.navigateToChapter(this.currentChapter - 1);
+                    } else if (e.key === 'ArrowRight' && this.currentChapter < this.totalChapters) {
+                        this.navigateToChapter(this.currentChapter + 1);
+                    }
+                });
+            }
+            
+            async navigateToChapter(chapterNumber) {
+                if (chapterNumber < 1 || chapterNumber > this.totalChapters) {
+                    return;
+                }
+                
+                this.showLoading();
+                
+                try {
+                    const response = await fetch(`/books/${this.bookId}/optimized-content/?chapter=${chapterNumber}&page=1`);
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        this.updateContent(data.data);
+                        this.currentChapter = chapterNumber;
+                        this.updateNavigation();
+                        this.updateTOC();
+                        this.updateURL();
+                    } else {
+                        this.showError(data.error);
+                    }
+                } catch (error) {
+                    this.showError('加载章节失败: ' + error.message);
+                } finally {
+                    this.hideLoading();
+                }
+            }
+            
+            updateContent(renderResult) {
+                const contentArea = document.getElementById('contentArea');
+                
+                if (renderResult.error) {
+                    contentArea.innerHTML = `
+                        <div class="error-message">
+                            <h5><i class="fas fa-exclamation-triangle"></i> 渲染错误</h5>
+                            <p>${renderResult.error}</p>
+                            <button class="btn btn-primary" onclick="location.reload()">重新加载</button>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                let contentHtml = `
+                    <div class="chapter-title mb-4">
+                        <h3>${renderResult.chapter_title || '章节内容'}</h3>
+                    </div>
+                    <div class="chapter-content ${renderResult.renderer_type}-content">
+                `;
+                
+                if (renderResult.page_image) {
+                    contentHtml += `<img src="data:image/png;base64,${renderResult.page_image}" alt="PDF页面" class="img-fluid">`;
+                } else {
+                    contentHtml += renderResult.content;
+                }
+                
+                contentHtml += '</div>';
+                contentArea.innerHTML = contentHtml;
+            }
+            
+            updateNavigation() {
+                const prevBtn = document.getElementById('prevChapter');
+                const nextBtn = document.getElementById('nextChapter');
+                
+                prevBtn.disabled = this.currentChapter <= 1;
+                nextBtn.disabled = this.currentChapter >= this.totalChapters;
+            }
+            
+            updateTOC() {
+                document.querySelectorAll('.toc-item').forEach(item => {
+                    const chapter = parseInt(item.dataset.chapter);
+                    item.classList.toggle('active', chapter === this.currentChapter);
+                });
+            }
+            
+            updateURL() {
+                const url = new URL(window.location);
+                url.searchParams.set('chapter', this.currentChapter);
+                url.searchParams.set('page', this.currentPage);
+                window.history.pushState({}, '', url);
+            }
+            
+            adjustFontSize(delta) {
+                const contentArea = document.getElementById('contentArea');
+                const currentSize = parseInt(window.getComputedStyle(contentArea).fontSize);
+                const newSize = Math.max(12, Math.min(24, currentSize + delta));
+                contentArea.style.fontSize = newSize + 'px';
+                
+                localStorage.setItem('reader-font-size', newSize);
+            }
+            
+            initializeTheme() {
+                const savedTheme = localStorage.getItem('reader-theme') || 'light';
+                if (savedTheme === 'dark') {
+                    this.applyDarkTheme();
+                }
+            }
+            
+            toggleTheme() {
+                const isDark = document.body.classList.contains('dark-theme');
+                if (isDark) {
+                    this.applyLightTheme();
+                    localStorage.setItem('reader-theme', 'light');
+                } else {
+                    this.applyDarkTheme();
+                    localStorage.setItem('reader-theme', 'dark');
+                }
+            }
+            
+            applyDarkTheme() {
+                document.body.classList.add('dark-theme');
+                const style = document.createElement('style');
+                style.id = 'dark-theme-style';
+                style.textContent = `
+                    .dark-theme .reader-content { background: #1a1a1a; color: #e0e0e0; }
+                    .dark-theme .content-area { background: #1a1a1a; color: #e0e0e0; }
+                    .dark-theme .content-toolbar { background: #2d2d2d; border-color: #444; }
+                    .dark-theme .reader-sidebar { background: #2d2d2d; border-color: #444; }
+                    .dark-theme .toc-item { border-color: #444; }
+                    .dark-theme .toc-item:hover { background-color: #444; }
+                `;
+                document.head.appendChild(style);
+            }
+            
+            applyLightTheme() {
+                document.body.classList.remove('dark-theme');
+                const darkStyle = document.getElementById('dark-theme-style');
+                if (darkStyle) {
+                    darkStyle.remove();
+                }
+            }
+            
+            showLoading() {
+                document.getElementById('loadingOverlay').classList.remove('d-none');
+            }
+            
+            hideLoading() {
+                document.getElementById('loadingOverlay').classList.add('d-none');
+            }
+            
+            showError(message) {
+                console.error('Reader error:', message);
+                // 可以添加更好的错误显示
+            }
+        }
+        
+        // 初始化阅读器
+        document.addEventListener('DOMContentLoaded', () => {
+            new OptimizedBookReader();
+            
+            // 恢复字体大小设置
+            const savedFontSize = localStorage.getItem('reader-font-size');
+            if (savedFontSize) {
+                document.getElementById('contentArea').style.fontSize = savedFontSize + 'px';
+            }
+        });
+    </script>
+</body>
+</html> 
