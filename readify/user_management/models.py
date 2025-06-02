@@ -34,6 +34,17 @@ class UserPreferences(models.Model):
     user_timezone = models.CharField(max_length=50, default='Asia/Shanghai', verbose_name='时区')
     email_notifications = models.BooleanField(default=True, verbose_name='邮件通知')
     push_notifications = models.BooleanField(default=True, verbose_name='推送通知')
+    
+    # 语音设置
+    voice_enabled = models.BooleanField(default=True, verbose_name='启用语音功能')
+    voice_speed = models.FloatField(default=1.0, verbose_name='语音速度')
+    voice_type = models.CharField(max_length=20, default='female', choices=[
+        ('female', '女声'),
+        ('male', '男声'),
+        ('child', '童声')
+    ], verbose_name='语音类型')
+    auto_read = models.BooleanField(default=False, verbose_name='自动朗读')
+    
     created_at = models.DateTimeField(default=timezone.now, verbose_name='创建时间')
     updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
     

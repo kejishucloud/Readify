@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>阅读 - {{ book.title }} - Readify</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .reading-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .reading-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .reading-content {
+            display: flex;
+            gap: 20px;
+        }
+        
+        .main-content {
+            flex: 1;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            line-height: 1.8;
+            font-size: 16px;
+        }
+        
+        .sidebar {
+            width: 300px;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            height: fit-content;
+            position: sticky;
+            top: 20px;
+        }
+        
+        .progress-bar-container {
+            margin: 20px 0;
+        }
+        
+        .chapter-nav {
+            margin: 20px 0;
+        }
+        
+        .chapter-nav button {
+            margin: 5px;
+        }
+        
+        .reading-controls {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        .ai-summary {
+            margin-top: 20px;
+            padding: 15px;
+            background: #e3f2fd;
+            border-radius: 8px;
+            border-left: 4px solid #2196f3;
+        }
+        
+        .voice-controls {
+            margin: 15px 0;
+            padding: 10px;
+            background: #f0f8ff;
+            border-radius: 5px;
+        }
+        
+        .note-section {
+            margin-top: 20px;
+            padding: 15px;
+            background: #fff3e0;
+            border-radius: 8px;
+        }
+        
+        .selected-text {
+            background-color: yellow;
+            cursor: pointer;
+        }
+        
+        .reading-timer {
+            font-size: 14px;
+            color: #666;
+        }
+        
+        @media (max-width: 768px) {
+            .reading-content {
+                flex-direction: column;
+            }
+            .sidebar {
+                width: 100%;
+                position: static;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="reading-container">
+            <!-- 阅读头部 -->
+            <div class="reading-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h2>{{ book.title }}</h2>
+                        <p class="mb-0">作者: {{ book.author|default:"未知" }}</p>
+                    </div>
+                    <div class="text-end">
+                        <a href="{% url 'book_detail' book.id %}" class="btn btn-light">
+                            <i class="fas fa-arrow-left"></i> 返回详情
+                        </a>
+                        <a href="{% url 'home' %}" class="btn btn-outline-light">
+                            <i class="fas fa-home"></i> 主页
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- 进度条 -->
+                <div class="progress-bar-container">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>阅读进度</span>
+                        <span id="progressText">{{ progress.progress_percentage|floatformat:1 }}%</span>
+                    </div>
+                    <div class="progress">
+                        <div class="progress-bar" role="progressbar" 
+                             style="width: {{ progress.progress_percentage }}%" 
+                             id="progressBar"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="reading-content">
+                <!-- 主要内容区域 -->
+                <div class="main-content" id="mainContent">
+                    <div id="chapterTitle">
+                        <h3>{{ current_chapter.chapter_title|default:"第"|add:current_chapter.chapter_number|add:"章" }}</h3>
+                    </div>
+                    <div id="chapterContent">
+                        {{ current_chapter.content|linebreaks }}
+                    </div>
+                </div>
+                
+                <!-- 侧边栏 -->
+                <div class="sidebar">
+                    <!-- 阅读控制 -->
+                    <div class="reading-controls">
+                        <h6><i class="fas fa-cog"></i> 阅读控制</h6>
+                        
+                        <!-- 字体大小 -->
+                        <div class="mb-3">
+                            <label class="form-label">字体大小</label>
+                            <div class="btn-group w-100" role="group">
+                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="changeFontSize(-2)">小</button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="changeFontSize(0)">中</button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="changeFontSize(2)">大</button>
+                            </div>
+                        </div>
+                        
+                        <!-- 语音控制 -->
+                        <div class="voice-controls">
+                            <h6><i class="fas fa-volume-up"></i> 语音朗读</h6>
+                            <div class="d-flex gap-2 mb-2">
+                                <button class="btn btn-primary btn-sm" onclick="startReading()">
+                                    <i class="fas fa-play"></i> 开始
+                                </button>
+                                <button class="btn btn-secondary btn-sm" onclick="pauseReading()">
+                                    <i class="fas fa-pause"></i> 暂停
+                                </button>
+                                <button class="btn btn-danger btn-sm" onclick="stopReading()">
+                                    <i class="fas fa-stop"></i> 停止
+                                </button>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label">语速</label>
+                                <input type="range" class="form-range" min="0.5" max="2" step="0.1" value="1" id="speechRate">
+                            </div>
+                        </div>
+                        
+                        <!-- 阅读计时器 -->
+                        <div class="reading-timer">
+                            <i class="fas fa-clock"></i> 本次阅读: <span id="readingTime">00:00</span>
+                        </div>
+                    </div>
+                    
+                    <!-- 章节导航 -->
+                    <div class="chapter-nav">
+                        <h6><i class="fas fa-list"></i> 章节导航</h6>
+                        <div class="d-flex justify-content-between mb-2">
+                            <button class="btn btn-outline-primary btn-sm" onclick="previousChapter()" 
+                                    {% if progress.current_chapter <= 1 %}disabled{% endif %}>
+                                <i class="fas fa-chevron-left"></i> 上一章
+                            </button>
+                            <button class="btn btn-outline-primary btn-sm" onclick="nextChapter()"
+                                    {% if progress.current_chapter >= total_chapters %}disabled{% endif %}>
+                                下一章 <i class="fas fa-chevron-right"></i>
+                            </button>
+                        </div>
+                        <select class="form-select" id="chapterSelect" onchange="goToChapter(this.value)">
+                            {% for chapter in chapters %}
+                            <option value="{{ chapter.chapter_number }}" 
+                                    {% if chapter.chapter_number == progress.current_chapter %}selected{% endif %}>
+                                第{{ chapter.chapter_number }}章 - {{ chapter.chapter_title|default:"无标题" }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <!-- AI总结 -->
+                    <div class="ai-summary">
+                        <h6><i class="fas fa-robot"></i> AI助手</h6>
+                        <button class="btn btn-info btn-sm w-100 mb-2" onclick="generateSummary()">
+                            <i class="fas fa-magic"></i> 生成本章总结
+                        </button>
+                        <button class="btn btn-success btn-sm w-100 mb-2" onclick="generateBookSummary()">
+                            <i class="fas fa-book"></i> 生成全书概要
+                        </button>
+                        <div id="summaryContent" class="mt-2" style="display: none;">
+                            <div class="alert alert-info">
+                                <div id="summaryText"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 笔记功能 -->
+                    <div class="note-section">
+                        <h6><i class="fas fa-sticky-note"></i> 笔记</h6>
+                        <textarea class="form-control mb-2" id="noteContent" rows="3" 
+                                  placeholder="在这里记录你的想法..."></textarea>
+                        <button class="btn btn-warning btn-sm w-100" onclick="saveNote()">
+                            <i class="fas fa-save"></i> 保存笔记
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // 全局变量
+        let currentChapter = {{ progress.current_chapter }};
+        let totalChapters = {{ total_chapters }};
+        let bookId = {{ book.id }};
+        let readingStartTime = Date.now();
+        let readingTimer;
+        let speechSynthesis = window.speechSynthesis;
+        let currentUtterance = null;
+        
+        // 页面加载时初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            startReadingSession();
+            updateReadingTimer();
+            
+            // 监听文本选择
+            document.addEventListener('mouseup', handleTextSelection);
+        });
+        
+        // 开始阅读会话
+        function startReadingSession() {
+            fetch(`/start-session/${bookId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            });
+            
+            // 启动计时器
+            readingTimer = setInterval(updateReadingTimer, 1000);
+        }
+        
+        // 更新阅读计时器
+        function updateReadingTimer() {
+            const elapsed = Math.floor((Date.now() - readingStartTime) / 1000);
+            const minutes = Math.floor(elapsed / 60);
+            const seconds = elapsed % 60;
+            document.getElementById('readingTime').textContent = 
+                `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+        
+        // 页面卸载时结束会话
+        window.addEventListener('beforeunload', function() {
+            endReadingSession();
+        });
+        
+        // 结束阅读会话
+        function endReadingSession() {
+            if (readingTimer) {
+                clearInterval(readingTimer);
+            }
+            
+            fetch('/end-session/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            });
+        }
+        
+        // 章节导航
+        function previousChapter() {
+            if (currentChapter > 1) {
+                goToChapter(currentChapter - 1);
+            }
+        }
+        
+        function nextChapter() {
+            if (currentChapter < totalChapters) {
+                goToChapter(currentChapter + 1);
+            }
+        }
+        
+        function goToChapter(chapterNumber) {
+            fetch(`/api/books/${bookId}/chapters/${chapterNumber}/`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById('chapterTitle').innerHTML = 
+                            `<h3>${data.title || '第' + chapterNumber + '章'}</h3>`;
+                        document.getElementById('chapterContent').innerHTML = 
+                            data.content.replace(/\n/g, '<br>');
+                        
+                        currentChapter = parseInt(chapterNumber);
+                        updateProgress();
+                        
+                        // 更新导航按钮状态
+                        updateNavigationButtons();
+                    }
+                })
+                .catch(error => console.error('加载章节失败:', error));
+        }
+        
+        // 更新导航按钮状态
+        function updateNavigationButtons() {
+            const prevBtn = document.querySelector('button[onclick="previousChapter()"]');
+            const nextBtn = document.querySelector('button[onclick="nextChapter()"]');
+            
+            prevBtn.disabled = currentChapter <= 1;
+            nextBtn.disabled = currentChapter >= totalChapters;
+        }
+        
+        // 更新阅读进度
+        function updateProgress() {
+            const progress = (currentChapter / totalChapters) * 100;
+            
+            fetch(`/api/books/${bookId}/progress/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({
+                    book_id: bookId,
+                    chapter: currentChapter,
+                    progress: progress
+                })
+            });
+            
+            // 更新进度条
+            document.getElementById('progressBar').style.width = progress + '%';
+            document.getElementById('progressText').textContent = progress.toFixed(1) + '%';
+        }
+        
+        // 字体大小调整
+        function changeFontSize(change) {
+            const content = document.getElementById('mainContent');
+            const currentSize = parseInt(window.getComputedStyle(content).fontSize);
+            const newSize = change === 0 ? 16 : currentSize + change;
+            content.style.fontSize = newSize + 'px';
+        }
+        
+        // 语音朗读功能
+        function startReading() {
+            const content = document.getElementById('chapterContent').textContent;
+            const rate = document.getElementById('speechRate').value;
+            
+            if (speechSynthesis.speaking) {
+                speechSynthesis.cancel();
+            }
+            
+            currentUtterance = new SpeechSynthesisUtterance(content);
+            currentUtterance.rate = parseFloat(rate);
+            currentUtterance.lang = 'zh-CN';
+            
+            speechSynthesis.speak(currentUtterance);
+        }
+        
+        function pauseReading() {
+            if (speechSynthesis.speaking) {
+                speechSynthesis.pause();
+            }
+        }
+        
+        function stopReading() {
+            speechSynthesis.cancel();
+        }
+        
+        // AI总结功能
+        function generateSummary() {
+            const btn = event.target;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 生成中...';
+            btn.disabled = true;
+            
+            fetch(`/${bookId}/summaries/create/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({
+                    chapter_number: currentChapter,
+                    summary_type: 'brief'
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('summaryText').innerHTML = data.summary;
+                    document.getElementById('summaryContent').style.display = 'block';
+                } else {
+                    alert('生成总结失败: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('生成总结失败:', error);
+                alert('生成总结失败');
+            })
+            .finally(() => {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            });
+        }
+        
+        function generateBookSummary() {
+            const btn = event.target;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 生成中...';
+            btn.disabled = true;
+            
+            fetch(`/${bookId}/summaries/create/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({
+                    summary_type: 'overview'
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('summaryText').innerHTML = data.summary;
+                    document.getElementById('summaryContent').style.display = 'block';
+                } else {
+                    alert('生成概要失败: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('生成概要失败:', error);
+                alert('生成概要失败');
+            })
+            .finally(() => {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            });
+        }
+        
+        // 文本选择处理
+        function handleTextSelection() {
+            const selection = window.getSelection();
+            if (selection.toString().length > 0) {
+                const selectedText = selection.toString();
+                // 可以在这里添加高亮或其他处理
+                console.log('选中文本:', selectedText);
+            }
+        }
+        
+        // 保存笔记
+        function saveNote() {
+            const content = document.getElementById('noteContent').value.trim();
+            if (!content) {
+                alert('请输入笔记内容');
+                return;
+            }
+            
+            fetch(`/api/books/${bookId}/notes/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({
+                    book_id: bookId,
+                    content: content,
+                    chapter_number: currentChapter
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('笔记保存成功');
+                    document.getElementById('noteContent').value = '';
+                } else {
+                    alert('保存失败: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('保存笔记失败:', error);
+                alert('保存笔记失败');
+            });
+        }
+        
+        // 获取CSRF token
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+    </script>
+</body>
+</html> 

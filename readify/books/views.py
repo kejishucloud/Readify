@@ -212,6 +212,12 @@ def book_read(request, book_id):
     chapters = BookContent.objects.filter(book=book).order_by('chapter_number')
     current_chapter = chapters.filter(chapter_number=progress.current_chapter).first()
     
+    # 如果没有找到当前章节，使用第一章
+    if not current_chapter and chapters.exists():
+        current_chapter = chapters.first()
+        progress.current_chapter = current_chapter.chapter_number
+        progress.save()
+    
     context = {
         'book': book,
         'progress': progress,
@@ -350,7 +356,7 @@ def get_chapter_content(request, book_id, chapter_number):
         return JsonResponse({
             'success': True,
             'content': chapter.content,
-            'title': chapter.title
+            'title': chapter.chapter_title or f'第{chapter_number}章'
         })
         
     except Exception as e:
@@ -359,11 +365,10 @@ def get_chapter_content(request, book_id, chapter_number):
 
 @login_required
 @require_http_methods(["POST"])
-def add_note(request):
+def add_note(request, book_id):
     """添加笔记API"""
     try:
         data = json.loads(request.body)
-        book_id = data.get('book_id')
         content = data.get('content', '')
         chapter_number = data.get('chapter_number', 1)
         
@@ -375,15 +380,18 @@ def add_note(request):
         note = BookNote.objects.create(
             user=request.user,
             book=book,
-            content=content,
-            chapter_number=chapter_number
+            note_content=content,
+            chapter_number=chapter_number,
+            selected_text='',  # 可以为空
+            position_start=0,
+            position_end=0
         )
         
         return JsonResponse({
             'success': True,
             'note': {
                 'id': note.id,
-                'content': note.content,
+                'content': note.note_content,
                 'chapter_number': note.chapter_number,
                 'created_at': note.created_at.isoformat()
             }

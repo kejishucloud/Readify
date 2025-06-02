@@ -44,37 +44,52 @@ def user_settings(request):
 
 
 @login_required
-@require_http_methods(["POST"])
+@require_http_methods(["GET", "POST"])
 def update_profile(request):
     """更新用户配置文件"""
-    try:
-        data = json.loads(request.body)
-        
-        profile, created = UserProfile.objects.get_or_create(user=request.user)
-        
-        # 更新字段
-        if 'bio' in data:
-            profile.bio = data['bio']
-        if 'location' in data:
-            profile.location = data['location']
-        if 'website' in data:
-            profile.website = data['website']
-        if 'birth_date' in data and data['birth_date']:
-            profile.birth_date = data['birth_date']
-        
-        profile.save()
-        
-        return JsonResponse({
-            'success': True,
-            'message': '配置文件更新成功'
-        })
-        
-    except Exception as e:
-        logger.error(f"更新用户配置文件失败: {str(e)}")
-        return JsonResponse({
-            'success': False,
-            'message': f'更新失败: {str(e)}'
-        }, status=500)
+    if request.method == 'GET':
+        # 显示个人资料页面
+        try:
+            profile, created = UserProfile.objects.get_or_create(user=request.user)
+            context = {
+                'profile': profile,
+                'user': request.user,
+            }
+            return render(request, 'user_management/profile.html', context)
+        except Exception as e:
+            logger.error(f"加载个人资料失败: {str(e)}")
+            messages.error(request, '加载个人资料失败')
+            return redirect('user_management:settings')
+    
+    elif request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            
+            profile, created = UserProfile.objects.get_or_create(user=request.user)
+            
+            # 更新字段
+            if 'bio' in data:
+                profile.bio = data['bio']
+            if 'location' in data:
+                profile.location = data['location']
+            if 'website' in data:
+                profile.website = data['website']
+            if 'birth_date' in data and data['birth_date']:
+                profile.birth_date = data['birth_date']
+            
+            profile.save()
+            
+            return JsonResponse({
+                'success': True,
+                'message': '配置文件更新成功'
+            })
+            
+        except Exception as e:
+            logger.error(f"更新用户配置文件失败: {str(e)}")
+            return JsonResponse({
+                'success': False,
+                'message': f'更新失败: {str(e)}'
+            }, status=500)
 
 
 @login_required
@@ -97,6 +112,16 @@ def update_preferences(request):
             preferences.email_notifications = data['email_notifications']
         if 'push_notifications' in data:
             preferences.push_notifications = data['push_notifications']
+        
+        # 语音设置
+        if 'voice_enabled' in data:
+            preferences.voice_enabled = data['voice_enabled']
+        if 'voice_speed' in data:
+            preferences.voice_speed = float(data['voice_speed'])
+        if 'voice_type' in data:
+            preferences.voice_type = data['voice_type']
+        if 'auto_read' in data:
+            preferences.auto_read = data['auto_read']
         
         preferences.save()
         

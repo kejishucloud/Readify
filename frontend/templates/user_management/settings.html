@@ -51,6 +51,16 @@
         <div class="settings-container">
             <h1 class="mb-4"><i class="fas fa-cog"></i> 用户设置</h1>
             
+            <!-- 导航按钮 -->
+            <div class="nav-buttons mb-4">
+                <a href="{% url 'home' %}" class="btn btn-outline-primary">
+                    <i class="fas fa-home"></i> 返回主页
+                </a>
+                <a href="{% url 'user_management:update_profile' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-user"></i> 个人资料
+                </a>
+            </div>
+            
             <!-- AI配置卡片 -->
             <div class="card settings-card">
                 <div class="card-header">
@@ -196,6 +206,55 @@
                                     <input type="checkbox" class="form-check-input" id="push_notifications" name="push_notifications">
                                     <label class="form-check-label" for="push_notifications">
                                         推送通知
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 语音设置 -->
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <h6><i class="fas fa-volume-up"></i> 语音设置</h6>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="voice_speed">语音速度</label>
+                                    <select class="form-control" id="voice_speed" name="voice_speed">
+                                        <option value="0.5">0.5x (很慢)</option>
+                                        <option value="0.75">0.75x (慢)</option>
+                                        <option value="1.0" selected>1.0x (正常)</option>
+                                        <option value="1.25">1.25x (快)</option>
+                                        <option value="1.5">1.5x (很快)</option>
+                                        <option value="2.0">2.0x (极快)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="voice_type">语音类型</label>
+                                    <select class="form-control" id="voice_type" name="voice_type">
+                                        <option value="female">女声</option>
+                                        <option value="male">男声</option>
+                                        <option value="child">童声</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="auto_read" name="auto_read">
+                                    <label class="form-check-label" for="auto_read">
+                                        自动朗读
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="voice_enabled" name="voice_enabled">
+                                    <label class="form-check-label" for="voice_enabled">
+                                        启用语音功能
                                     </label>
                                 </div>
                             </div>
@@ -417,6 +476,8 @@
             const data = Object.fromEntries(formData.entries());
             data.email_notifications = document.getElementById('email_notifications').checked;
             data.push_notifications = document.getElementById('push_notifications').checked;
+            data.voice_enabled = document.getElementById('voice_enabled').checked;
+            data.auto_read = document.getElementById('auto_read').checked;
             
             fetch('/user/preferences/update/', {
                 method: 'POST',

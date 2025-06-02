@@ -18,7 +18,13 @@ class AIService:
     
     def __init__(self, user: User = None):
         self.user = user
-        self.config = self._get_user_config()
+        # 不在初始化时缓存配置，每次使用时重新获取
+        self._config = None
+    
+    @property
+    def config(self):
+        """动态获取配置，确保总是最新的"""
+        return self._get_user_config()
     
     def _get_user_config(self):
         """获取用户AI配置"""
@@ -36,6 +42,7 @@ class AIService:
         
         try:
             from readify.user_management.models import UserAIConfig
+            # 每次都重新查询数据库，确保获取最新配置
             user_config = UserAIConfig.objects.get(user=self.user, is_active=True)
             
             # 构建配置字典
@@ -53,7 +60,7 @@ class AIService:
             config['headers'] = user_config.get_headers()
             config['endpoint'] = user_config.get_chat_endpoint()
             
-            logger.info(f"使用用户自定义AI配置: {user_config.provider} - {user_config.model_id}")
+            logger.info(f"使用用户自定义AI配置: {user_config.provider} - {user_config.model_id} (ID: {user_config.id})")
             return config
             
         except UserAIConfig.DoesNotExist:
