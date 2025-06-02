@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth import login
+from django.contrib.auth import login, logout
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib import messages
 from django.http import JsonResponse
@@ -21,6 +21,44 @@ from readify.ai_services.services import AIService
 logger = logging.getLogger(__name__)
 
 
+def get_user_stats(user):
+    """获取用户统计数据的辅助函数"""
+    if not user.is_authenticated:
+        return {
+            'total_books': 0,
+            'categories_count': 0,
+            'total_views': 0,
+            'notes_count': 0,
+        }
+    
+    try:
+        user_books = Book.objects.filter(user=user)
+        
+        # 计算阅读时间，处理可能的None值
+        reading_progresses = ReadingProgress.objects.filter(user=user)
+        total_reading_time = 0
+        for progress in reading_progresses:
+            if hasattr(progress, 'reading_time') and progress.reading_time:
+                total_reading_time += progress.reading_time
+        
+        user_stats = {
+            'total_books': user_books.count(),
+            'categories_count': user_books.values('category').distinct().count(),
+            'total_views': sum([book.view_count for book in user_books if hasattr(book, 'view_count') and book.view_count]),
+            'notes_count': BookNote.objects.filter(user=user).count(),
+        }
+        
+        return user_stats
+    except Exception as e:
+        logger.error(f"获取用户统计数据失败: {str(e)}")
+        return {
+            'total_books': 0,
+            'categories_count': 0,
+            'total_views': 0,
+            'notes_count': 0,
+        }
+
+
 @login_required
 def user_settings(request):
     """用户设置页面"""
@@ -29,10 +67,14 @@ def user_settings(request):
         preferences, created = UserPreferences.objects.get_or_create(user=request.user)
         ai_config, created = UserAIConfig.objects.get_or_create(user=request.user)
         
+        # 获取用户统计数据
+        user_stats = get_user_stats(request.user)
+        
         context = {
             'profile': profile,
             'preferences': preferences,
             'ai_config': ai_config,
+            'user_stats': user_stats,
         }
         
         return render(request, 'user_management/settings.html', context)
@@ -52,22 +94,8 @@ def update_profile(request):
         try:
             profile, created = UserProfile.objects.get_or_create(user=request.user)
             
-            # 获取用户统计数据，与主页保持一致
-            user_books = Book.objects.filter(user=request.user)
-            
-            # 计算阅读时间，处理可能的None值
-            reading_progresses = ReadingProgress.objects.filter(user=request.user)
-            total_reading_time = 0
-            for progress in reading_progresses:
-                if hasattr(progress, 'reading_time') and progress.reading_time:
-                    total_reading_time += progress.reading_time
-            
-            user_stats = {
-                'total_books': user_books.count(),
-                'categories_count': user_books.values('category').distinct().count(),
-                'total_views': sum([book.view_count for book in user_books if hasattr(book, 'view_count') and book.view_count]),
-                'notes_count': BookNote.objects.filter(user=request.user).count(),
-            }
+            # 获取用户统计数据
+            user_stats = get_user_stats(request.user)
             
             context = {
                 'profile': profile,
@@ -198,57 +226,44 @@ def update_preferences(request):
 @login_required
 @require_http_methods(["GET", "POST"])
 def ai_config_view(request):
-    """AI配置视图"""
+    """AI配置管理"""
     if request.method == 'GET':
         try:
-            config, created = UserAIConfig.objects.get_or_create(user=request.user)
+            ai_config, created = UserAIConfig.objects.get_or_create(user=request.user)
             
-            return JsonResponse({
-                'success': True,
-                'config': {
-                    'provider': config.provider,
-                    'api_url': config.api_url,
-                    'model_id': config.model_id,
-                    'max_tokens': config.max_tokens,
-                    'temperature': config.temperature,
-                    'timeout': config.timeout,
-                    'is_active': config.is_active,
-                    'has_api_key': bool(config.api_key)  # 不返回实际密钥
-                }
-            })
+            context = {
+                'ai_config': ai_config,
+                'user_stats': get_user_stats(request.user),
+            }
+            
+            return render(request, 'user_management/ai_config.html', context)
             
         except Exception as e:
-            logger.error(f"获取AI配置失败: {str(e)}")
-            return JsonResponse({
-                'success': False,
-                'message': f'获取配置失败: {str(e)}'
-            }, status=500)
+            logger.error(f"加载AI配置失败: {str(e)}")
+            messages.error(request, '加载AI配置失败')
+            return redirect('user_management:settings')
     
     elif request.method == 'POST':
         try:
             data = json.loads(request.body)
             
-            config, created = UserAIConfig.objects.get_or_create(user=request.user)
+            ai_config, created = UserAIConfig.objects.get_or_create(user=request.user)
             
-            # 更新配置
-            if 'provider' in data:
-                config.provider = data['provider']
-            if 'api_url' in data:
-                config.api_url = data['api_url']
-            if 'api_key' in data and data['api_key']:  # 只有提供了新密钥才更新
-                config.api_key = data['api_key']
-            if 'model_id' in data:
-                config.model_id = data['model_id']
+            # 更新AI配置
+            if 'openai_api_key' in data:
+                ai_config.openai_api_key = data['openai_api_key']
+            if 'openai_model' in data:
+                ai_config.openai_model = data['openai_model']
+            if 'openai_base_url' in data:
+                ai_config.openai_base_url = data['openai_base_url']
             if 'max_tokens' in data:
-                config.max_tokens = int(data['max_tokens'])
+                ai_config.max_tokens = int(data['max_tokens'])
             if 'temperature' in data:
-                config.temperature = float(data['temperature'])
-            if 'timeout' in data:
-                config.timeout = int(data['timeout'])
-            if 'is_active' in data:
-                config.is_active = data['is_active']
+                ai_config.temperature = float(data['temperature'])
+            if 'enabled' in data:
+                ai_config.enabled = data['enabled']
             
-            config.save()
+            ai_config.save()
             
             return JsonResponse({
                 'success': True,
@@ -268,26 +283,28 @@ def ai_config_view(request):
 def test_ai_config_view(request):
     """测试AI配置"""
     try:
-        ai_service = AIService(user=request.user)
+        ai_config = UserAIConfig.objects.get(user=request.user)
         
-        # 发送测试请求
-        result = ai_service._make_api_request(
-            [{"role": "user", "content": "请回复'AI配置测试成功'"}],
-            "你是一个AI助手。"
-        )
-        
-        if result['success']:
-            return JsonResponse({
-                'success': True,
-                'message': 'AI配置测试成功',
-                'response': result['content']
-            })
-        else:
+        if not ai_config.enabled:
             return JsonResponse({
                 'success': False,
-                'message': f'配置测试失败: {result["error"]}'
-            }, status=500)
-            
+                'message': 'AI功能未启用'
+            })
+        
+        # 这里可以添加实际的AI测试逻辑
+        ai_service = AIService(ai_config)
+        test_result = ai_service.test_connection()
+        
+        return JsonResponse({
+            'success': test_result['success'],
+            'message': test_result['message']
+        })
+        
+    except UserAIConfig.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'message': 'AI配置不存在'
+        })
     except Exception as e:
         logger.error(f"测试AI配置失败: {str(e)}")
         return JsonResponse({
@@ -297,22 +314,14 @@ def test_ai_config_view(request):
 
 
 @login_required
-def get_user_stats(request):
-    """获取用户统计信息"""
+def get_user_stats_view(request):
+    """获取用户统计数据API"""
     try:
-        stats = {
-            'total_books': Book.objects.filter(user=request.user).count(),
-            'reading_progress': ReadingProgress.objects.filter(user=request.user).count(),
-            'ai_requests': AIRequest.objects.filter(user=request.user).count(),
-            'translation_requests': TranslationRequest.objects.filter(user=request.user).count(),
-            'tts_requests': ChatTTSRequest.objects.filter(user=request.user).count(),
-        }
-        
+        user_stats = get_user_stats(request.user)
         return JsonResponse({
             'success': True,
-            'stats': stats
+            'data': user_stats
         })
-        
     except Exception as e:
         logger.error(f"获取用户统计失败: {str(e)}")
         return JsonResponse({
@@ -322,16 +331,37 @@ def get_user_stats(request):
 
 
 def register(request):
-    """用户注册视图"""
+    """用户注册"""
     if request.method == 'POST':
         form = UserCreationForm(request.POST)
         if form.is_valid():
             user = form.save()
-            # 自动登录新用户
+            
+            # 创建用户配置文件
+            UserProfile.objects.create(user=user)
+            UserPreferences.objects.create(user=user)
+            UserAIConfig.objects.create(user=user)
+            
             login(request, user)
-            messages.success(request, '注册成功！欢迎使用Readify！')
+            messages.success(request, '注册成功！欢迎使用Readify')
             return redirect('home')
     else:
         form = UserCreationForm()
     
-    return render(request, 'registration/register.html', {'form': form}) 
+    return render(request, 'registration/register.html', {'form': form})
+
+
+@login_required
+def custom_logout(request):
+    """自定义退出登录视图，支持GET和POST请求"""
+    if request.method == 'GET':
+        # 对于GET请求，显示确认页面
+        return render(request, 'registration/logout_confirm.html')
+    elif request.method == 'POST':
+        # 对于POST请求，执行退出登录
+        logout(request)
+        messages.success(request, '您已成功退出登录')
+        return redirect('home')
+    
+    # 其他请求方法重定向到首页
+    return redirect('home') 

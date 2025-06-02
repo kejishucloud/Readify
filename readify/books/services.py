@@ -44,12 +44,18 @@ class BookProcessingService:
         successful_books = []
         errors = []
         
-        for file in files:
+        for i, file in enumerate(files):
             try:
+                logger.info(f"开始处理文件 {i+1}/{len(files)}: {file.name}")
+                
                 # 检查文件格式
                 if not self._is_supported_format(file.name):
-                    errors.append(f"不支持的文件格式: {file.name}")
+                    error_msg = f"不支持的文件格式: {file.name}"
+                    errors.append(error_msg)
+                    logger.warning(error_msg)
                     batch_upload.failed_files += 1
+                    batch_upload.processed_files += 1
+                    batch_upload.save()
                     continue
                 
                 # 处理单个文件
@@ -57,15 +63,22 @@ class BookProcessingService:
                 if book:
                     successful_books.append(book)
                     batch_upload.successful_files += 1
+                    logger.info(f"文件处理成功: {file.name} -> 书籍ID: {book.id}")
                 else:
                     batch_upload.failed_files += 1
+                    logger.warning(f"文件处理失败: {file.name}")
                 
                 batch_upload.processed_files += 1
                 batch_upload.save()
                 
+                # 每处理完一个文件，记录进度
+                progress_percentage = (batch_upload.processed_files / batch_upload.total_files) * 100
+                logger.info(f"批量上传进度: {batch_upload.processed_files}/{batch_upload.total_files} ({progress_percentage:.1f}%)")
+                
             except Exception as e:
-                logger.error(f"处理文件 {file.name} 失败: {str(e)}")
-                errors.append(f"处理文件 {file.name} 失败: {str(e)}")
+                error_msg = f"处理文件 {file.name} 失败: {str(e)}"
+                logger.error(error_msg, exc_info=True)
+                errors.append(error_msg)
                 batch_upload.failed_files += 1
                 batch_upload.processed_files += 1
                 batch_upload.save()
@@ -73,17 +86,22 @@ class BookProcessingService:
         # 更新批量上传状态
         if batch_upload.failed_files == 0:
             batch_upload.status = 'completed'
+            logger.info(f"批量上传完成: 全部 {batch_upload.successful_files} 个文件处理成功")
         elif batch_upload.successful_files == 0:
             batch_upload.status = 'failed'
+            logger.error(f"批量上传失败: 全部 {batch_upload.failed_files} 个文件处理失败")
         else:
             batch_upload.status = 'partial'
+            logger.warning(f"批量上传部分成功: 成功 {batch_upload.successful_files} 个，失败 {batch_upload.failed_files} 个")
         
         batch_upload.error_log = '\n'.join(errors)
         batch_upload.completed_at = timezone.now()
         batch_upload.save()
         
         # 异步处理AI分类
-        self._process_ai_classification_batch(successful_books)
+        if successful_books:
+            logger.info(f"开始AI分类处理，共 {len(successful_books)} 本书籍")
+            self._process_ai_classification_batch(successful_books)
         
         return batch_upload
     
@@ -456,7 +474,8 @@ class CategoryService:
         if user:
             query = query.filter(user=user)
         
-        stats = query.values('category__code', 'category__name').annotate(
+        # 只统计有分类的书籍，过滤掉category为None的记录
+        stats = query.filter(category__isnull=False).values('category__code', 'category__name').annotate(
             count=Count('id')
         ).order_by('-count')
         

@@ -10,6 +10,24 @@
         color: white;
         padding: 60px 0;
         margin-bottom: 40px;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .profile-hero::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="20" cy="20" r="2" fill="rgba(255,255,255,0.1)"/><circle cx="80" cy="40" r="1.5" fill="rgba(255,255,255,0.1)"/><circle cx="40" cy="80" r="1" fill="rgba(255,255,255,0.1)"/></svg>');
+        animation: float 20s infinite linear;
+    }
+    
+    @keyframes float {
+        0% { transform: translateY(0px) rotate(0deg); }
+        100% { transform: translateY(-100px) rotate(360deg); }
     }
     
     .profile-avatar {
@@ -24,11 +42,39 @@
         font-size: 48px;
         margin: 0 auto 20px;
         transition: all 0.3s ease;
+        cursor: pointer;
+        position: relative;
     }
     
     .profile-avatar:hover {
-        transform: scale(1.05);
+        transform: scale(1.05) rotate(5deg);
         background: rgba(255,255,255,0.3);
+        box-shadow: 0 0 30px rgba(255,255,255,0.4);
+    }
+    
+    .profile-avatar::after {
+        content: '\f044';
+        font-family: 'Font Awesome 6 Free';
+        font-weight: 900;
+        position: absolute;
+        bottom: 10px;
+        right: 10px;
+        background: #667eea;
+        color: white;
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        opacity: 0;
+        transition: all 0.3s ease;
+    }
+    
+    .profile-avatar:hover::after {
+        opacity: 1;
+        transform: scale(1.1);
     }
     
     .profile-card {
@@ -37,6 +83,18 @@
         border-radius: 15px;
         transition: all 0.3s ease;
         margin-bottom: 30px;
+        overflow: hidden;
+        position: relative;
+    }
+    
+    .profile-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 4px;
+        background: linear-gradient(90deg, #667eea, #764ba2);
     }
     
     .profile-card:hover {
@@ -51,22 +109,45 @@
         transition: all 0.3s ease;
         text-align: center;
         padding: 20px;
+        cursor: pointer;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 4px;
+        background: linear-gradient(90deg, #667eea, #764ba2);
     }
     
     .stat-card:hover {
-        transform: translateY(-5px);
+        transform: translateY(-5px) scale(1.02);
         box-shadow: 0 4px 20px rgba(0,0,0,0.15);
     }
     
     .stat-icon {
         font-size: 2.5rem;
         margin-bottom: 15px;
+        transition: all 0.3s ease;
+    }
+    
+    .stat-card:hover .stat-icon {
+        transform: scale(1.1) rotate(5deg);
     }
     
     .stat-number {
         font-size: 2rem;
         font-weight: bold;
         margin-bottom: 5px;
+        transition: all 0.3s ease;
+    }
+    
+    .stat-card:hover .stat-number {
+        transform: scale(1.1);
     }
     
     .section-title {
@@ -76,6 +157,22 @@
         padding-bottom: 10px;
         border-bottom: 3px solid #667eea;
         display: inline-block;
+        position: relative;
+    }
+    
+    .section-title::after {
+        content: '';
+        position: absolute;
+        bottom: -3px;
+        left: 0;
+        width: 0;
+        height: 3px;
+        background: #764ba2;
+        transition: width 0.3s ease;
+    }
+    
+    .section-title:hover::after {
+        width: 100%;
     }
     
     .form-card {
@@ -83,12 +180,18 @@
         box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         border-radius: 15px;
         padding: 30px;
+        transition: all 0.3s ease;
+    }
+    
+    .form-card:hover {
+        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
     }
     
     .form-label {
         font-weight: 600;
         color: #555;
         margin-bottom: 8px;
+        transition: all 0.3s ease;
     }
     
     .form-control, .form-select {
@@ -101,6 +204,7 @@
     .form-control:focus, .form-select:focus {
         border-color: #667eea;
         box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        transform: translateY(-2px);
     }
     
     .btn-primary {
@@ -153,6 +257,12 @@
     .breadcrumb-item a {
         color: white;
         text-decoration: none;
+        transition: all 0.3s ease;
+    }
+    
+    .breadcrumb-item a:hover {
+        color: #ffd700;
+        text-shadow: 0 0 10px rgba(255,215,0,0.5);
     }
     
     .breadcrumb-item.active {
@@ -173,11 +283,28 @@
         background: #f8f9fa;
         border-radius: 10px;
         transition: all 0.3s ease;
+        cursor: pointer;
+        position: relative;
     }
     
     .profile-info-item:hover {
         background: #e9ecef;
         transform: translateX(5px);
+    }
+    
+    .profile-info-item::after {
+        content: '\f044';
+        font-family: 'Font Awesome 6 Free';
+        font-weight: 900;
+        position: absolute;
+        right: 15px;
+        color: #667eea;
+        opacity: 0;
+        transition: all 0.3s ease;
+    }
+    
+    .profile-info-item:hover::after {
+        opacity: 1;
     }
     
     .profile-info-icon {
@@ -191,6 +318,183 @@
         justify-content: center;
         margin-right: 15px;
         font-size: 1.2rem;
+        transition: all 0.3s ease;
+    }
+    
+    .profile-info-item:hover .profile-info-icon {
+        transform: scale(1.1) rotate(5deg);
+    }
+    
+    .user-activity-card {
+        background: white;
+        border-radius: 15px;
+        padding: 25px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        margin-bottom: 30px;
+        transition: all 0.3s ease;
+    }
+    
+    .user-activity-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    }
+    
+    .activity-item {
+        display: flex;
+        align-items: center;
+        padding: 15px 0;
+        border-bottom: 1px solid #f0f0f0;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    
+    .activity-item:hover {
+        background: #f8f9fa;
+        transform: translateX(10px);
+        border-radius: 10px;
+        padding-left: 15px;
+    }
+    
+    .activity-item:last-child {
+        border-bottom: none;
+    }
+    
+    .activity-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 15px;
+        font-size: 1.2rem;
+        transition: all 0.3s ease;
+    }
+    
+    .activity-item:hover .activity-icon {
+        transform: scale(1.1);
+    }
+    
+    .activity-icon.read {
+        background: linear-gradient(135deg, #28a745, #20c997);
+        color: white;
+    }
+    
+    .activity-icon.upload {
+        background: linear-gradient(135deg, #007bff, #6610f2);
+        color: white;
+    }
+    
+    .activity-icon.note {
+        background: linear-gradient(135deg, #ffc107, #fd7e14);
+        color: white;
+    }
+    
+    .activity-icon.settings {
+        background: linear-gradient(135deg, #6c757d, #495057);
+        color: white;
+    }
+    
+    .user-badge {
+        display: inline-block;
+        padding: 6px 12px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        margin: 5px;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    
+    .user-badge:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 10px rgba(102, 126, 234, 0.3);
+    }
+    
+    .quick-edit-btn {
+        position: absolute;
+        top: 15px;
+        right: 15px;
+        background: rgba(102, 126, 234, 0.1);
+        border: none;
+        border-radius: 50%;
+        width: 35px;
+        height: 35px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #667eea;
+        transition: all 0.3s ease;
+        opacity: 0;
+    }
+    
+    .profile-card:hover .quick-edit-btn {
+        opacity: 1;
+    }
+    
+    .quick-edit-btn:hover {
+        background: #667eea;
+        color: white;
+        transform: scale(1.1);
+    }
+    
+    .user-status-online {
+        position: absolute;
+        bottom: 10px;
+        right: 10px;
+        width: 20px;
+        height: 20px;
+        background: #28a745;
+        border: 3px solid white;
+        border-radius: 50%;
+        animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.5; }
+        100% { opacity: 1; }
+    }
+    
+    .clickable-element {
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .clickable-element:hover {
+        color: #667eea !important;
+        transform: scale(1.05);
+    }
+    
+    .editable-field {
+        border: 2px dashed transparent;
+        padding: 5px;
+        border-radius: 5px;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    
+    .editable-field:hover {
+        border-color: #667eea;
+        background: rgba(102, 126, 234, 0.05);
+    }
+    
+    .user-interaction-hint {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: rgba(255,255,255,0.9);
+        color: #667eea;
+        padding: 5px 10px;
+        border-radius: 15px;
+        font-size: 0.8rem;
+        opacity: 0;
+        transition: all 0.3s ease;
+    }
+    
+    .stat-card:hover .user-interaction-hint {
+        opacity: 1;
     }
 </style>
 {% endblock %}
@@ -202,311 +506,520 @@
         <!-- 面包屑导航 -->
         <nav aria-label="breadcrumb">
             <ol class="breadcrumb">
-                <li class="breadcrumb-item"><a href="{% url 'home' %}"><i class="fas fa-home"></i> 首页</a></li>
-                <li class="breadcrumb-item"><a href="{% url 'user_management:settings' %}"><i class="fas fa-cog"></i> 设置</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'home' %}">首页</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'user_management:settings' %}">用户中心</a></li>
                 <li class="breadcrumb-item active">个人资料</li>
             </ol>
         </nav>
         
         <div class="row align-items-center">
-            <div class="col-lg-4 text-center">
-                <div class="profile-avatar">
-                    <i class="fas fa-user"></i>
+            <div class="col-md-3 text-center">
+                <div class="position-relative d-inline-block">
+                    <div class="profile-avatar clickable-element" onclick="editAvatar()">
+                        {{ user.username|first|upper }}
+                    </div>
+                    <div class="user-status-online"></div>
                 </div>
             </div>
-            <div class="col-lg-8">
-                <h1 class="display-5 fw-bold mb-3">{{ user.username }}</h1>
-                <p class="lead mb-3">
-                    <i class="fas fa-envelope me-2"></i>{{ user.email }}
+            <div class="col-md-6">
+                <h1 class="mb-3">
+                    <span class="editable-field clickable-element" onclick="editField('name')">
+                        {{ user.get_full_name|default:user.username }}
+                    </span>
+                </h1>
+                <p class="lead mb-2">
+                    <i class="fas fa-at"></i> 
+                    <span class="clickable-element">{{ user.username }}</span>
                 </p>
-                <p class="mb-4">
-                    <i class="fas fa-calendar-alt me-2"></i>
-                    加入时间: {{ user.date_joined|date:"Y年m月d日" }}
+                <p class="mb-2">
+                    <i class="fas fa-envelope"></i> 
+                    <span class="editable-field clickable-element" onclick="editField('email')">
+                        {{ user.email|default:"未设置邮箱" }}
+                    </span>
                 </p>
-                <div class="d-flex gap-3">
-                    <a href="{% url 'home' %}" class="btn btn-light btn-lg">
-                        <i class="fas fa-home"></i> 返回主页
-                    </a>
-                    <a href="{% url 'user_management:settings' %}" class="btn btn-outline-light btn-lg">
+                <p class="mb-2">
+                    <i class="fas fa-calendar"></i> 
+                    加入时间：{{ user.date_joined|date:"Y年m月d日" }}
+                </p>
+                <p class="mb-0">
+                    <i class="fas fa-clock"></i> 
+                    最后登录：{{ user.last_login|date:"Y年m月d日 H:i" }}
+                </p>
+                
+                <!-- 用户标签 -->
+                <div class="mt-3">
+                    <span class="user-badge">
+                        <i class="fas fa-star"></i> 活跃用户
+                    </span>
+                    <span class="user-badge">
+                        <i class="fas fa-book"></i> 阅读爱好者
+                    </span>
+                    <span class="user-badge">
+                        <i class="fas fa-brain"></i> 知识管理者
+                    </span>
+                </div>
+            </div>
+            <div class="col-md-3 text-center">
+                <div class="d-grid gap-2">
+                    <button class="btn btn-light" onclick="window.location.href='{% url 'user_management:settings' %}'">
                         <i class="fas fa-cog"></i> 设置
-                    </a>
+                    </button>
+                    <button class="btn btn-outline-light" onclick="editProfile()">
+                        <i class="fas fa-edit"></i> 编辑资料
+                    </button>
                 </div>
             </div>
         </div>
     </div>
 </section>
 
-<div class="container">
-    <!-- 用户统计卡片 -->
-    <div class="row mb-5">
-        <div class="col-12">
-            <h2 class="section-title">
-                <i class="fas fa-chart-bar text-primary"></i> 我的统计
-            </h2>
-        </div>
-        <div class="col-md-3 mb-4">
-            <div class="card stat-card">
-                <div class="card-body">
+<!-- 统计卡片 -->
+<section class="py-4">
+    <div class="container">
+        <div class="row">
+            <div class="col-md-3 mb-3">
+                <div class="stat-card" onclick="window.location.href='{% url 'book_list' %}'">
                     <i class="fas fa-book stat-icon text-primary"></i>
-                    <div class="stat-number text-primary">{{ user_stats.total_books|default:0 }}</div>
+                    <div class="stat-number text-primary">{{ user_stats.total_books }}</div>
                     <p class="text-muted mb-0">总书籍数</p>
+                    <div class="user-interaction-hint">点击查看书籍</div>
                 </div>
             </div>
-        </div>
-        <div class="col-md-3 mb-4">
-            <div class="card stat-card">
-                <div class="card-body">
+            <div class="col-md-3 mb-3">
+                <div class="stat-card" onclick="window.location.href='{% url 'category_list' %}'">
                     <i class="fas fa-tags stat-icon text-success"></i>
-                    <div class="stat-number text-success">{{ user_stats.categories_count|default:0 }}</div>
+                    <div class="stat-number text-success">{{ user_stats.categories_count }}</div>
                     <p class="text-muted mb-0">分类数量</p>
+                    <div class="user-interaction-hint">点击查看分类</div>
                 </div>
             </div>
-        </div>
-        <div class="col-md-3 mb-4">
-            <div class="card stat-card">
-                <div class="card-body">
+            <div class="col-md-3 mb-3">
+                <div class="stat-card" onclick="window.location.href='{% url 'reading_statistics' %}'">
                     <i class="fas fa-eye stat-icon text-info"></i>
-                    <div class="stat-number text-info">{{ user_stats.total_views|default:0 }}</div>
+                    <div class="stat-number text-info">{{ user_stats.total_views }}</div>
                     <p class="text-muted mb-0">总阅读次数</p>
+                    <div class="user-interaction-hint">点击查看统计</div>
                 </div>
             </div>
-        </div>
-        <div class="col-md-3 mb-4">
-            <div class="card stat-card">
-                <div class="card-body">
+            <div class="col-md-3 mb-3">
+                <div class="stat-card" onclick="showNotes()">
                     <i class="fas fa-sticky-note stat-icon text-warning"></i>
-                    <div class="stat-number text-warning">{{ user_stats.notes_count|default:0 }}</div>
+                    <div class="stat-number text-warning">{{ user_stats.notes_count }}</div>
                     <p class="text-muted mb-0">笔记数量</p>
+                    <div class="user-interaction-hint">点击查看笔记</div>
                 </div>
             </div>
         </div>
     </div>
+</section>
 
-    <div class="row">
-        <!-- 个人信息展示 -->
-        <div class="col-lg-4 mb-4">
-            <div class="card profile-card">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0">
-                        <i class="fas fa-user-circle"></i> 个人信息
-                    </h5>
+<!-- 主要内容 -->
+<section class="py-4">
+    <div class="container">
+        <div class="row">
+            <!-- 个人信息 -->
+            <div class="col-lg-8">
+                <div class="profile-card">
+                    <button class="quick-edit-btn" onclick="editProfile()">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <div class="card-body">
+                        <h3 class="section-title">
+                            <i class="fas fa-user text-primary"></i> 个人信息
+                        </h3>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="profile-info-item" onclick="editField('first_name')">
+                                    <div class="profile-info-icon">
+                                        <i class="fas fa-user"></i>
+                                    </div>
+                                    <div>
+                                        <strong>姓名</strong>
+                                        <br><span class="text-muted">{{ user.get_full_name|default:"未设置" }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="profile-info-item" onclick="editField('email')">
+                                    <div class="profile-info-icon">
+                                        <i class="fas fa-envelope"></i>
+                                    </div>
+                                    <div>
+                                        <strong>邮箱</strong>
+                                        <br><span class="text-muted">{{ user.email|default:"未设置" }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="profile-info-item" onclick="editField('bio')">
+                                    <div class="profile-info-icon">
+                                        <i class="fas fa-quote-left"></i>
+                                    </div>
+                                    <div>
+                                        <strong>个人简介</strong>
+                                        <br><span class="text-muted">{{ profile.bio|default:"这个人很懒，什么都没留下..." }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="profile-info-item" onclick="editField('location')">
+                                    <div class="profile-info-icon">
+                                        <i class="fas fa-map-marker-alt"></i>
+                                    </div>
+                                    <div>
+                                        <strong>所在地</strong>
+                                        <br><span class="text-muted">{{ profile.location|default:"未设置" }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="profile-info-item" onclick="editField('website')">
+                                    <div class="profile-info-icon">
+                                        <i class="fas fa-globe"></i>
+                                    </div>
+                                    <div>
+                                        <strong>个人网站</strong>
+                                        <br><span class="text-muted">{{ profile.website|default:"未设置" }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="profile-info-item" onclick="editField('birth_date')">
+                                    <div class="profile-info-icon">
+                                        <i class="fas fa-birthday-cake"></i>
+                                    </div>
+                                    <div>
+                                        <strong>生日</strong>
+                                        <br><span class="text-muted">{{ profile.birth_date|date:"Y年m月d日"|default:"未设置" }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <div class="profile-info-item">
-                        <div class="profile-info-icon">
-                            <i class="fas fa-user"></i>
-                        </div>
-                        <div>
-                            <strong>姓名</strong><br>
-                            <span class="text-muted">
-                                {% if user.first_name or user.last_name %}
-                                    {{ user.first_name }} {{ user.last_name }}
-                                {% else %}
-                                    未设置
-                                {% endif %}
-                            </span>
-                        </div>
-                    </div>
-                    
-                    <div class="profile-info-item">
-                        <div class="profile-info-icon">
-                            <i class="fas fa-map-marker-alt"></i>
-                        </div>
-                        <div>
-                            <strong>位置</strong><br>
-                            <span class="text-muted">{{ profile.location|default:"未设置" }}</span>
-                        </div>
-                    </div>
-                    
-                    <div class="profile-info-item">
-                        <div class="profile-info-icon">
-                            <i class="fas fa-globe"></i>
-                        </div>
-                        <div>
-                            <strong>个人网站</strong><br>
-                            {% if profile.website %}
-                                <a href="{{ profile.website }}" target="_blank" class="text-primary">{{ profile.website }}</a>
-                            {% else %}
-                                <span class="text-muted">未设置</span>
-                            {% endif %}
-                        </div>
-                    </div>
-                    
-                    <div class="profile-info-item">
-                        <div class="profile-info-icon">
-                            <i class="fas fa-birthday-cake"></i>
-                        </div>
-                        <div>
-                            <strong>出生日期</strong><br>
-                            <span class="text-muted">{{ profile.birth_date|date:"Y年m月d日"|default:"未设置" }}</span>
-                        </div>
-                    </div>
-                    
-                    {% if profile.bio %}
-                    <div class="profile-info-item">
-                        <div class="profile-info-icon">
-                            <i class="fas fa-quote-left"></i>
-                        </div>
-                        <div>
-                            <strong>个人简介</strong><br>
-                            <span class="text-muted">{{ profile.bio }}</span>
-                        </div>
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-
-        <!-- 编辑个人资料表单 -->
-        <div class="col-lg-8">
-            <div class="card form-card">
-                <h3 class="section-title">
-                    <i class="fas fa-edit text-primary"></i> 编辑个人资料
-                </h3>
                 
-                <form id="profileForm">
-                    {% csrf_token %}
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-group mb-3">
-                                <label for="first_name" class="form-label">
-                                    <i class="fas fa-user me-2"></i>名字
-                                </label>
-                                <input type="text" class="form-control" id="first_name" name="first_name" 
-                                       value="{{ user.first_name }}" placeholder="请输入名字">
+                <!-- 编辑表单 -->
+                <div class="form-card" id="editForm" style="display: none;">
+                    <h3 class="section-title">
+                        <i class="fas fa-edit text-primary"></i> 编辑个人信息
+                    </h3>
+                    
+                    <form id="profileForm">
+                        {% csrf_token %}
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">姓</label>
+                                <input type="text" class="form-control" name="first_name" value="{{ user.first_name }}">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">名</label>
+                                <input type="text" class="form-control" name="last_name" value="{{ user.last_name }}">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">邮箱</label>
+                                <input type="email" class="form-control" name="email" value="{{ user.email }}">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">所在地</label>
+                                <input type="text" class="form-control" name="location" value="{{ profile.location }}">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">个人网站</label>
+                                <input type="url" class="form-control" name="website" value="{{ profile.website }}">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">生日</label>
+                                <input type="date" class="form-control" name="birth_date" value="{{ profile.birth_date|date:'Y-m-d' }}">
+                            </div>
+                            <div class="col-12 mb-3">
+                                <label class="form-label">个人简介</label>
+                                <textarea class="form-control" name="bio" rows="3">{{ profile.bio }}</textarea>
                             </div>
                         </div>
-                        <div class="col-md-6">
-                            <div class="form-group mb-3">
-                                <label for="last_name" class="form-label">
-                                    <i class="fas fa-user me-2"></i>姓氏
-                                </label>
-                                <input type="text" class="form-control" id="last_name" name="last_name" 
-                                       value="{{ user.last_name }}" placeholder="请输入姓氏">
-                            </div>
+                        
+                        <div class="d-flex gap-3">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> 保存更改
+                            </button>
+                            <button type="button" class="btn btn-secondary" onclick="cancelEdit()">
+                                <i class="fas fa-times"></i> 取消
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- 用户活动 -->
+            <div class="col-lg-4">
+                <div class="user-activity-card">
+                    <h5 class="mb-3">
+                        <i class="fas fa-history text-success"></i> 最近活动
+                        <small class="text-muted">- 点击查看详情</small>
+                    </h5>
+                    
+                    <div class="activity-item" onclick="window.location.href='{% url 'book_list' %}'">
+                        <div class="activity-icon read">
+                            <i class="fas fa-book-open"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h6 class="mb-1">阅读了《Python编程从入门到实践》</h6>
+                            <small class="text-muted">2小时前</small>
                         </div>
                     </div>
                     
-                    <div class="form-group mb-3">
-                        <label for="bio" class="form-label">
-                            <i class="fas fa-quote-left me-2"></i>个人简介
-                        </label>
-                        <textarea class="form-control" id="bio" name="bio" rows="4" 
-                                  placeholder="介绍一下自己...">{{ profile.bio }}</textarea>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-group mb-3">
-                                <label for="location" class="form-label">
-                                    <i class="fas fa-map-marker-alt me-2"></i>位置
-                                </label>
-                                <input type="text" class="form-control" id="location" name="location" 
-                                       value="{{ profile.location }}" placeholder="例如: 北京, 中国">
-                            </div>
+                    <div class="activity-item" onclick="window.location.href='{% url 'batch_upload' %}'">
+                        <div class="activity-icon upload">
+                            <i class="fas fa-upload"></i>
                         </div>
-                        <div class="col-md-6">
-                            <div class="form-group mb-3">
-                                <label for="website" class="form-label">
-                                    <i class="fas fa-globe me-2"></i>个人网站
-                                </label>
-                                <input type="url" class="form-control" id="website" name="website" 
-                                       value="{{ profile.website }}" placeholder="https://example.com">
-                            </div>
+                        <div class="flex-grow-1">
+                            <h6 class="mb-1">上传了5本新书籍</h6>
+                            <small class="text-muted">1天前</small>
                         </div>
                     </div>
                     
-                    <div class="form-group mb-4">
-                        <label for="birth_date" class="form-label">
-                            <i class="fas fa-birthday-cake me-2"></i>出生日期
-                        </label>
-                        <input type="date" class="form-control" id="birth_date" name="birth_date" 
-                               value="{{ profile.birth_date|date:'Y-m-d' }}">
+                    <div class="activity-item" onclick="showNotes()">
+                        <div class="activity-icon note">
+                            <i class="fas fa-sticky-note"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h6 class="mb-1">添加了3条读书笔记</h6>
+                            <small class="text-muted">2天前</small>
+                        </div>
                     </div>
                     
-                    <div class="d-flex gap-3 justify-content-center">
-                        <button type="submit" class="btn btn-primary btn-lg">
-                            <i class="fas fa-save"></i> 保存更改
+                    <div class="activity-item" onclick="window.location.href='{% url 'user_management:settings' %}'">
+                        <div class="activity-icon settings">
+                            <i class="fas fa-cog"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h6 class="mb-1">更新了个人设置</h6>
+                            <small class="text-muted">3天前</small>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center mt-3">
+                        <button class="btn btn-outline-primary btn-sm" onclick="showAllActivities()">
+                            <i class="fas fa-history"></i> 查看完整活动记录
                         </button>
-                        <a href="{% url 'user_management:settings' %}" class="btn btn-secondary btn-lg">
-                            <i class="fas fa-arrow-left"></i> 返回设置
-                        </a>
                     </div>
-                    
-                    <div id="profileAlert" class="mt-4"></div>
-                </form>
+                </div>
+                
+                <!-- 快速操作 -->
+                <div class="profile-card">
+                    <div class="card-body">
+                        <h5 class="mb-3">
+                            <i class="fas fa-bolt text-warning"></i> 快速操作
+                        </h5>
+                        
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-outline-primary" onclick="window.location.href='{% url 'book_upload' %}'">
+                                <i class="fas fa-upload"></i> 上传新书籍
+                            </button>
+                            <button class="btn btn-outline-success" onclick="window.location.href='{% url 'batch_upload' %}'">
+                                <i class="fas fa-cloud-upload-alt"></i> 批量上传
+                            </button>
+                            <button class="btn btn-outline-info" onclick="window.location.href='{% url 'reading_statistics' %}'">
+                                <i class="fas fa-chart-bar"></i> 阅读统计
+                            </button>
+                            <button class="btn btn-outline-warning" onclick="exportData()">
+                                <i class="fas fa-download"></i> 导出数据
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
-</div>
+</section>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-    document.getElementById('profileForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        const formData = new FormData(e.target);
-        const data = Object.fromEntries(formData.entries());
-        
-        // 显示加载状态
-        const submitBtn = e.target.querySelector('button[type="submit"]');
-        const originalText = submitBtn.innerHTML;
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 保存中...';
-        submitBtn.disabled = true;
-        
-        fetch('/user/profile/update/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCookie('csrftoken')
-            },
-            body: JSON.stringify(data)
-        })
-        .then(response => response.json())
-        .then(data => {
-            showAlert(data.message, data.success ? 'success' : 'danger');
-            if (data.success) {
-                // 刷新页面以显示更新后的信息
-                setTimeout(() => {
-                    window.location.reload();
-                }, 1500);
-            }
-        })
-        .catch(error => {
-            showAlert('保存失败，请稍后重试', 'danger');
-            console.error('保存个人资料失败:', error);
-        })
-        .finally(() => {
-            // 恢复按钮状态
-            submitBtn.innerHTML = originalText;
-            submitBtn.disabled = false;
+document.addEventListener('DOMContentLoaded', function() {
+    // 统计卡片动画
+    const statCards = document.querySelectorAll('.stat-card');
+    statCards.forEach((card, index) => {
+        card.style.animationDelay = `${index * 0.1}s`;
+        card.style.animation = 'fadeInUp 0.6s ease forwards';
+    });
+    
+    // 个人信息项目悬停效果
+    const infoItems = document.querySelectorAll('.profile-info-item');
+    infoItems.forEach(item => {
+        item.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateX(10px) scale(1.02)';
+        });
+        item.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateX(0) scale(1)';
         });
     });
-
-    function showAlert(message, type) {
-        const container = document.getElementById('profileAlert');
-        container.innerHTML = `
-            <div class="alert alert-${type} alert-dismissible fade show" role="alert">
-                <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-triangle'}"></i>
-                ${message}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-        `;
+    
+    // 活动项目点击效果
+    const activityItems = document.querySelectorAll('.activity-item');
+    activityItems.forEach(item => {
+        item.addEventListener('click', function() {
+            this.style.transform = 'translateX(15px) scale(1.02)';
+            setTimeout(() => {
+                this.style.transform = 'translateX(5px) scale(1)';
+            }, 200);
+        });
+    });
+    
+    // 用户头像点击效果
+    const avatar = document.querySelector('.profile-avatar');
+    if (avatar) {
+        avatar.addEventListener('click', function() {
+            this.style.transform = 'scale(1.1) rotate(10deg)';
+            setTimeout(() => {
+                this.style.transform = 'scale(1) rotate(0deg)';
+            }, 300);
+        });
     }
+});
 
-    function getCookie(name) {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
-                }
-            }
+// 编辑头像
+function editAvatar() {
+    alert('头像编辑功能即将推出！');
+}
+
+// 编辑字段
+function editField(fieldName) {
+    const editForm = document.getElementById('editForm');
+    const profileCard = document.querySelector('.profile-card');
+    
+    editForm.style.display = 'block';
+    profileCard.style.display = 'none';
+    
+    // 聚焦到对应字段
+    const field = document.querySelector(`[name="${fieldName}"]`);
+    if (field) {
+        field.focus();
+        field.select();
+    }
+}
+
+// 编辑个人资料
+function editProfile() {
+    const editForm = document.getElementById('editForm');
+    const profileCard = document.querySelector('.profile-card');
+    
+    editForm.style.display = 'block';
+    profileCard.style.display = 'none';
+}
+
+// 取消编辑
+function cancelEdit() {
+    const editForm = document.getElementById('editForm');
+    const profileCard = document.querySelector('.profile-card');
+    
+    editForm.style.display = 'none';
+    profileCard.style.display = 'block';
+}
+
+// 显示笔记
+function showNotes() {
+    alert('笔记功能即将推出！');
+}
+
+// 显示所有活动
+function showAllActivities() {
+    alert('完整活动记录功能即将推出！');
+}
+
+// 导出数据
+function exportData() {
+    alert('数据导出功能即将推出！');
+}
+
+// 表单提交
+document.getElementById('profileForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const data = {};
+    for (let [key, value] of formData.entries()) {
+        data[key] = value;
+    }
+    
+    // 显示加载状态
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 保存中...';
+    submitBtn.disabled = true;
+    
+    // 发送AJAX请求
+    fetch('{% url "user_management:update_profile" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // 显示成功消息
+            showMessage('个人资料更新成功！', 'success');
+            
+            // 刷新页面显示新数据
+            setTimeout(() => {
+                location.reload();
+            }, 1000);
+        } else {
+            showMessage(data.message || '更新失败，请重试', 'error');
         }
-        return cookieValue;
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showMessage('网络错误，请重试', 'error');
+    })
+    .finally(() => {
+        // 恢复按钮状态
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+    });
+});
+
+// 显示消息
+function showMessage(message, type) {
+    const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
+    const icon = type === 'success' ? 'fa-check-circle' : 'fa-exclamation-triangle';
+    
+    const alertHtml = `
+        <div class="alert ${alertClass} alert-dismissible fade show" role="alert">
+            <i class="fas ${icon} me-2"></i>
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    
+    // 在页面顶部插入消息
+    const container = document.querySelector('.container');
+    container.insertAdjacentHTML('afterbegin', alertHtml);
+    
+    // 3秒后自动消失
+    setTimeout(() => {
+        const alert = container.querySelector('.alert');
+        if (alert) {
+            alert.remove();
+        }
+    }, 3000);
+}
+
+// 添加CSS动画
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
     }
+`;
+document.head.appendChild(style);
 </script>
 {% endblock %} 

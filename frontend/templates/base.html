@@ -15,13 +15,219 @@
     <!-- 自定义样式 -->
     <link href="{% static 'css/main.css' %}" rel="stylesheet">
     
+    <style>
+        /* 用户交互增强样式 */
+        .user-avatar {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid rgba(255,255,255,0.3);
+        }
+        
+        .user-avatar:hover {
+            transform: scale(1.1);
+            border-color: rgba(255,255,255,0.8);
+            box-shadow: 0 0 15px rgba(255,255,255,0.3);
+        }
+        
+        .user-status-indicator {
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #28a745;
+            border: 2px solid white;
+        }
+        
+        .user-dropdown-menu {
+            border: none;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            border-radius: 15px;
+            padding: 10px 0;
+            min-width: 280px;
+        }
+        
+        .user-dropdown-header {
+            padding: 15px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px 15px 0 0;
+            margin: -10px -0px 10px -0px;
+        }
+        
+        .user-dropdown-item {
+            padding: 12px 20px;
+            transition: all 0.3s ease;
+            border-left: 3px solid transparent;
+        }
+        
+        .user-dropdown-item:hover {
+            background: #f8f9fa;
+            border-left-color: #667eea;
+            transform: translateX(5px);
+        }
+        
+        .user-quick-stats {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 20px;
+            background: #f8f9fa;
+            margin: 10px 0;
+            border-radius: 10px;
+        }
+        
+        .user-quick-stat {
+            text-align: center;
+            flex: 1;
+        }
+        
+        .user-quick-stat-number {
+            font-weight: bold;
+            color: #667eea;
+            font-size: 1.1rem;
+        }
+        
+        .user-quick-stat-label {
+            font-size: 0.8rem;
+            color: #6c757d;
+        }
+        
+        .navbar-user-section {
+            position: relative;
+        }
+        
+        .user-name-clickable {
+            cursor: pointer;
+            transition: all 0.3s ease;
+            padding: 8px 12px;
+            border-radius: 20px;
+            background: rgba(255,255,255,0.1);
+        }
+        
+        .user-name-clickable:hover {
+            background: rgba(255,255,255,0.2);
+            transform: translateY(-1px);
+        }
+        
+        .breadcrumb-enhanced {
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 10px 15px;
+            margin-bottom: 20px;
+        }
+        
+        .breadcrumb-enhanced .breadcrumb-item a {
+            color: rgba(255,255,255,0.8);
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+        
+        .breadcrumb-enhanced .breadcrumb-item a:hover {
+            color: white;
+            text-shadow: 0 0 10px rgba(255,255,255,0.5);
+        }
+        
+        .page-header-enhanced {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 0;
+            margin-bottom: 30px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .page-header-enhanced::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="20" cy="20" r="2" fill="rgba(255,255,255,0.1)"/><circle cx="80" cy="40" r="1.5" fill="rgba(255,255,255,0.1)"/><circle cx="40" cy="80" r="1" fill="rgba(255,255,255,0.1)"/></svg>');
+            animation: float 20s infinite linear;
+        }
+        
+        @keyframes float {
+            0% { transform: translateY(0px) rotate(0deg); }
+            100% { transform: translateY(-100px) rotate(360deg); }
+        }
+        
+        .user-activity-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #28a745;
+            margin-left: 5px;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .quick-action-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+        
+        .quick-action-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 25px rgba(102, 126, 234, 0.6);
+        }
+        
+        .notification-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: #dc3545;
+            color: white;
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            font-size: 0.7rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: bounce 1s infinite;
+        }
+        
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-5px); }
+            60% { transform: translateY(-3px); }
+        }
+    </style>
+    
     {% block extra_css %}{% endblock %}
 </head>
 <body>
     <!-- 导航栏 -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container">
-            <a class="navbar-brand" href="/">
+            <a class="navbar-brand" href="/" style="transition: all 0.3s ease;">
                 <i class="fas fa-book-reader"></i> Readify
             </a>
             
@@ -32,33 +238,82 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'book_list' %}">我的书籍</a>
+                        <a class="nav-link" href="{% url 'book_list' %}">
+                            <i class="fas fa-book"></i> 我的书籍
+                        </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'category_list' %}">分类浏览</a>
+                        <a class="nav-link" href="{% url 'category_list' %}">
+                            <i class="fas fa-tags"></i> 分类浏览
+                        </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'batch_upload' %}">批量上传</a>
+                        <a class="nav-link" href="{% url 'batch_upload' %}">
+                            <i class="fas fa-cloud-upload-alt"></i> 批量上传
+                        </a>
                     </li>
                 </ul>
                 
                 <ul class="navbar-nav">
                     {% if user.is_authenticated %}
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" style="z-index: 1050;">
-                            <i class="fas fa-user"></i> {{ user.username }}
+                    <li class="nav-item dropdown navbar-user-section">
+                        <a class="nav-link dropdown-toggle user-name-clickable" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" style="z-index: 1050;">
+                            <div class="d-flex align-items-center">
+                                <div class="position-relative me-2">
+                                    <div class="user-avatar">
+                                        {{ user.username|first|upper }}
+                                    </div>
+                                    <div class="user-status-indicator"></div>
+                                </div>
+                                <span>{{ user.username }}</span>
+                                <span class="user-activity-indicator"></span>
+                            </div>
                         </a>
-                        <ul class="dropdown-menu" style="z-index: 1051;">
-                            <li><a class="dropdown-item" href="{% url 'user_management:update_profile' %}">
-                                <i class="fas fa-user-circle"></i> 个人资料
+                        <ul class="dropdown-menu user-dropdown-menu" style="z-index: 1051;">
+                            <div class="user-dropdown-header">
+                                <div class="d-flex align-items-center">
+                                    <div class="user-avatar me-3" style="width: 50px; height: 50px; font-size: 1.5rem;">
+                                        {{ user.username|first|upper }}
+                                    </div>
+                                    <div>
+                                        <h6 class="mb-0">{{ user.get_full_name|default:user.username }}</h6>
+                                        <small class="opacity-75">
+                                            <i class="fas fa-circle text-success"></i> 在线
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="user-quick-stats">
+                                <div class="user-quick-stat">
+                                    <div class="user-quick-stat-number">{{ user_stats.total_books|default:0 }}</div>
+                                    <div class="user-quick-stat-label">书籍</div>
+                                </div>
+                                <div class="user-quick-stat">
+                                    <div class="user-quick-stat-number">{{ user_stats.notes_count|default:0 }}</div>
+                                    <div class="user-quick-stat-label">笔记</div>
+                                </div>
+                                <div class="user-quick-stat">
+                                    <div class="user-quick-stat-number">{{ user_stats.categories_count|default:0 }}</div>
+                                    <div class="user-quick-stat-label">分类</div>
+                                </div>
+                            </div>
+                            
+                            <li><a class="dropdown-item user-dropdown-item" href="{% url 'user_management:update_profile' %}">
+                                <i class="fas fa-user-circle text-primary me-2"></i> 个人资料
                             </a></li>
-                            <li><a class="dropdown-item" href="{% url 'user_management:settings' %}">
-                                <i class="fas fa-cog"></i> 设置
+                            <li><a class="dropdown-item user-dropdown-item" href="{% url 'user_management:settings' %}">
+                                <i class="fas fa-cog text-success me-2"></i> 设置
+                            </a></li>
+                            <li><a class="dropdown-item user-dropdown-item" href="{% url 'reading_statistics' %}">
+                                <i class="fas fa-chart-bar text-info me-2"></i> 阅读统计
                             </a></li>
                             <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="{% url 'user_management:logout' %}">
-                                <i class="fas fa-sign-out-alt"></i> 退出登录
-                            </a></li>
+                            <li>
+                                <a class="dropdown-item user-dropdown-item" href="#" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
+                                    <i class="fas fa-sign-out-alt text-danger me-2"></i> 退出登录
+                                </a>
+                            </li>
                         </ul>
                     </li>
                     {% else %}
@@ -78,19 +333,26 @@
         </div>
     </nav>
 
+    <!-- 隐藏的退出登录表单 -->
+    {% if user.is_authenticated %}
+    <form id="logout-form" action="{% url 'user_management:logout' %}" method="post" style="display: none;">
+        {% csrf_token %}
+    </form>
+    {% endif %}
+
     <!-- 消息提示 -->
     {% if messages %}
     <div class="container mt-3">
         {% for message in messages %}
-        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert" style="border-radius: 10px; border: none; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
             {% if message.tags == 'error' %}
-            <i class="fas fa-exclamation-triangle"></i>
+            <i class="fas fa-exclamation-triangle me-2"></i>
             {% elif message.tags == 'success' %}
-            <i class="fas fa-check-circle"></i>
+            <i class="fas fa-check-circle me-2"></i>
             {% elif message.tags == 'warning' %}
-            <i class="fas fa-exclamation-circle"></i>
+            <i class="fas fa-exclamation-circle me-2"></i>
             {% elif message.tags == 'info' %}
-            <i class="fas fa-info-circle"></i>
+            <i class="fas fa-info-circle me-2"></i>
             {% endif %}
             {{ message }}
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
@@ -104,6 +366,31 @@
         {% block content %}{% endblock %}
     </main>
 
+    <!-- 快速操作按钮 -->
+    {% if user.is_authenticated %}
+    <div class="dropdown">
+        <button class="quick-action-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="fas fa-plus"></i>
+            <span class="notification-badge">3</span>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end" style="border-radius: 15px; border: none; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
+            <li><a class="dropdown-item" href="{% url 'book_upload' %}">
+                <i class="fas fa-upload text-primary me-2"></i> 上传书籍
+            </a></li>
+            <li><a class="dropdown-item" href="{% url 'batch_upload' %}">
+                <i class="fas fa-cloud-upload-alt text-success me-2"></i> 批量上传
+            </a></li>
+            <li><a class="dropdown-item" href="{% url 'user_management:settings' %}">
+                <i class="fas fa-cog text-info me-2"></i> 快速设置
+            </a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="{% url 'user_management:update_profile' %}">
+                <i class="fas fa-user text-warning me-2"></i> 个人中心
+            </a></li>
+        </ul>
+    </div>
+    {% endif %}
+
     <!-- 页脚 -->
     <footer class="bg-light mt-5 py-4">
         <div class="container">
@@ -111,6 +398,13 @@
                 <div class="col-md-6">
                     <h6><i class="fas fa-book-reader text-primary"></i> Readify</h6>
                     <p class="text-muted small">智能阅读助手，让阅读更高效</p>
+                    {% if user.is_authenticated %}
+                    <p class="text-muted small">
+                        <i class="fas fa-user text-primary"></i> 
+                        欢迎回来，<a href="{% url 'user_management:update_profile' %}" class="text-decoration-none">{{ user.username }}</a>！
+                        <span class="user-activity-indicator"></span>
+                    </p>
+                    {% endif %}
                 </div>
                 <div class="col-md-3">
                     <h6>功能特色</h6>
@@ -136,6 +430,9 @@
                 <div class="col-12 text-center">
                     <p class="text-muted small mb-0">
                         &copy; 2024 Readify. 让阅读更智能，让知识更有序。
+                        {% if user.is_authenticated %}
+                        <br><small>当前用户：<a href="{% url 'user_management:update_profile' %}" class="text-decoration-none">{{ user.username }}</a> | 最后登录：{{ user.last_login|date:"Y-m-d H:i" }}</small>
+                        {% endif %}
                     </p>
                 </div>
             </div>
@@ -147,6 +444,55 @@
     
     <!-- CSRF Token for AJAX -->
     {% csrf_token %}
+    
+    <script>
+        // 增强用户交互功能
+        document.addEventListener('DOMContentLoaded', function() {
+            // 用户头像点击效果
+            const userAvatars = document.querySelectorAll('.user-avatar');
+            userAvatars.forEach(avatar => {
+                avatar.addEventListener('click', function() {
+                    this.style.transform = 'scale(1.2)';
+                    setTimeout(() => {
+                        this.style.transform = 'scale(1)';
+                    }, 200);
+                });
+            });
+            
+            // 导航链接悬停效果
+            const navLinks = document.querySelectorAll('.nav-link');
+            navLinks.forEach(link => {
+                link.addEventListener('mouseenter', function() {
+                    this.style.transform = 'translateY(-2px)';
+                });
+                link.addEventListener('mouseleave', function() {
+                    this.style.transform = 'translateY(0)';
+                });
+            });
+            
+            // 快速操作按钮动画
+            const quickActionBtn = document.querySelector('.quick-action-btn');
+            if (quickActionBtn) {
+                quickActionBtn.addEventListener('click', function() {
+                    this.style.transform = 'scale(0.95)';
+                    setTimeout(() => {
+                        this.style.transform = 'scale(1)';
+                    }, 150);
+                });
+            }
+            
+            // 用户状态更新（模拟）
+            setInterval(function() {
+                const indicators = document.querySelectorAll('.user-activity-indicator');
+                indicators.forEach(indicator => {
+                    indicator.style.opacity = '0.3';
+                    setTimeout(() => {
+                        indicator.style.opacity = '1';
+                    }, 500);
+                });
+            }, 5000);
+        });
+    </script>
     
     {% block extra_js %}{% endblock %}
 </body>

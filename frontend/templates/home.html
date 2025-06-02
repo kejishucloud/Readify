@@ -9,12 +9,32 @@
     color: white;
     padding: 80px 0;
     text-align: center;
+    position: relative;
+    overflow: hidden;
 }
+
+.hero-section::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="20" cy="20" r="2" fill="rgba(255,255,255,0.1)"/><circle cx="80" cy="40" r="1.5" fill="rgba(255,255,255,0.1)"/><circle cx="40" cy="80" r="1" fill="rgba(255,255,255,0.1)"/></svg>');
+    animation: float 20s infinite linear;
+}
+
+@keyframes float {
+    0% { transform: translateY(0px) rotate(0deg); }
+    100% { transform: translateY(-100px) rotate(360deg); }
+}
+
 .feature-card {
     border: none;
     box-shadow: 0 2px 10px rgba(0,0,0,0.1);
     transition: all 0.3s ease;
     height: 100%;
+    cursor: pointer;
 }
 .feature-card:hover {
     transform: translateY(-5px);
@@ -45,6 +65,7 @@
     border: none;
     box-shadow: 0 2px 10px rgba(0,0,0,0.1);
     transition: all 0.3s ease;
+    cursor: pointer;
 }
 .book-card:hover {
     transform: translateY(-3px);
@@ -53,6 +74,260 @@
 .navbar-brand {
     font-weight: bold;
     font-size: 1.5rem;
+}
+
+/* 用户交互增强样式 */
+.user-welcome-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 20px;
+    padding: 30px;
+    margin-bottom: 30px;
+    position: relative;
+    overflow: hidden;
+}
+
+.user-welcome-card::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+    animation: rotate 10s linear infinite;
+}
+
+@keyframes rotate {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.user-avatar-large {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 3px solid rgba(255,255,255,0.3);
+    margin: 0 auto 20px;
+}
+
+.user-avatar-large:hover {
+    transform: scale(1.1) rotate(5deg);
+    border-color: rgba(255,255,255,0.8);
+    box-shadow: 0 0 20px rgba(255,255,255,0.3);
+}
+
+.stat-card-enhanced {
+    border: none;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+    cursor: pointer;
+    border-radius: 15px;
+    overflow: hidden;
+    position: relative;
+}
+
+.stat-card-enhanced:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+}
+
+.stat-card-enhanced::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background: linear-gradient(90deg, #667eea, #764ba2);
+}
+
+.user-activity-timeline {
+    background: white;
+    border-radius: 15px;
+    padding: 20px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.timeline-item {
+    display: flex;
+    align-items: center;
+    padding: 15px 0;
+    border-bottom: 1px solid #f0f0f0;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.timeline-item:hover {
+    background: #f8f9fa;
+    transform: translateX(5px);
+    border-radius: 10px;
+    padding-left: 15px;
+}
+
+.timeline-item:last-child {
+    border-bottom: none;
+}
+
+.timeline-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 15px;
+    font-size: 1.2rem;
+}
+
+.timeline-icon.read {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+}
+
+.timeline-icon.upload {
+    background: linear-gradient(135deg, #007bff, #6610f2);
+    color: white;
+}
+
+.timeline-icon.note {
+    background: linear-gradient(135deg, #ffc107, #fd7e14);
+    color: white;
+}
+
+.user-quick-actions {
+    display: flex;
+    gap: 15px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+}
+
+.quick-action-item {
+    flex: 1;
+    min-width: 120px;
+    padding: 15px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 10px;
+    text-align: center;
+    text-decoration: none;
+    color: white;
+    transition: all 0.3s ease;
+    border: 1px solid rgba(255,255,255,0.2);
+}
+
+.quick-action-item:hover {
+    background: rgba(255,255,255,0.2);
+    transform: translateY(-3px);
+    color: white;
+    border-color: rgba(255,255,255,0.4);
+}
+
+.recent-book-enhanced {
+    transition: all 0.3s ease;
+    cursor: pointer;
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 15px;
+}
+
+.recent-book-enhanced:hover {
+    background: #f8f9fa;
+    transform: translateX(10px);
+}
+
+.book-progress-bar {
+    height: 4px;
+    background: #e9ecef;
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 10px;
+}
+
+.book-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #667eea, #764ba2);
+    transition: width 0.3s ease;
+}
+
+.user-interaction-hint {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(255,255,255,0.9);
+    color: #667eea;
+    padding: 5px 10px;
+    border-radius: 15px;
+    font-size: 0.8rem;
+    opacity: 0;
+    transition: all 0.3s ease;
+}
+
+.stat-card-enhanced:hover .user-interaction-hint {
+    opacity: 1;
+}
+
+.category-stat-enhanced {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    margin-bottom: 10px;
+    background: white;
+    border-radius: 10px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    border-left: 4px solid transparent;
+}
+
+.category-stat-enhanced:hover {
+    background: #f8f9fa;
+    border-left-color: #667eea;
+    transform: translateX(5px);
+}
+
+.user-greeting {
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin-bottom: 10px;
+    animation: fadeInUp 1s ease;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.user-status-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 15px;
+    font-size: 0.9rem;
+    margin-left: 10px;
+}
+
+.clickable-user-element {
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.clickable-user-element:hover {
+    color: #ffd700 !important;
+    text-shadow: 0 0 10px rgba(255,215,0,0.5);
 }
 </style>
 {% endblock %}
@@ -98,6 +373,47 @@
 </section>
 
 {% if user.is_authenticated %}
+<!-- 用户欢迎卡片 -->
+<section class="py-4">
+    <div class="container">
+        <div class="user-welcome-card">
+            <div class="row align-items-center">
+                <div class="col-md-3 text-center">
+                    <div class="user-avatar-large clickable-user-element" onclick="window.location.href='{% url 'user_management:update_profile' %}'">
+                        {{ user.username|first|upper }}
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="user-greeting">
+                        欢迎回来，<span class="clickable-user-element" onclick="window.location.href='{% url 'user_management:update_profile' %}'">{{ user.get_full_name|default:user.username }}</span>！
+                        <span class="user-status-badge">
+                            <i class="fas fa-circle text-success"></i> 在线
+                        </span>
+                    </div>
+                    <p class="mb-0 opacity-75">
+                        <i class="fas fa-clock"></i> 最后登录：{{ user.last_login|date:"Y年m月d日 H:i" }}
+                    </p>
+                    <p class="mb-0 opacity-75">
+                        <i class="fas fa-calendar"></i> 加入时间：{{ user.date_joined|date:"Y年m月d日" }}
+                    </p>
+                </div>
+                <div class="col-md-3">
+                    <div class="user-quick-actions">
+                        <a href="{% url 'user_management:update_profile' %}" class="quick-action-item">
+                            <i class="fas fa-user-edit d-block mb-2"></i>
+                            <small>编辑资料</small>
+                        </a>
+                        <a href="{% url 'user_management:settings' %}" class="quick-action-item">
+                            <i class="fas fa-cog d-block mb-2"></i>
+                            <small>设置</small>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
 <!-- 用户仪表板 -->
 <section class="dashboard-section py-5">
     <div class="container">
@@ -105,7 +421,8 @@
             <div class="col-12">
                 <h2 class="mb-4">
                     <i class="fas fa-tachometer-alt text-primary"></i> 
-                    欢迎回来，{{ user.username }}！
+                    个人仪表板
+                    <small class="text-muted">- 点击任意统计卡片查看详情</small>
                 </h2>
             </div>
         </div>
@@ -113,38 +430,42 @@
         <!-- 统计卡片 -->
         <div class="row mb-5">
             <div class="col-md-3 mb-3">
-                <div class="card stat-card text-center">
+                <div class="card stat-card-enhanced text-center" onclick="window.location.href='{% url 'book_list' %}'">
                     <div class="card-body">
                         <i class="fas fa-book fa-2x text-primary mb-3"></i>
                         <h4 class="text-primary">{{ user_stats.total_books }}</h4>
                         <p class="text-muted mb-0">总书籍数</p>
+                        <div class="user-interaction-hint">点击查看</div>
                     </div>
                 </div>
             </div>
             <div class="col-md-3 mb-3">
-                <div class="card stat-card text-center">
+                <div class="card stat-card-enhanced text-center" onclick="window.location.href='{% url 'category_list' %}'">
                     <div class="card-body">
                         <i class="fas fa-tags fa-2x text-success mb-3"></i>
                         <h4 class="text-success">{{ user_stats.categories_count }}</h4>
                         <p class="text-muted mb-0">分类数量</p>
+                        <div class="user-interaction-hint">点击查看</div>
                     </div>
                 </div>
             </div>
             <div class="col-md-3 mb-3">
-                <div class="card stat-card text-center">
+                <div class="card stat-card-enhanced text-center" onclick="window.location.href='{% url 'reading_statistics' %}'">
                     <div class="card-body">
                         <i class="fas fa-eye fa-2x text-info mb-3"></i>
                         <h4 class="text-info">{{ user_stats.total_views }}</h4>
                         <p class="text-muted mb-0">总阅读次数</p>
+                        <div class="user-interaction-hint">点击查看</div>
                     </div>
                 </div>
             </div>
             <div class="col-md-3 mb-3">
-                <div class="card stat-card text-center">
+                <div class="card stat-card-enhanced text-center" onclick="window.location.href='{% url 'user_management:update_profile' %}'">
                     <div class="card-body">
                         <i class="fas fa-sticky-note fa-2x text-warning mb-3"></i>
                         <h4 class="text-warning">{{ user_stats.notes_count }}</h4>
                         <p class="text-muted mb-0">笔记数量</p>
+                        <div class="user-interaction-hint">点击查看</div>
                     </div>
                 </div>
             </div>
@@ -152,46 +473,46 @@
 
         <div class="row">
             <!-- 最近阅读 -->
-            <div class="col-lg-8">
+            <div class="col-lg-6">
                 <div class="card">
                     <div class="card-header">
                         <h5 class="mb-0">
                             <i class="fas fa-clock text-primary"></i> 最近阅读
+                            <small class="text-muted">- 点击书籍继续阅读</small>
                         </h5>
                     </div>
                     <div class="card-body">
                         {% if recent_books %}
-                        <div class="row">
-                            {% for book in recent_books %}
-                            <div class="col-md-6 mb-3">
-                                <div class="d-flex">
-                                    <div class="flex-shrink-0">
-                                        {% if book.cover %}
-                                        <img src="{{ book.cover.url }}" class="rounded" width="60" height="80" style="object-fit: cover;">
-                                        {% else %}
-                                        <div class="bg-light rounded d-flex align-items-center justify-content-center" style="width: 60px; height: 80px;">
-                                            <i class="fas fa-book text-muted"></i>
-                                        </div>
-                                        {% endif %}
+                        {% for book in recent_books %}
+                        <div class="recent-book-enhanced" onclick="window.location.href='{% url 'book_read' book.id %}'">
+                            <div class="d-flex">
+                                <div class="flex-shrink-0">
+                                    {% if book.cover %}
+                                    <img src="{{ book.cover.url }}" class="rounded" width="60" height="80" style="object-fit: cover;">
+                                    {% else %}
+                                    <div class="bg-light rounded d-flex align-items-center justify-content-center" style="width: 60px; height: 80px;">
+                                        <i class="fas fa-book text-muted"></i>
                                     </div>
-                                    <div class="flex-grow-1 ms-3">
-                                        <h6 class="mb-1">
-                                            <a href="{% url 'book_detail' book.id %}" class="text-decoration-none">
-                                                {{ book.title|truncatechars:30 }}
-                                            </a>
-                                        </h6>
-                                        <p class="text-muted small mb-1">{{ book.author|default:"未知作者" }}</p>
-                                        <p class="text-muted small mb-1">
-                                            最后阅读：{{ book.last_read_at|date:"m-d H:i" }}
-                                        </p>
-                                        <a href="{% url 'book_read' book.id %}" class="btn btn-sm btn-outline-primary">
-                                            <i class="fas fa-book-open"></i> 继续阅读
-                                        </a>
+                                    {% endif %}
+                                </div>
+                                <div class="flex-grow-1 ms-3">
+                                    <h6 class="mb-1">
+                                        {{ book.title|truncatechars:30 }}
+                                    </h6>
+                                    <p class="text-muted small mb-1">
+                                        作者：<span class="clickable-user-element">{{ book.author|default:"未知作者" }}</span>
+                                    </p>
+                                    <p class="text-muted small mb-1">
+                                        最后阅读：{{ book.last_read_at|date:"m-d H:i" }}
+                                    </p>
+                                    <div class="book-progress-bar">
+                                        <div class="book-progress-fill" style="width: {% if book.reading_progress %}{{ book.reading_progress }}%{% else %}0%{% endif %}"></div>
                                     </div>
+                                    <small class="text-muted">阅读进度：{% if book.reading_progress %}{{ book.reading_progress }}%{% else %}0%{% endif %}</small>
                                 </div>
                             </div>
-                            {% endfor %}
                         </div>
+                        {% endfor %}
                         {% else %}
                         <div class="text-center py-4">
                             <i class="fas fa-book fa-3x text-muted mb-3"></i>
@@ -205,30 +526,94 @@
                 </div>
             </div>
 
-            <!-- 分类统计 -->
-            <div class="col-lg-4">
+            <!-- 用户活动时间线 -->
+            <div class="col-lg-6">
+                <div class="user-activity-timeline">
+                    <h5 class="mb-3">
+                        <i class="fas fa-history text-success"></i> 最近活动
+                        <small class="text-muted">- 点击查看详情</small>
+                    </h5>
+                    
+                    <div class="timeline-item" onclick="window.location.href='{% url 'book_list' %}'">
+                        <div class="timeline-icon read">
+                            <i class="fas fa-book-open"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h6 class="mb-1">阅读了《Python编程》</h6>
+                            <small class="text-muted">2小时前</small>
+                        </div>
+                    </div>
+                    
+                    <div class="timeline-item" onclick="window.location.href='{% url 'batch_upload' %}'">
+                        <div class="timeline-icon upload">
+                            <i class="fas fa-upload"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h6 class="mb-1">上传了3本新书籍</h6>
+                            <small class="text-muted">1天前</small>
+                        </div>
+                    </div>
+                    
+                    <div class="timeline-item" onclick="window.location.href='{% url 'user_management:update_profile' %}'">
+                        <div class="timeline-icon note">
+                            <i class="fas fa-sticky-note"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h6 class="mb-1">添加了5条读书笔记</h6>
+                            <small class="text-muted">2天前</small>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center mt-3">
+                        <a href="{% url 'user_management:update_profile' %}" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-history"></i> 查看完整活动记录
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 分类统计增强版 -->
+        <div class="row mt-4">
+            <div class="col-12">
                 <div class="card">
                     <div class="card-header">
                         <h5 class="mb-0">
                             <i class="fas fa-chart-pie text-success"></i> 分类统计
+                            <small class="text-muted">- 点击分类查看书籍</small>
                         </h5>
                     </div>
                     <div class="card-body">
                         {% if category_stats %}
-                        {% for stat in category_stats|slice:":6" %}
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span class="small">{{ stat.category__name|default:"未分类" }}</span>
-                            <div>
-                                <span class="badge bg-primary">{{ stat.count }}</span>
+                        <div class="row">
+                            {% for stat in category_stats|slice:":8" %}
+                            <div class="col-md-6 mb-2">
+                                {% if stat.category__code %}
+                                <div class="category-stat-enhanced" onclick="window.location.href='{% url 'category_books' stat.category__code %}'">
+                                    <div>
+                                        <span class="fw-bold">{{ stat.category__name|default:"未分类" }}</span>
+                                        <br><small class="text-muted">{{ stat.count }} 本书籍</small>
+                                    </div>
+                                    <div>
+                                        <span class="badge bg-primary">{{ stat.count }}</span>
+                                    </div>
+                                </div>
+                                {% else %}
+                                <div class="category-stat-enhanced">
+                                    <div>
+                                        <span class="fw-bold">{{ stat.category__name|default:"未分类" }}</span>
+                                        <br><small class="text-muted">{{ stat.count }} 本书籍</small>
+                                    </div>
+                                    <div>
+                                        <span class="badge bg-secondary">{{ stat.count }}</span>
+                                    </div>
+                                </div>
+                                {% endif %}
                             </div>
+                            {% endfor %}
                         </div>
-                        <div class="progress mb-3" style="height: 4px;">
-                            <div class="progress-bar" role="progressbar" 
-                                 style="width: {% widthratio stat.count category_stats.0.count 100 %}%"></div>
-                        </div>
-                        {% endfor %}
                         <div class="text-center mt-3">
-                            <a href="{% url 'category_list' %}" class="btn btn-sm btn-outline-success">
+                            <a href="{% url 'category_list' %}" class="btn btn-outline-success">
                                 <i class="fas fa-tags"></i> 查看全部分类
                             </a>
                         </div>
@@ -260,7 +645,7 @@
         
         <div class="row">
             <div class="col-md-6 col-lg-3 mb-4">
-                <div class="card feature-card h-100 text-center">
+                <div class="card feature-card h-100 text-center" onclick="{% if user.is_authenticated %}window.location.href='{% url 'book_list' %}'{% else %}window.location.href='{% url 'user_management:register' %}'{% endif %}">
                     <div class="card-body">
                         <i class="fas fa-robot fa-3x text-primary mb-3"></i>
                         <h5>AI智能分类</h5>
@@ -273,7 +658,7 @@
             </div>
             
             <div class="col-md-6 col-lg-3 mb-4">
-                <div class="card feature-card h-100 text-center">
+                <div class="card feature-card h-100 text-center" onclick="{% if user.is_authenticated %}window.location.href='{% url 'batch_upload' %}'{% else %}window.location.href='{% url 'user_management:register' %}'{% endif %}">
                     <div class="card-body">
                         <i class="fas fa-cloud-upload-alt fa-3x text-success mb-3"></i>
                         <h5>批量上传</h5>
@@ -286,7 +671,7 @@
             </div>
             
             <div class="col-md-6 col-lg-3 mb-4">
-                <div class="card feature-card h-100 text-center">
+                <div class="card feature-card h-100 text-center" onclick="{% if user.is_authenticated %}window.location.href='{% url 'book_list' %}'{% else %}window.location.href='{% url 'user_management:register' %}'{% endif %}">
                     <div class="card-body">
                         <i class="fas fa-search fa-3x text-info mb-3"></i>
                         <h5>全文搜索</h5>
@@ -299,7 +684,7 @@
             </div>
             
             <div class="col-md-6 col-lg-3 mb-4">
-                <div class="card feature-card h-100 text-center">
+                <div class="card feature-card h-100 text-center" onclick="{% if user.is_authenticated %}window.location.href='{% url 'book_list' %}'{% else %}window.location.href='{% url 'user_management:register' %}'{% endif %}">
                     <div class="card-body">
                         <i class="fas fa-comments fa-3x text-warning mb-3"></i>
                         <h5>AI问答</h5>
@@ -419,6 +804,7 @@
     padding: 20px;
     border-radius: 10px;
     transition: all 0.3s ease;
+    cursor: pointer;
 }
 
 .format-item:hover {
@@ -430,4 +816,62 @@
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 用户头像点击动画
+    const userAvatars = document.querySelectorAll('.user-avatar-large');
+    userAvatars.forEach(avatar => {
+        avatar.addEventListener('click', function() {
+            this.style.transform = 'scale(1.2) rotate(10deg)';
+            setTimeout(() => {
+                this.style.transform = 'scale(1) rotate(0deg)';
+            }, 300);
+        });
+    });
+    
+    // 统计卡片悬停效果
+    const statCards = document.querySelectorAll('.stat-card-enhanced');
+    statCards.forEach(card => {
+        card.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-8px) scale(1.02)';
+        });
+        card.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0) scale(1)';
+        });
+    });
+    
+    // 时间线项目点击效果
+    const timelineItems = document.querySelectorAll('.timeline-item');
+    timelineItems.forEach(item => {
+        item.addEventListener('click', function() {
+            this.style.transform = 'translateX(10px) scale(1.02)';
+            setTimeout(() => {
+                this.style.transform = 'translateX(5px) scale(1)';
+            }, 200);
+        });
+    });
+    
+    // 书籍进度条动画
+    const progressBars = document.querySelectorAll('.book-progress-fill');
+    progressBars.forEach(bar => {
+        const width = bar.style.width;
+        bar.style.width = '0%';
+        setTimeout(() => {
+            bar.style.width = width;
+        }, 500);
+    });
+    
+    // 用户名点击效果
+    const clickableElements = document.querySelectorAll('.clickable-user-element');
+    clickableElements.forEach(element => {
+        element.addEventListener('click', function() {
+            this.style.transform = 'scale(1.1)';
+            setTimeout(() => {
+                this.style.transform = 'scale(1)';
+            }, 200);
+        });
+    });
+});
+</script>
 {% endblock %} 

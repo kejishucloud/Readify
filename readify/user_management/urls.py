@@ -7,7 +7,10 @@ app_name = 'user_management'
 urlpatterns = [
     # 用户认证
     path('login/', auth_views.LoginView.as_view(template_name='registration/login.html'), name='login'),
-    path('logout/', auth_views.LogoutView.as_view(), name='logout'),
+    # 使用自定义logout视图，支持GET和POST请求
+    path('logout/', views.custom_logout, name='logout'),
+    # 备选方案：Django默认logout视图（仅POST）
+    path('logout-default/', auth_views.LogoutView.as_view(), name='logout_default'),
     
     # 用户注册
     path('register/', views.register, name='register'),

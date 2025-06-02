@@ -567,6 +567,71 @@ def get_batch_upload_progress(request, batch_id):
     try:
         batch_upload = get_object_or_404(BatchUpload, id=batch_id, user=request.user)
         
+        # 获取与此批量上传相关的书籍
+        time_buffer = timedelta(minutes=5)
+        start_time = batch_upload.created_at - time_buffer
+        end_time = batch_upload.completed_at + time_buffer if batch_upload.completed_at else timezone.now() + time_buffer
+        
+        books = Book.objects.filter(
+            user=request.user, 
+            uploaded_at__gte=start_time,
+            uploaded_at__lte=end_time
+        ).order_by('-uploaded_at')
+        
+        # 构建文件进度信息
+        files_progress = []
+        for book in books:
+            # 计算进度百分比
+            if book.processing_status == 'completed':
+                progress = 100
+                status = 'success'
+                message = f'处理完成，字数: {book.word_count:,}'
+            elif book.processing_status == 'failed':
+                progress = 100
+                status = 'error'
+                message = '处理失败，请检查文件格式'
+            elif book.processing_status == 'processing':
+                progress = 60
+                status = 'processing'
+                message = '正在提取内容和AI分类...'
+            else:  # pending
+                progress = 20
+                status = 'processing'
+                message = '等待处理...'
+            
+            # 尝试构建原始文件名
+            original_filename = f"{book.title}.{book.format}"
+            
+            files_progress.append({
+                'filename': original_filename,
+                'title': book.title,
+                'progress': progress,
+                'status': status,
+                'message': message,
+                'book_id': book.id,
+                'format': book.format.upper(),
+                'file_size': book.file_size,
+                'word_count': book.word_count,
+                'processing_status': book.processing_status
+            })
+        
+        # 如果书籍数量少于总文件数，说明还有文件在处理中
+        remaining_files = batch_upload.total_files - len(books)
+        if remaining_files > 0 and batch_upload.status == 'processing':
+            for i in range(remaining_files):
+                files_progress.append({
+                    'filename': f'处理中的文件_{i+1}',
+                    'title': '处理中...',
+                    'progress': 10,
+                    'status': 'uploading',
+                    'message': '正在上传和初始化...',
+                    'book_id': None,
+                    'format': 'UNKNOWN',
+                    'file_size': 0,
+                    'word_count': 0,
+                    'processing_status': 'pending'
+                })
+        
         return JsonResponse({
             'success': True,
             'batch_upload': {
@@ -581,10 +646,12 @@ def get_batch_upload_progress(request, batch_id):
                 'error_log': batch_upload.error_log,
                 'created_at': batch_upload.created_at.isoformat(),
                 'completed_at': batch_upload.completed_at.isoformat() if batch_upload.completed_at else None
-            }
+            },
+            'files': files_progress
         })
         
     except Exception as e:
+        logger.error(f"获取批量上传进度失败: {str(e)}", exc_info=True)
         return JsonResponse({'success': False, 'error': str(e)})
 
 
