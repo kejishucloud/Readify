@@ -37,7 +37,9 @@ class AIService:
         try:
             from readify.user_management.models import UserAIConfig
             user_config = UserAIConfig.objects.get(user=self.user, is_active=True)
-            return {
+            
+            # 构建配置字典
+            config = {
                 'provider': user_config.provider,
                 'api_url': user_config.api_url,
                 'api_key': user_config.api_key,
@@ -45,11 +47,30 @@ class AIService:
                 'max_tokens': user_config.max_tokens,
                 'temperature': user_config.temperature,
                 'timeout': user_config.timeout,
-                'headers': user_config.get_headers(),
-                'endpoint': user_config.get_chat_endpoint()
             }
-        except:
+            
+            # 添加headers和endpoint
+            config['headers'] = user_config.get_headers()
+            config['endpoint'] = user_config.get_chat_endpoint()
+            
+            logger.info(f"使用用户自定义AI配置: {user_config.provider} - {user_config.model_id}")
+            return config
+            
+        except UserAIConfig.DoesNotExist:
+            logger.warning(f"用户 {self.user.username} 没有AI配置，使用默认配置")
             # 如果没有配置，使用默认配置
+            return {
+                'provider': 'openai',
+                'api_url': getattr(settings, 'OPENAI_BASE_URL', 'https://api.openai.com/v1'),
+                'api_key': getattr(settings, 'OPENAI_API_KEY', ''),
+                'model_id': getattr(settings, 'OPENAI_MODEL', 'gpt-3.5-turbo'),
+                'max_tokens': 4000,
+                'temperature': 0.7,
+                'timeout': 30
+            }
+        except Exception as e:
+            logger.error(f"获取用户AI配置失败: {str(e)}")
+            # 如果出错，使用默认配置
             return {
                 'provider': 'openai',
                 'api_url': getattr(settings, 'OPENAI_BASE_URL', 'https://api.openai.com/v1'),
@@ -76,14 +97,23 @@ class AIService:
             else:  # openai, azure, custom
                 data = self._build_openai_request(messages)
             
-            # 发送请求
-            endpoint = self.config.get('endpoint', f"{self.config['api_url'].rstrip('/')}/chat/completions")
-            headers = self.config.get('headers', {'Authorization': f"Bearer {self.config['api_key']}", 'Content-Type': 'application/json'})
+            # 获取端点和请求头
+            endpoint = self.config.get('endpoint')
+            if not endpoint:
+                endpoint = f"{self.config['api_url'].rstrip('/')}/chat/completions"
+            
+            headers = self.config.get('headers')
+            if not headers:
+                headers = {
+                    'Authorization': f"Bearer {self.config['api_key']}", 
+                    'Content-Type': 'application/json'
+                }
             
             # 记录请求信息（不包含敏感信息）
             logger.info(f"发送AI请求到: {endpoint}")
             logger.info(f"模型: {self.config['model_id']}")
             logger.info(f"提供商: {self.config['provider']}")
+            logger.info(f"用户: {self.user.username if self.user else '默认'}")
             
             response = requests.post(
                 endpoint,
@@ -105,6 +135,9 @@ class AIService:
                     error_detail += f": {response.text[:200]}"
                 
                 logger.error(f"API请求失败: {error_detail}")
+                logger.error(f"请求端点: {endpoint}")
+                logger.error(f"请求头: {dict(headers)}")  # 记录请求头（但不记录敏感信息）
+                
                 return {
                     'success': False,
                     'error': f'API请求失败: {error_detail}'
