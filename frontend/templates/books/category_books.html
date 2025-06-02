@@ -1,0 +1,355 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ category.name }} - 分类书籍 - Readify{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <!-- 页面头部 -->
+    <div class="row">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'home' %}">首页</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'category_list' %}">分类浏览</a></li>
+                    <li class="breadcrumb-item active">{{ category.name }}</li>
+                </ol>
+            </nav>
+            
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2>
+                        {% if category.code == 'science' %}
+                        <i class="fas fa-flask text-primary"></i>
+                        {% elif category.code == 'literature' %}
+                        <i class="fas fa-feather-alt text-info"></i>
+                        {% elif category.code == 'history' %}
+                        <i class="fas fa-landmark text-warning"></i>
+                        {% elif category.code == 'philosophy' %}
+                        <i class="fas fa-yin-yang text-secondary"></i>
+                        {% elif category.code == 'economics' %}
+                        <i class="fas fa-chart-line text-success"></i>
+                        {% elif category.code == 'education' %}
+                        <i class="fas fa-graduation-cap text-primary"></i>
+                        {% elif category.code == 'medicine' %}
+                        <i class="fas fa-heartbeat text-danger"></i>
+                        {% elif category.code == 'law' %}
+                        <i class="fas fa-balance-scale text-dark"></i>
+                        {% elif category.code == 'engineering' %}
+                        <i class="fas fa-cogs text-secondary"></i>
+                        {% elif category.code == 'computer' %}
+                        <i class="fas fa-laptop-code text-info"></i>
+                        {% elif category.code == 'mathematics' %}
+                        <i class="fas fa-calculator text-primary"></i>
+                        {% elif category.code == 'physics' %}
+                        <i class="fas fa-atom text-warning"></i>
+                        {% elif category.code == 'chemistry' %}
+                        <i class="fas fa-vial text-success"></i>
+                        {% elif category.code == 'biology' %}
+                        <i class="fas fa-dna text-success"></i>
+                        {% elif category.code == 'psychology' %}
+                        <i class="fas fa-brain text-info"></i>
+                        {% elif category.code == 'sociology' %}
+                        <i class="fas fa-users text-primary"></i>
+                        {% elif category.code == 'language' %}
+                        <i class="fas fa-language text-warning"></i>
+                        {% elif category.code == 'art' %}
+                        <i class="fas fa-palette text-danger"></i>
+                        {% elif category.code == 'music' %}
+                        <i class="fas fa-music text-info"></i>
+                        {% elif category.code == 'sports' %}
+                        <i class="fas fa-running text-success"></i>
+                        {% elif category.code == 'cooking' %}
+                        <i class="fas fa-utensils text-warning"></i>
+                        {% elif category.code == 'travel' %}
+                        <i class="fas fa-globe-americas text-primary"></i>
+                        {% elif category.code == 'biography' %}
+                        <i class="fas fa-user-circle text-secondary"></i>
+                        {% elif category.code == 'fiction' %}
+                        <i class="fas fa-book-open text-info"></i>
+                        {% elif category.code == 'poetry' %}
+                        <i class="fas fa-pen-fancy text-danger"></i>
+                        {% elif category.code == 'drama' %}
+                        <i class="fas fa-theater-masks text-warning"></i>
+                        {% elif category.code == 'children' %}
+                        <i class="fas fa-child text-success"></i>
+                        {% elif category.code == 'reference' %}
+                        <i class="fas fa-book text-dark"></i>
+                        {% else %}
+                        <i class="fas fa-folder text-muted"></i>
+                        {% endif %}
+                        {{ category.name }}
+                    </h2>
+                    {% if category.description %}
+                    <p class="text-muted">{{ category.description }}</p>
+                    {% endif %}
+                </div>
+                <div>
+                    <a href="{% url 'book_upload' %}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> 上传书籍
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 搜索和筛选 -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="input-group">
+                <input type="text" class="form-control" id="bookSearch" placeholder="搜索书籍...">
+                <button class="btn btn-outline-secondary" type="button">
+                    <i class="fas fa-search"></i>
+                </button>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="d-flex gap-2">
+                <select class="form-select" id="sortBy">
+                    <option value="uploaded_at">按上传时间</option>
+                    <option value="title">按书名</option>
+                    <option value="author">按作者</option>
+                    <option value="view_count">按阅读次数</option>
+                </select>
+                <select class="form-select" id="sortOrder">
+                    <option value="desc">降序</option>
+                    <option value="asc">升序</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- 书籍列表 -->
+    <div class="row" id="bookGrid">
+        {% for book in page_obj %}
+        <div class="col-md-6 col-lg-4 col-xl-3 mb-4 book-item" 
+             data-title="{{ book.title|lower }}" 
+             data-author="{{ book.author|lower }}">
+            <div class="card h-100 book-card">
+                {% if book.cover %}
+                <img src="{{ book.cover.url }}" class="card-img-top book-cover" alt="{{ book.title }}">
+                {% else %}
+                <div class="book-cover-placeholder">
+                    <i class="fas fa-book fa-3x text-muted"></i>
+                </div>
+                {% endif %}
+                
+                <div class="card-body book-info">
+                    <h6 class="book-title">{{ book.title }}</h6>
+                    <p class="book-author">
+                        <i class="fas fa-user"></i> {{ book.author|default:"未知作者" }}
+                    </p>
+                    
+                    <div class="book-meta">
+                        <small class="text-muted">
+                            <i class="fas fa-calendar"></i> {{ book.uploaded_at|date:"Y-m-d" }}
+                        </small>
+                        <small class="text-muted">
+                            <i class="fas fa-eye"></i> {{ book.view_count }}
+                        </small>
+                    </div>
+                    
+                    <div class="book-actions">
+                        <a href="{% url 'book_detail' book.id %}" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-info-circle"></i> 详情
+                        </a>
+                        <a href="{% url 'smart_reader' book.id %}" class="btn btn-primary btn-sm">
+                            <i class="fas fa-book-reader"></i> 阅读
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- 阅读进度 -->
+                {% for progress in book.readingprogress_set.all %}
+                {% if progress.user == user %}
+                <div class="card-footer bg-transparent">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-muted">阅读进度</small>
+                        <small class="text-muted">{{ progress.progress_percentage|floatformat:1 }}%</small>
+                    </div>
+                    <div class="progress" style="height: 4px;">
+                        <div class="progress-bar" role="progressbar" 
+                             style="width: {{ progress.progress_percentage }}%"></div>
+                    </div>
+                </div>
+                {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="text-center py-5">
+                <i class="fas fa-book fa-3x text-muted mb-3"></i>
+                <h4>该分类下还没有书籍</h4>
+                <p class="text-muted">上传一些{{ category.name }}类的书籍吧</p>
+                <a href="{% url 'book_upload' %}" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> 上传书籍
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- 分页 -->
+    {% if page_obj.has_other_pages %}
+    <div class="row">
+        <div class="col-12">
+            <nav aria-label="书籍分页">
+                <ul class="pagination justify-content-center">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page=1">首页</a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}">上一页</a>
+                    </li>
+                    {% endif %}
+                    
+                    {% for num in page_obj.paginator.page_range %}
+                    {% if page_obj.number == num %}
+                    <li class="page-item active">
+                        <span class="page-link">{{ num }}</span>
+                    </li>
+                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                    </li>
+                    {% endif %}
+                    {% endfor %}
+                    
+                    {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}">下一页</a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">末页</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 统计信息 -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-3">
+                            <h5 class="text-primary">{{ page_obj.paginator.count }}</h5>
+                            <small class="text-muted">总书籍数</small>
+                        </div>
+                        <div class="col-md-3">
+                            <h5 class="text-success">{{ page_obj.paginator.num_pages }}</h5>
+                            <small class="text-muted">总页数</small>
+                        </div>
+                        <div class="col-md-3">
+                            <h5 class="text-info">{{ category.name }}</h5>
+                            <small class="text-muted">当前分类</small>
+                        </div>
+                        <div class="col-md-3">
+                            <h5 class="text-warning">{{ page_obj.number }}</h5>
+                            <small class="text-muted">当前页</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('bookSearch');
+    const sortBy = document.getElementById('sortBy');
+    const sortOrder = document.getElementById('sortOrder');
+    const bookItems = document.querySelectorAll('.book-item');
+
+    // 搜索功能
+    searchInput.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        
+        bookItems.forEach(item => {
+            const title = item.getAttribute('data-title');
+            const author = item.getAttribute('data-author');
+            
+            if (title.includes(searchTerm) || author.includes(searchTerm)) {
+                item.style.display = 'block';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    });
+
+    // 排序功能（前端简单排序，实际项目中应该在后端处理）
+    function sortBooks() {
+        const sortField = sortBy.value;
+        const order = sortOrder.value;
+        const container = document.getElementById('bookGrid');
+        const items = Array.from(bookItems);
+        
+        items.sort((a, b) => {
+            let aValue, bValue;
+            
+            if (sortField === 'title') {
+                aValue = a.getAttribute('data-title');
+                bValue = b.getAttribute('data-title');
+            } else if (sortField === 'author') {
+                aValue = a.getAttribute('data-author');
+                bValue = b.getAttribute('data-author');
+            }
+            
+            if (order === 'asc') {
+                return aValue.localeCompare(bValue);
+            } else {
+                return bValue.localeCompare(aValue);
+            }
+        });
+        
+        items.forEach(item => container.appendChild(item));
+    }
+
+    sortBy.addEventListener('change', sortBooks);
+    sortOrder.addEventListener('change', sortBooks);
+});
+</script>
+
+<style>
+.book-card {
+    transition: all 0.3s ease;
+}
+
+.book-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
+.book-cover {
+    height: 200px;
+    object-fit: cover;
+}
+
+.book-cover-placeholder {
+    height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+}
+
+.book-actions .btn {
+    margin-right: 5px;
+    margin-bottom: 5px;
+}
+
+.breadcrumb {
+    background: transparent;
+    padding: 0;
+}
+
+.progress {
+    border-radius: 2px;
+}
+</style>
+{% endblock %} 
