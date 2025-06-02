@@ -11,9 +11,12 @@ from rest_framework.response import Response
 from rest_framework import status
 import json
 import logging
+from django.db.models import Count
+from django.utils import timezone
+from datetime import timedelta
 
-from .services import ChatTTSService
-from .models import ChatTTSCache, ChatTTSRequest, TTSSpeaker, TTSSettings
+from .services import ChatTTSService, TTSVoiceService, EnhancedChatTTSService
+from .models import ChatTTSCache, ChatTTSRequest, TTSSpeaker, TTSSettings, TTSVoice, UserVoicePreference, TTSUsageLog
 
 logger = logging.getLogger(__name__)
 
@@ -249,4 +252,290 @@ def cache_stats(request):
         return Response({
             'success': False,
             'error': '获取统计信息失败'
-        }, status=500) 
+        }, status=500)
+
+
+@login_required
+def voice_selection(request):
+    """语音选择页面"""
+    # 获取筛选参数
+    language = request.GET.get('language', 'zh')
+    gender = request.GET.get('gender')
+    voice_type = request.GET.get('voice_type')
+    
+    # 获取可用语音
+    voices = TTSVoiceService.get_available_voices(language, gender, voice_type)
+    
+    # 获取用户偏好
+    preferences = TTSVoiceService.get_user_preferences(request.user)
+    
+    # 获取推荐语音
+    recommended_voices = TTSVoiceService.get_recommended_voices(request.user, language)
+    
+    # 获取语言列表
+    languages = TTSVoice.objects.filter(is_active=True).values_list(
+        'language', 'language_name'
+    ).distinct()
+    
+    context = {
+        'voices': voices,
+        'preferences': preferences,
+        'recommended_voices': recommended_voices,
+        'languages': languages,
+        'current_language': language,
+        'current_gender': gender,
+        'current_voice_type': voice_type,
+    }
+    
+    return render(request, 'tts_service/voice_selection.html', context)
+
+
+@login_required
+def voice_preferences(request):
+    """语音偏好设置页面"""
+    preferences = TTSVoiceService.get_user_preferences(request.user)
+    
+    if request.method == 'POST':
+        try:
+            # 更新偏好设置
+            update_data = {}
+            
+            # 基本设置
+            if 'reading_speed' in request.POST:
+                update_data['reading_speed'] = float(request.POST.get('reading_speed'))
+            if 'volume' in request.POST:
+                update_data['volume'] = float(request.POST.get('volume'))
+            if 'pitch' in request.POST:
+                update_data['pitch'] = float(request.POST.get('pitch'))
+            
+            # 播放设置
+            update_data['auto_play'] = request.POST.get('auto_play') == 'on'
+            
+            # 停顿设置
+            if 'pause_between_paragraphs' in request.POST:
+                update_data['pause_between_paragraphs'] = float(request.POST.get('pause_between_paragraphs'))
+            if 'pause_between_sentences' in request.POST:
+                update_data['pause_between_sentences'] = float(request.POST.get('pause_between_sentences'))
+            
+            # 背景音乐设置
+            update_data['background_music_enabled'] = request.POST.get('background_music_enabled') == 'on'
+            if 'background_music_volume' in request.POST:
+                update_data['background_music_volume'] = float(request.POST.get('background_music_volume'))
+            
+            # 更新偏好
+            TTSVoiceService.update_user_preferences(request.user, **update_data)
+            
+            return JsonResponse({
+                'success': True,
+                'message': '偏好设置已更新'
+            })
+            
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'message': f'更新失败: {str(e)}'
+            })
+    
+    context = {
+        'preferences': preferences,
+    }
+    
+    return render(request, 'tts_service/voice_preferences.html', context)
+
+
+@login_required
+def set_default_voice(request):
+    """设置默认语音"""
+    if request.method == 'POST':
+        try:
+            voice_id = request.POST.get('voice_id')
+            success = TTSVoiceService.set_default_voice(request.user, voice_id)
+            
+            if success:
+                return JsonResponse({
+                    'success': True,
+                    'message': '默认语音设置成功'
+                })
+            else:
+                return JsonResponse({
+                    'success': False,
+                    'message': '语音不存在或不可用'
+                })
+                
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'message': f'设置失败: {str(e)}'
+            })
+    
+    return JsonResponse({'success': False, 'message': '无效请求'})
+
+
+@login_required
+def toggle_favorite_voice(request):
+    """切换收藏语音"""
+    if request.method == 'POST':
+        try:
+            voice_id = request.POST.get('voice_id')
+            action = request.POST.get('action')  # 'add' or 'remove'
+            
+            if action == 'add':
+                success = TTSVoiceService.add_favorite_voice(request.user, voice_id)
+                message = '已添加到收藏' if success else '添加失败'
+            else:
+                success = TTSVoiceService.remove_favorite_voice(request.user, voice_id)
+                message = '已从收藏移除' if success else '移除失败'
+            
+            return JsonResponse({
+                'success': success,
+                'message': message
+            })
+            
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'message': f'操作失败: {str(e)}'
+            })
+    
+    return JsonResponse({'success': False, 'message': '无效请求'})
+
+
+@login_required
+def generate_voice_sample(request):
+    """生成语音示例"""
+    if request.method == 'POST':
+        try:
+            voice_id = request.POST.get('voice_id')
+            sample_text = request.POST.get('sample_text')
+            
+            sample_url = TTSVoiceService.generate_voice_sample(voice_id, sample_text)
+            
+            if sample_url:
+                return JsonResponse({
+                    'success': True,
+                    'sample_url': sample_url,
+                    'message': '示例生成成功'
+                })
+            else:
+                return JsonResponse({
+                    'success': False,
+                    'message': '示例生成失败'
+                })
+                
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'message': f'生成失败: {str(e)}'
+            })
+    
+    return JsonResponse({'success': False, 'message': '无效请求'})
+
+
+@login_required
+def tts_with_preferences(request):
+    """使用用户偏好进行TTS"""
+    if request.method == 'POST':
+        try:
+            text = request.POST.get('text')
+            voice_id = request.POST.get('voice_id')
+            book_id = request.POST.get('book_id')
+            
+            book = None
+            if book_id:
+                from readify.books.models import Book
+                book = Book.objects.get(id=book_id, user=request.user)
+            
+            # 使用增强的TTS服务
+            result = EnhancedChatTTSService.text_to_speech_with_preferences(
+                text=text,
+                user=request.user,
+                book=book,
+                voice_id=voice_id
+            )
+            
+            if result and result['audio_data']:
+                # 保存音频文件并返回URL
+                import tempfile
+                import os
+                from django.core.files.storage import default_storage
+                from django.core.files.base import ContentFile
+                
+                # 生成文件名
+                filename = f"tts_{request.user.id}_{timezone.now().timestamp()}.wav"
+                
+                # 保存文件
+                file_path = default_storage.save(
+                    f"tts_audio/{filename}",
+                    ContentFile(result['audio_data'])
+                )
+                
+                audio_url = default_storage.url(file_path)
+                
+                return JsonResponse({
+                    'success': True,
+                    'audio_url': audio_url,
+                    'voice_name': result['voice'].display_name,
+                    'processing_time': result['processing_time'],
+                    'message': 'TTS生成成功'
+                })
+            else:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'TTS生成失败'
+                })
+                
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'message': f'TTS生成失败: {str(e)}'
+            })
+    
+    return JsonResponse({'success': False, 'message': '无效请求'})
+
+
+@login_required
+def usage_statistics(request):
+    """TTS使用统计"""
+    user = request.user
+    
+    # 获取使用统计
+    total_usage = TTSUsageLog.objects.filter(user=user).count()
+    successful_usage = TTSUsageLog.objects.filter(user=user, success=True).count()
+    
+    # 最常用的语音
+    popular_voices = TTSUsageLog.objects.filter(
+        user=user, success=True
+    ).values(
+        'voice__display_name', 'voice__language_name'
+    ).annotate(
+        usage_count=Count('id')
+    ).order_by('-usage_count')[:5]
+    
+    # 最近使用记录
+    recent_usage = TTSUsageLog.objects.filter(
+        user=user
+    ).select_related('voice', 'book').order_by('-created_at')[:10]
+    
+    # 按日期统计使用量
+    end_date = timezone.now().date()
+    start_date = end_date - timedelta(days=30)
+    
+    daily_usage = TTSUsageLog.objects.filter(
+        user=user,
+        created_at__date__range=[start_date, end_date]
+    ).extra(
+        select={'day': 'date(created_at)'}
+    ).values('day').annotate(
+        count=Count('id')
+    ).order_by('day')
+    
+    context = {
+        'total_usage': total_usage,
+        'successful_usage': successful_usage,
+        'success_rate': (successful_usage / total_usage * 100) if total_usage > 0 else 0,
+        'popular_voices': popular_voices,
+        'recent_usage': recent_usage,
+        'daily_usage': daily_usage,
+    }
+    
+    return render(request, 'tts_service/usage_statistics.html', context) 

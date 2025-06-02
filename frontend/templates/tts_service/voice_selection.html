@@ -1,0 +1,419 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}语音选择 - Readify{% endblock %}
+
+{% block extra_css %}
+<style>
+.voice-card {
+    border: 2px solid #e9ecef;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.voice-card:hover {
+    border-color: #007bff;
+    box-shadow: 0 4px 15px rgba(0,123,255,0.1);
+}
+
+.voice-card.selected {
+    border-color: #007bff;
+    background-color: #f8f9ff;
+}
+
+.voice-card.default {
+    border-color: #28a745;
+    background-color: #f8fff9;
+}
+
+.voice-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.voice-details h5 {
+    margin-bottom: 5px;
+    color: #333;
+}
+
+.voice-meta {
+    color: #6c757d;
+    font-size: 0.9rem;
+}
+
+.voice-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.voice-actions button {
+    border: none;
+    background: none;
+    color: #6c757d;
+    font-size: 1.2rem;
+    cursor: pointer;
+    transition: color 0.3s ease;
+}
+
+.voice-actions button:hover {
+    color: #007bff;
+}
+
+.voice-actions button.active {
+    color: #dc3545;
+}
+
+.filter-section {
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 30px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.recommended-section {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 30px;
+}
+
+.quality-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.quality-premium {
+    background-color: #ffd700;
+    color: #333;
+}
+
+.quality-standard {
+    background-color: #6c757d;
+    color: white;
+}
+
+.quality-neural {
+    background-color: #007bff;
+    color: white;
+}
+
+.audio-player {
+    margin-top: 10px;
+}
+
+.audio-player audio {
+    width: 100%;
+    height: 30px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="h3 mb-4">
+                <i class="fas fa-microphone me-2"></i>语音选择
+            </h1>
+        </div>
+    </div>
+
+    <!-- 筛选器 -->
+    <div class="row">
+        <div class="col-12">
+            <div class="filter-section">
+                <h5 class="mb-3">筛选条件</h5>
+                <form method="get" class="row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label">语言</label>
+                        <select name="language" class="form-select" onchange="this.form.submit()">
+                            {% for lang_code, lang_name in languages %}
+                            <option value="{{ lang_code }}" {% if lang_code == current_language %}selected{% endif %}>
+                                {{ lang_name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">性别</label>
+                        <select name="gender" class="form-select" onchange="this.form.submit()">
+                            <option value="">全部</option>
+                            <option value="male" {% if current_gender == 'male' %}selected{% endif %}>男性</option>
+                            <option value="female" {% if current_gender == 'female' %}selected{% endif %}>女性</option>
+                            <option value="neutral" {% if current_gender == 'neutral' %}selected{% endif %}>中性</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">语音类型</label>
+                        <select name="voice_type" class="form-select" onchange="this.form.submit()">
+                            <option value="">全部</option>
+                            <option value="neural" {% if current_voice_type == 'neural' %}selected{% endif %}>神经网络</option>
+                            <option value="premium" {% if current_voice_type == 'premium' %}selected{% endif %}>高级语音</option>
+                            <option value="standard" {% if current_voice_type == 'standard' %}selected{% endif %}>标准语音</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">&nbsp;</label>
+                        <div>
+                            <a href="{% url 'tts_service:voice_preferences' %}" class="btn btn-outline-primary">
+                                <i class="fas fa-cog me-1"></i>偏好设置
+                            </a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 推荐语音 -->
+    {% if recommended_voices %}
+    <div class="row">
+        <div class="col-12">
+            <div class="recommended-section">
+                <h5 class="mb-3">
+                    <i class="fas fa-star me-2"></i>推荐语音
+                </h5>
+                <div class="row">
+                    {% for voice in recommended_voices|slice:":4" %}
+                    <div class="col-md-3">
+                        <div class="voice-card" data-voice-id="{{ voice.voice_id }}">
+                            <div class="voice-info">
+                                <div class="voice-details">
+                                    <h6 class="text-white">{{ voice.display_name }}</h6>
+                                    <small class="text-white-50">{{ voice.description|truncatechars:30 }}</small>
+                                </div>
+                                <div class="voice-actions">
+                                    <button type="button" onclick="playVoiceSample('{{ voice.voice_id }}')" 
+                                            title="试听">
+                                        <i class="fas fa-play"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 语音列表 -->
+    <div class="row">
+        <div class="col-12">
+            <h5 class="mb-3">可用语音 ({{ voices.count }})</h5>
+            
+            {% for voice in voices %}
+            <div class="voice-card {% if voice == preferences.default_voice %}default{% endif %}" 
+                 data-voice-id="{{ voice.voice_id }}">
+                <div class="voice-info">
+                    <div class="voice-details">
+                        <h5>
+                            {{ voice.display_name }}
+                            {% if voice == preferences.default_voice %}
+                                <span class="badge bg-success ms-2">默认</span>
+                            {% endif %}
+                            <span class="quality-badge quality-{{ voice.voice_type }}">
+                                {{ voice.get_voice_type_display }}
+                            </span>
+                        </h5>
+                        <div class="voice-meta">
+                            <span class="me-3">
+                                <i class="fas fa-globe me-1"></i>{{ voice.language_name }}
+                            </span>
+                            <span class="me-3">
+                                <i class="fas fa-{% if voice.gender == 'male' %}mars{% elif voice.gender == 'female' %}venus{% else %}genderless{% endif %} me-1"></i>
+                                {{ voice.get_gender_display }}
+                            </span>
+                            <span class="me-3">
+                                <i class="fas fa-user me-1"></i>{{ voice.get_age_group_display }}
+                            </span>
+                            <span class="me-3">
+                                <i class="fas fa-heart me-1"></i>{{ voice.popularity }}
+                            </span>
+                            {% if voice.quality_score %}
+                            <span>
+                                <i class="fas fa-star me-1"></i>{{ voice.quality_score|floatformat:1 }}
+                            </span>
+                            {% endif %}
+                        </div>
+                        {% if voice.description %}
+                        <p class="mt-2 mb-0 text-muted">{{ voice.description }}</p>
+                        {% endif %}
+                        
+                        <!-- 音频播放器 -->
+                        {% if voice.sample_audio %}
+                        <div class="audio-player">
+                            <audio controls preload="none">
+                                <source src="{{ voice.sample_audio.url }}" type="audio/wav">
+                                您的浏览器不支持音频播放。
+                            </audio>
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="voice-actions">
+                        <button type="button" onclick="playVoiceSample('{{ voice.voice_id }}')" 
+                                title="试听" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-play"></i>
+                        </button>
+                        
+                        <button type="button" onclick="setDefaultVoice('{{ voice.voice_id }}')" 
+                                title="设为默认" class="btn btn-sm btn-outline-success">
+                            <i class="fas fa-check"></i>
+                        </button>
+                        
+                        <button type="button" onclick="toggleFavorite('{{ voice.voice_id }}')" 
+                                title="收藏" class="btn btn-sm btn-outline-danger favorite-btn"
+                                data-voice-id="{{ voice.voice_id }}">
+                            <i class="fas fa-heart {% if voice in preferences.favorite_voices.all %}active{% endif %}"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="text-center py-5">
+                <i class="fas fa-microphone-slash fa-3x text-muted mb-3"></i>
+                <p class="text-muted">没有找到符合条件的语音</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- 试听模态框 -->
+<div class="modal fade" id="sampleModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">语音试听</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">试听文本</label>
+                    <textarea id="sampleText" class="form-control" rows="3" 
+                              placeholder="输入要试听的文本...">这是一个语音试听示例，您可以修改这段文字来测试不同的语音效果。</textarea>
+                </div>
+                <div id="audioContainer"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                <button type="button" class="btn btn-primary" onclick="generateSample()">生成试听</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentVoiceId = null;
+
+// 播放语音示例
+function playVoiceSample(voiceId) {
+    currentVoiceId = voiceId;
+    const modal = new bootstrap.Modal(document.getElementById('sampleModal'));
+    modal.show();
+}
+
+// 生成语音示例
+function generateSample() {
+    const text = document.getElementById('sampleText').value;
+    if (!text.trim()) {
+        alert('请输入试听文本');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('voice_id', currentVoiceId);
+    formData.append('sample_text', text);
+    formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+    
+    fetch('{% url "tts_service:generate_voice_sample" %}', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const audioContainer = document.getElementById('audioContainer');
+            audioContainer.innerHTML = `
+                <audio controls autoplay style="width: 100%;">
+                    <source src="${data.sample_url}" type="audio/wav">
+                    您的浏览器不支持音频播放。
+                </audio>
+            `;
+        } else {
+            alert('生成失败: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('生成失败，请重试');
+    });
+}
+
+// 设置默认语音
+function setDefaultVoice(voiceId) {
+    const formData = new FormData();
+    formData.append('voice_id', voiceId);
+    formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+    
+    fetch('{% url "tts_service:set_default_voice" %}', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('设置失败: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('设置失败，请重试');
+    });
+}
+
+// 切换收藏状态
+function toggleFavorite(voiceId) {
+    const btn = document.querySelector(`[data-voice-id="${voiceId}"] .favorite-btn`);
+    const icon = btn.querySelector('i');
+    const isActive = icon.classList.contains('active');
+    
+    const formData = new FormData();
+    formData.append('voice_id', voiceId);
+    formData.append('action', isActive ? 'remove' : 'add');
+    formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+    
+    fetch('{% url "tts_service:toggle_favorite_voice" %}', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            icon.classList.toggle('active');
+        } else {
+            alert('操作失败: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('操作失败，请重试');
+    });
+}
+</script>
+{% endblock %} 

@@ -1,0 +1,278 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}阅读统计 - Readify{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.css">
+<style>
+.stats-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 15px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.stats-number {
+    font-size: 2.5rem;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.stats-label {
+    font-size: 0.9rem;
+    opacity: 0.9;
+}
+
+.period-tabs {
+    border-bottom: 2px solid #e9ecef;
+    margin-bottom: 30px;
+}
+
+.period-tab {
+    padding: 10px 20px;
+    border: none;
+    background: none;
+    color: #6c757d;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.3s ease;
+}
+
+.period-tab.active {
+    color: #007bff;
+    border-bottom-color: #007bff;
+}
+
+.chart-container {
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+}
+
+.recent-sessions {
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.session-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.session-item:last-child {
+    border-bottom: none;
+}
+
+.book-title {
+    font-weight: 500;
+    color: #333;
+}
+
+.session-duration {
+    color: #6c757d;
+    font-size: 0.9rem;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="h3 mb-4">
+                <i class="fas fa-chart-line me-2"></i>阅读统计
+            </h1>
+        </div>
+    </div>
+
+    <!-- 周期选择 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="period-tabs">
+                <button class="period-tab {% if current_period == 'daily' %}active{% endif %}" 
+                        onclick="changePeriod('daily')">今日</button>
+                <button class="period-tab {% if current_period == 'weekly' %}active{% endif %}" 
+                        onclick="changePeriod('weekly')">本周</button>
+                <button class="period-tab {% if current_period == 'monthly' %}active{% endif %}" 
+                        onclick="changePeriod('monthly')">本月</button>
+                <button class="period-tab {% if current_period == 'yearly' %}active{% endif %}" 
+                        onclick="changePeriod('yearly')">今年</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 统计卡片 -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="stats-card">
+                <div class="stats-number">{{ daily_stats.formatted_time }}</div>
+                <div class="stats-label">今日阅读时长</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card">
+                <div class="stats-number">{{ weekly_stats.formatted_time }}</div>
+                <div class="stats-label">本周阅读时长</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card">
+                <div class="stats-number">{{ monthly_stats.formatted_time }}</div>
+                <div class="stats-label">本月阅读时长</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card">
+                <div class="stats-number">{{ yearly_stats.formatted_time }}</div>
+                <div class="stats-label">今年阅读时长</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 详细统计 -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">{{ stats.books_read }}</h5>
+                    <p class="card-text text-muted">阅读书籍数</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">{{ stats.sessions_count }}</h5>
+                    <p class="card-text text-muted">阅读会话数</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        {% if stats.average_session_time %}
+                            {{ stats.average_session_time|floatformat:0 }}分钟
+                        {% else %}
+                            0分钟
+                        {% endif %}
+                    </h5>
+                    <p class="card-text text-muted">平均会话时长</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">{{ stats.total_reading_time|floatformat:0 }}秒</h5>
+                    <p class="card-text text-muted">总阅读时长</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- 阅读趋势图表 -->
+        <div class="col-md-8">
+            <div class="chart-container">
+                <h5 class="mb-3">
+                    <i class="fas fa-chart-area me-2"></i>30天阅读趋势
+                </h5>
+                <canvas id="readingTrendChart" height="300"></canvas>
+            </div>
+        </div>
+
+        <!-- 最近阅读记录 -->
+        <div class="col-md-4">
+            <div class="recent-sessions">
+                <h5 class="mb-3">
+                    <i class="fas fa-clock me-2"></i>最近阅读
+                </h5>
+                {% for session in recent_sessions %}
+                <div class="session-item">
+                    <div>
+                        <div class="book-title">{{ session.book.title }}</div>
+                        <small class="text-muted">{{ session.start_time|date:"m-d H:i" }}</small>
+                    </div>
+                    <div class="session-duration">
+                        {% if session.duration_seconds %}
+                            {{ session.duration_seconds|floatformat:0 }}秒
+                        {% else %}
+                            进行中
+                        {% endif %}
+                    </div>
+                </div>
+                {% empty %}
+                <p class="text-muted text-center">暂无阅读记录</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+<script>
+// 阅读趋势图表
+const ctx = document.getElementById('readingTrendChart').getContext('2d');
+const trendData = {{ trends|safe }};
+
+const chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: trendData.map(item => {
+            const date = new Date(item.date);
+            return (date.getMonth() + 1) + '-' + date.getDate();
+        }),
+        datasets: [{
+            label: '阅读时长(分钟)',
+            data: trendData.map(item => Math.round(item.reading_time / 60)),
+            borderColor: '#007bff',
+            backgroundColor: 'rgba(0, 123, 255, 0.1)',
+            tension: 0.4,
+            fill: true
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                beginAtZero: true,
+                title: {
+                    display: true,
+                    text: '时长(分钟)'
+                }
+            },
+            x: {
+                title: {
+                    display: true,
+                    text: '日期'
+                }
+            }
+        },
+        plugins: {
+            legend: {
+                display: false
+            }
+        }
+    }
+});
+
+// 切换周期
+function changePeriod(period) {
+    window.location.href = `?period=${period}`;
+}
+</script>
+{% endblock %} 

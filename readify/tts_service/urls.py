@@ -19,4 +19,13 @@ urlpatterns = [
     # 缓存管理
     path('cache/cleanup/', views.cleanup_cache, name='cleanup_cache'),
     path('cache/stats/', views.cache_stats, name='cache_stats'),
+
+    # 语音选择和偏好设置
+    path('voices/', views.voice_selection, name='voice_selection'),
+    path('preferences/', views.voice_preferences, name='voice_preferences'),
+    path('set-default-voice/', views.set_default_voice, name='set_default_voice'),
+    path('toggle-favorite/', views.toggle_favorite_voice, name='toggle_favorite_voice'),
+    path('generate-sample/', views.generate_voice_sample, name='generate_voice_sample'),
+    path('tts-with-preferences/', views.tts_with_preferences, name='tts_with_preferences'),
+    path('usage-statistics/', views.usage_statistics, name='usage_statistics'),
 ] 

@@ -29,4 +29,23 @@ urlpatterns = [
     path('api/books/<int:book_id>/classify/', views.classify_book, name='classify_book'),
     path('api/batch-upload/<int:batch_id>/progress/', views.get_batch_upload_progress, name='get_batch_upload_progress'),
     path('api/categories/stats/', views.get_category_stats, name='get_category_stats'),
+    
+    # 阅读统计相关
+    path('statistics/', views.reading_statistics, name='reading_statistics'),
+    path('start-session/<int:book_id>/', views.start_reading_session, name='start_reading_session'),
+    path('end-session/', views.end_reading_session, name='end_reading_session'),
+    
+    # 笔记相关
+    path('<int:book_id>/notes/', views.book_notes, name='book_notes'),
+    path('notes/create/', views.create_note, name='create_note'),
+    path('notes/<int:note_id>/update/', views.update_note, name='update_note'),
+    path('notes/<int:note_id>/delete/', views.delete_note, name='delete_note'),
+    path('notes/collections/', views.note_collections, name='note_collections'),
+    path('notes/export/', views.export_notes, name='export_notes'),
+    path('notes/export/<int:book_id>/', views.export_notes, name='export_book_notes'),
+    
+    # AI总结相关
+    path('<int:book_id>/summaries/', views.book_summaries, name='book_summaries'),
+    path('<int:book_id>/summaries/create/', views.create_book_summary, name='create_book_summary'),
+    path('summaries/paragraph/create/', views.create_paragraph_summary, name='create_paragraph_summary'),
 ] 

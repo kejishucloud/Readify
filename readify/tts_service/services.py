@@ -12,8 +12,10 @@ from django.core.files.base import ContentFile
 from django.utils import timezone
 from langdetect import detect
 import ChatTTS
-from django.db.models import Q
-from django.db.models.functions import Count
+from django.db import models
+from django.contrib.auth.models import User
+from django.core.files.storage import default_storage
+from django.db.models import Q, Count
 
 from .models import ChatTTSCache, ChatTTSRequest, TTSSpeaker, TTSSettings, TTSVoice, UserVoicePreference, TTSUsageLog
 

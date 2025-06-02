@@ -7,8 +7,8 @@ from django.db.models import Q, Count
 from django.views.decorators.http import require_http_methods
 import json
 
-from .models import Book, BookContent, ReadingProgress, BookNote, BookQuestion, BookCategory, BatchUpload
-from .services import BookProcessingService, CategoryService
+from .models import Book, BookContent, ReadingProgress, BookNote, BookQuestion, BookCategory, BatchUpload, ReadingSession, ReadingStatistics, NoteCollection, ParagraphSummary, BookSummary
+from .services import BookProcessingService, CategoryService, ReadingStatisticsService, BookNoteService, AISummaryService
 
 
 def home(request):
@@ -446,3 +446,381 @@ def get_category_stats(request):
         
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})
+
+
+@login_required
+def reading_statistics(request):
+    """阅读统计页面"""
+    user = request.user
+    period_type = request.GET.get('period', 'weekly')
+    
+    # 获取统计数据
+    stats = ReadingStatisticsService.get_reading_time_stats(user, period_type)
+    trends = ReadingStatisticsService.get_reading_trends(user, days=30)
+    
+    # 获取各周期统计
+    daily_stats = ReadingStatisticsService.get_reading_time_stats(user, 'daily')
+    weekly_stats = ReadingStatisticsService.get_reading_time_stats(user, 'weekly')
+    monthly_stats = ReadingStatisticsService.get_reading_time_stats(user, 'monthly')
+    yearly_stats = ReadingStatisticsService.get_reading_time_stats(user, 'yearly')
+    
+    # 获取最近阅读的书籍
+    recent_sessions = ReadingSession.objects.filter(
+        user=user,
+        end_time__isnull=False
+    ).select_related('book').order_by('-end_time')[:10]
+    
+    context = {
+        'stats': stats,
+        'trends': trends,
+        'daily_stats': daily_stats,
+        'weekly_stats': weekly_stats,
+        'monthly_stats': monthly_stats,
+        'yearly_stats': yearly_stats,
+        'recent_sessions': recent_sessions,
+        'current_period': period_type,
+    }
+    
+    return render(request, 'books/reading_statistics.html', context)
+
+
+@login_required
+def start_reading_session(request, book_id):
+    """开始阅读会话"""
+    if request.method == 'POST':
+        try:
+            book = get_object_or_404(Book, id=book_id, user=request.user)
+            chapter_number = request.POST.get('chapter_number')
+            
+            session = ReadingStatisticsService.start_reading_session(
+                request.user, book, chapter_number
+            )
+            
+            return JsonResponse({
+                'success': True,
+                'session_id': session.id,
+                'message': '阅读会话已开始'
+            })
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'message': f'开始阅读会话失败: {str(e)}'
+            })
+    
+    return JsonResponse({'success': False, 'message': '无效请求'})
+
+
+@login_required
+def end_reading_session(request):
+    """结束阅读会话"""
+    if request.method == 'POST':
+        try:
+            book_id = request.POST.get('book_id')
+            book = None
+            if book_id:
+                book = get_object_or_404(Book, id=book_id, user=request.user)
+            
+            count = ReadingStatisticsService.end_reading_session(request.user, book)
+            
+            # 更新统计数据
+            ReadingStatisticsService.update_reading_statistics(request.user)
+            
+            return JsonResponse({
+                'success': True,
+                'sessions_ended': count,
+                'message': f'已结束 {count} 个阅读会话'
+            })
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'message': f'结束阅读会话失败: {str(e)}'
+            })
+    
+    return JsonResponse({'success': False, 'message': '无效请求'})
+
+
+@login_required
+def book_notes(request, book_id):
+    """书籍笔记页面"""
+    book = get_object_or_404(Book, id=book_id, user=request.user)
+    
+    # 获取筛选参数
+    note_type = request.GET.get('type')
+    chapter_number = request.GET.get('chapter')
+    search_keyword = request.GET.get('search')
+    
+    # 获取笔记
+    if search_keyword:
+        notes = BookNoteService.search_notes(request.user, search_keyword, book)
+    else:
+        notes = BookNoteService.get_book_notes(
+            request.user, book, note_type, 
+            int(chapter_number) if chapter_number else None
+        )
+    
+    # 获取章节列表
+    chapters = book.contents.values_list('chapter_number', 'chapter_title').distinct()
+    
+    # 获取笔记统计
+    note_stats = {
+        'total': notes.count(),
+        'highlights': notes.filter(note_type='highlight').count(),
+        'notes': notes.filter(note_type='note').count(),
+        'bookmarks': notes.filter(note_type='bookmark').count(),
+        'questions': notes.filter(note_type='question').count(),
+        'insights': notes.filter(note_type='insight').count(),
+    }
+    
+    context = {
+        'book': book,
+        'notes': notes,
+        'chapters': chapters,
+        'note_stats': note_stats,
+        'current_type': note_type,
+        'current_chapter': chapter_number,
+        'search_keyword': search_keyword,
+    }
+    
+    return render(request, 'books/book_notes.html', context)
+
+
+@login_required
+def create_note(request):
+    """创建笔记"""
+    if request.method == 'POST':
+        try:
+            book_id = request.POST.get('book_id')
+            book = get_object_or_404(Book, id=book_id, user=request.user)
+            
+            note = BookNoteService.create_note(
+                user=request.user,
+                book=book,
+                chapter_number=int(request.POST.get('chapter_number')),
+                position_start=int(request.POST.get('position_start')),
+                position_end=int(request.POST.get('position_end')),
+                selected_text=request.POST.get('selected_text'),
+                note_content=request.POST.get('note_content', ''),
+                note_type=request.POST.get('note_type', 'note'),
+                color=request.POST.get('color', 'yellow'),
+                tags=request.POST.get('tags', '')
+            )
+            
+            return JsonResponse({
+                'success': True,
+                'note_id': note.id,
+                'message': '笔记创建成功'
+            })
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'message': f'创建笔记失败: {str(e)}'
+            })
+    
+    return JsonResponse({'success': False, 'message': '无效请求'})
+
+
+@login_required
+def update_note(request, note_id):
+    """更新笔记"""
+    if request.method == 'POST':
+        try:
+            note = get_object_or_404(BookNote, id=note_id, user=request.user)
+            
+            note.note_content = request.POST.get('note_content', note.note_content)
+            note.note_type = request.POST.get('note_type', note.note_type)
+            note.color = request.POST.get('color', note.color)
+            note.tags = request.POST.get('tags', note.tags)
+            note.save()
+            
+            return JsonResponse({
+                'success': True,
+                'message': '笔记更新成功'
+            })
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'message': f'更新笔记失败: {str(e)}'
+            })
+    
+    return JsonResponse({'success': False, 'message': '无效请求'})
+
+
+@login_required
+def delete_note(request, note_id):
+    """删除笔记"""
+    if request.method == 'POST':
+        try:
+            note = get_object_or_404(BookNote, id=note_id, user=request.user)
+            note.delete()
+            
+            return JsonResponse({
+                'success': True,
+                'message': '笔记删除成功'
+            })
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'message': f'删除笔记失败: {str(e)}'
+            })
+    
+    return JsonResponse({'success': False, 'message': '无效请求'})
+
+
+@login_required
+def note_collections(request):
+    """笔记集合页面"""
+    collections = NoteCollection.objects.filter(user=request.user)
+    
+    if request.method == 'POST':
+        # 创建新集合
+        try:
+            name = request.POST.get('name')
+            description = request.POST.get('description', '')
+            note_ids = request.POST.getlist('note_ids')
+            
+            collection = BookNoteService.create_note_collection(
+                request.user, name, description, note_ids
+            )
+            
+            return JsonResponse({
+                'success': True,
+                'collection_id': collection.id,
+                'message': '笔记集合创建成功'
+            })
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'message': f'创建集合失败: {str(e)}'
+            })
+    
+    context = {
+        'collections': collections,
+    }
+    
+    return render(request, 'books/note_collections.html', context)
+
+
+@login_required
+def export_notes(request, book_id=None):
+    """导出笔记"""
+    try:
+        book = None
+        if book_id:
+            book = get_object_or_404(Book, id=book_id, user=request.user)
+        
+        format_type = request.GET.get('format', 'json')
+        notes_data = BookNoteService.export_notes(request.user, book, format_type)
+        
+        if format_type == 'json':
+            response = JsonResponse({
+                'success': True,
+                'data': notes_data,
+                'count': len(notes_data)
+            })
+        else:
+            # 其他格式的导出可以在这里实现
+            response = JsonResponse({
+                'success': False,
+                'message': '不支持的导出格式'
+            })
+        
+        return response
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'导出失败: {str(e)}'
+        })
+
+
+@login_required
+def book_summaries(request, book_id):
+    """书籍总结页面"""
+    book = get_object_or_404(Book, id=book_id, user=request.user)
+    
+    # 获取现有总结
+    summaries = AISummaryService.get_book_summaries(book)
+    
+    # 获取段落总结
+    paragraph_summaries = AISummaryService.get_paragraph_summaries(book)
+    
+    context = {
+        'book': book,
+        'summaries': summaries,
+        'paragraph_summaries': paragraph_summaries,
+    }
+    
+    return render(request, 'books/book_summaries.html', context)
+
+
+@login_required
+def create_book_summary(request, book_id):
+    """创建书籍总结"""
+    if request.method == 'POST':
+        try:
+            book = get_object_or_404(Book, id=book_id, user=request.user)
+            summary_type = request.POST.get('summary_type', 'overview')
+            
+            # 检查是否已存在该类型的总结
+            existing = BookSummary.objects.filter(
+                book=book, 
+                summary_type=summary_type
+            ).first()
+            
+            if existing:
+                return JsonResponse({
+                    'success': False,
+                    'message': '该类型的总结已存在'
+                })
+            
+            # 创建总结
+            summary = AISummaryService.create_book_summary(
+                book, summary_type, request.user
+            )
+            
+            return JsonResponse({
+                'success': True,
+                'summary_id': summary.id,
+                'message': '总结创建成功'
+            })
+            
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'message': f'创建总结失败: {str(e)}'
+            })
+    
+    return JsonResponse({'success': False, 'message': '无效请求'})
+
+
+@login_required
+def create_paragraph_summary(request):
+    """创建段落总结"""
+    if request.method == 'POST':
+        try:
+            book_id = request.POST.get('book_id')
+            book = get_object_or_404(Book, id=book_id, user=request.user)
+            
+            summary = AISummaryService.create_paragraph_summary(
+                book=book,
+                chapter_number=int(request.POST.get('chapter_number')),
+                paragraph_start=int(request.POST.get('paragraph_start')),
+                paragraph_end=int(request.POST.get('paragraph_end')),
+                original_text=request.POST.get('original_text'),
+                summary_type=request.POST.get('summary_type', 'brief')
+            )
+            
+            return JsonResponse({
+                'success': True,
+                'summary_id': summary.id,
+                'summary_text': summary.summary_text,
+                'message': '段落总结创建成功'
+            })
+            
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'message': f'创建段落总结失败: {str(e)}'
+            })
+    
+    return JsonResponse({'success': False, 'message': '无效请求'})
