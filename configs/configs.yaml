@@ -1,0 +1,48 @@
+DEV:
+  app:
+    name: 'readify'
+  redis:
+      host: '127.0.0.1'
+      port: 16379
+      password: ''
+  milvus:
+      host: '127.0.0.1'
+      port: 19530
+  neo4j:
+      host: '127.0.0.1'
+      port: 7687
+      username: ''
+      password: ''
+
+  mysql:
+    host: '127.0.0.1'
+    port: 13336
+    username: 'root'
+    password: ''
+
+  postgresql:
+    host: '127.0.0.1'
+    port: 15431
+    username: ''
+    password: ''
+
+  mongodb:
+    host: '127.0.0.1'
+    port: 27117
+    username: ''
+    password: ''
+  llm:
+    base_url: ''
+    model_id: ''
+    key: ''
+  embedding:
+    base_url: ''
+    model_id: ''
+    key: ''
+  reranker:
+    base_url: ''
+    model_id: ''
+    key: ''
+
+  service:
+    jiashu: 'jiashu-api'

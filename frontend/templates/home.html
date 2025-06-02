@@ -1,0 +1,433 @@
+{% extends 'base.html' %}
+
+{% block title %}Readify - 智能阅读助手{% endblock %}
+
+{% block extra_css %}
+<style>
+.hero-section {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 80px 0;
+    text-align: center;
+}
+.feature-card {
+    border: none;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+    height: 100%;
+}
+.feature-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+}
+.feature-icon {
+    font-size: 3rem;
+    margin-bottom: 20px;
+    color: #667eea;
+}
+.stats-section {
+    background: #f8f9fa;
+    padding: 60px 0;
+}
+.stat-item {
+    text-align: center;
+    margin-bottom: 30px;
+}
+.stat-number {
+    font-size: 3rem;
+    font-weight: bold;
+    color: #667eea;
+}
+.recent-books {
+    padding: 60px 0;
+}
+.book-card {
+    border: none;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+}
+.book-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+}
+.navbar-brand {
+    font-weight: bold;
+    font-size: 1.5rem;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- 英雄区域 -->
+<section class="hero-section bg-primary text-white py-5">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-6">
+                <h1 class="display-4 fw-bold mb-4">
+                    <i class="fas fa-book-reader"></i> Readify
+                </h1>
+                <p class="lead mb-4">
+                    智能阅读助手，让您的阅读体验更加高效和愉悦。
+                    支持多种格式，AI自动分类，全文搜索，让知识管理变得简单。
+                </p>
+                <div class="d-flex gap-3">
+                    {% if user.is_authenticated %}
+                    <a href="/books/" class="btn btn-light btn-lg">
+                        <i class="fas fa-book"></i> 我的书籍
+                    </a>
+                    <a href="/books/batch-upload/" class="btn btn-outline-light btn-lg">
+                        <i class="fas fa-cloud-upload-alt"></i> 批量上传
+                    </a>
+                    {% else %}
+                    <a href="{% url 'user_management:register' %}" class="btn btn-light btn-lg">
+                        <i class="fas fa-user-plus"></i> 立即注册
+                    </a>
+                    <a href="/user/login/" class="btn btn-outline-light btn-lg">
+                        <i class="fas fa-sign-in-alt"></i> 登录
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="col-lg-6 text-center">
+                <div class="hero-image">
+                    <i class="fas fa-laptop-code fa-10x opacity-75"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+{% if user.is_authenticated %}
+<!-- 用户仪表板 -->
+<section class="dashboard-section py-5">
+    <div class="container">
+        <div class="row">
+            <div class="col-12">
+                <h2 class="mb-4">
+                    <i class="fas fa-tachometer-alt text-primary"></i> 
+                    欢迎回来，{{ user.username }}！
+                </h2>
+            </div>
+        </div>
+
+        <!-- 统计卡片 -->
+        <div class="row mb-5">
+            <div class="col-md-3 mb-3">
+                <div class="card stat-card text-center">
+                    <div class="card-body">
+                        <i class="fas fa-book fa-2x text-primary mb-3"></i>
+                        <h4 class="text-primary">{{ user_stats.total_books }}</h4>
+                        <p class="text-muted mb-0">总书籍数</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card stat-card text-center">
+                    <div class="card-body">
+                        <i class="fas fa-tags fa-2x text-success mb-3"></i>
+                        <h4 class="text-success">{{ user_stats.categories_count }}</h4>
+                        <p class="text-muted mb-0">分类数量</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card stat-card text-center">
+                    <div class="card-body">
+                        <i class="fas fa-eye fa-2x text-info mb-3"></i>
+                        <h4 class="text-info">{{ user_stats.total_views }}</h4>
+                        <p class="text-muted mb-0">总阅读次数</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card stat-card text-center">
+                    <div class="card-body">
+                        <i class="fas fa-sticky-note fa-2x text-warning mb-3"></i>
+                        <h4 class="text-warning">{{ user_stats.notes_count }}</h4>
+                        <p class="text-muted mb-0">笔记数量</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- 最近阅读 -->
+            <div class="col-lg-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-clock text-primary"></i> 最近阅读
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        {% if recent_books %}
+                        <div class="row">
+                            {% for book in recent_books %}
+                            <div class="col-md-6 mb-3">
+                                <div class="d-flex">
+                                    <div class="flex-shrink-0">
+                                        {% if book.cover %}
+                                        <img src="{{ book.cover.url }}" class="rounded" width="60" height="80" style="object-fit: cover;">
+                                        {% else %}
+                                        <div class="bg-light rounded d-flex align-items-center justify-content-center" style="width: 60px; height: 80px;">
+                                            <i class="fas fa-book text-muted"></i>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="flex-grow-1 ms-3">
+                                        <h6 class="mb-1">
+                                            <a href="/books/{{ book.id }}/" class="text-decoration-none">
+                                                {{ book.title|truncatechars:30 }}
+                                            </a>
+                                        </h6>
+                                        <p class="text-muted small mb-1">{{ book.author|default:"未知作者" }}</p>
+                                        <p class="text-muted small mb-1">
+                                            最后阅读：{{ book.last_read_at|date:"m-d H:i" }}
+                                        </p>
+                                        <a href="/books/{{ book.id }}/read/" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-book-open"></i> 继续阅读
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-book fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">还没有阅读记录</p>
+                            <a href="/books/" class="btn btn-primary">
+                                <i class="fas fa-plus"></i> 开始阅读
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- 分类统计 -->
+            <div class="col-lg-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-chart-pie text-success"></i> 分类统计
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        {% if category_stats %}
+                        {% for stat in category_stats|slice:":6" %}
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="small">{{ stat.category__name|default:"未分类" }}</span>
+                            <div>
+                                <span class="badge bg-primary">{{ stat.count }}</span>
+                            </div>
+                        </div>
+                        <div class="progress mb-3" style="height: 4px;">
+                            <div class="progress-bar" role="progressbar" 
+                                 style="width: {% widthratio stat.count category_stats.0.count 100 %}%"></div>
+                        </div>
+                        {% endfor %}
+                        <div class="text-center mt-3">
+                            <a href="/categories/" class="btn btn-sm btn-outline-success">
+                                <i class="fas fa-tags"></i> 查看全部分类
+                            </a>
+                        </div>
+                        {% else %}
+                        <div class="text-center py-3">
+                            <i class="fas fa-tags fa-2x text-muted mb-2"></i>
+                            <p class="text-muted small">还没有分类数据</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- 功能特色 -->
+<section class="features-section py-5 bg-light">
+    <div class="container">
+        <div class="row">
+            <div class="col-12 text-center mb-5">
+                <h2 class="fw-bold">
+                    <i class="fas fa-star text-warning"></i> 功能特色
+                </h2>
+                <p class="text-muted">让阅读变得更加智能和高效</p>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-6 col-lg-3 mb-4">
+                <div class="card feature-card h-100 text-center">
+                    <div class="card-body">
+                        <i class="fas fa-robot fa-3x text-primary mb-3"></i>
+                        <h5>AI智能分类</h5>
+                        <p class="text-muted">
+                            自动分析书籍内容，智能分类到29个学科领域，
+                            让您的书库井然有序。
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6 col-lg-3 mb-4">
+                <div class="card feature-card h-100 text-center">
+                    <div class="card-body">
+                        <i class="fas fa-cloud-upload-alt fa-3x text-success mb-3"></i>
+                        <h5>批量上传</h5>
+                        <p class="text-muted">
+                            支持多文件同时上传，自动提取内容，
+                            大大提高书籍管理效率。
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6 col-lg-3 mb-4">
+                <div class="card feature-card h-100 text-center">
+                    <div class="card-body">
+                        <i class="fas fa-search fa-3x text-info mb-3"></i>
+                        <h5>全文搜索</h5>
+                        <p class="text-muted">
+                            强大的全文搜索功能，快速找到您需要的
+                            书籍内容和信息。
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6 col-lg-3 mb-4">
+                <div class="card feature-card h-100 text-center">
+                    <div class="card-body">
+                        <i class="fas fa-comments fa-3x text-warning mb-3"></i>
+                        <h5>AI问答</h5>
+                        <p class="text-muted">
+                            基于书籍内容的智能问答，帮助您更好地
+                            理解和掌握知识。
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- 支持格式 -->
+<section class="formats-section py-5">
+    <div class="container">
+        <div class="row">
+            <div class="col-12 text-center mb-5">
+                <h2 class="fw-bold">
+                    <i class="fas fa-file-alt text-primary"></i> 支持格式
+                </h2>
+                <p class="text-muted">支持多种主流电子书和文档格式</p>
+            </div>
+        </div>
+        
+        <div class="row justify-content-center">
+            <div class="col-md-2 col-4 mb-4 text-center">
+                <div class="format-item">
+                    <i class="fas fa-file-pdf fa-3x text-danger mb-2"></i>
+                    <h6>PDF</h6>
+                    <small class="text-muted">便携文档格式</small>
+                </div>
+            </div>
+            
+            <div class="col-md-2 col-4 mb-4 text-center">
+                <div class="format-item">
+                    <i class="fas fa-book fa-3x text-info mb-2"></i>
+                    <h6>EPUB</h6>
+                    <small class="text-muted">电子出版物</small>
+                </div>
+            </div>
+            
+            <div class="col-md-2 col-4 mb-4 text-center">
+                <div class="format-item">
+                    <i class="fas fa-book fa-3x text-warning mb-2"></i>
+                    <h6>MOBI</h6>
+                    <small class="text-muted">Kindle格式</small>
+                </div>
+            </div>
+            
+            <div class="col-md-2 col-4 mb-4 text-center">
+                <div class="format-item">
+                    <i class="fas fa-file-alt fa-3x text-secondary mb-2"></i>
+                    <h6>TXT</h6>
+                    <small class="text-muted">纯文本文件</small>
+                </div>
+            </div>
+            
+            <div class="col-md-2 col-4 mb-4 text-center">
+                <div class="format-item">
+                    <i class="fas fa-file-word fa-3x text-primary mb-2"></i>
+                    <h6>DOC/DOCX</h6>
+                    <small class="text-muted">Word文档</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- 开始使用 -->
+{% if not user.is_authenticated %}
+<section class="cta-section py-5 bg-primary text-white">
+    <div class="container text-center">
+        <h2 class="fw-bold mb-4">开始您的智能阅读之旅</h2>
+        <p class="lead mb-4">立即注册，体验AI驱动的智能阅读管理</p>
+        <div class="d-flex justify-content-center gap-3">
+            <a href="{% url 'user_management:register' %}" class="btn btn-light btn-lg">
+                <i class="fas fa-user-plus"></i> 免费注册
+            </a>
+            <a href="/user/login/" class="btn btn-outline-light btn-lg">
+                <i class="fas fa-sign-in-alt"></i> 立即登录
+            </a>
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<style>
+.hero-section {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.stat-card {
+    border: none;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+}
+
+.feature-card {
+    border: none;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+}
+
+.feature-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+}
+
+.format-item {
+    padding: 20px;
+    border-radius: 10px;
+    transition: all 0.3s ease;
+}
+
+.format-item:hover {
+    background-color: #f8f9fa;
+    transform: translateY(-5px);
+}
+
+.cta-section {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+</style>
+{% endblock %} 

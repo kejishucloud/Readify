@@ -1,0 +1,152 @@
+{% extends 'base.html' %}
+
+{% block title %}上传书籍 - Readify{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h4><i class="fas fa-upload"></i> 上传书籍</h4>
+                </div>
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        
+                        <!-- 书籍信息 -->
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="title" class="form-label">书名 <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="title" name="title" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="author" class="form-label">作者</label>
+                                    <input type="text" class="form-control" id="author" name="author">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="description" class="form-label">描述</label>
+                            <textarea class="form-control" id="description" name="description" rows="3" 
+                                      placeholder="简要描述书籍内容..."></textarea>
+                        </div>
+
+                        <!-- 文件上传 -->
+                        <div class="mb-3">
+                            <label for="file" class="form-label">书籍文件 <span class="text-danger">*</span></label>
+                            <input type="file" class="form-control" id="file" name="file" 
+                                   accept=".pdf,.epub,.mobi,.txt,.doc,.docx" required>
+                            <div class="form-text">
+                                支持格式：PDF、EPUB、MOBI、TXT、DOC、DOCX，最大50MB
+                            </div>
+                        </div>
+
+                        <!-- 封面上传 -->
+                        <div class="mb-3">
+                            <label for="cover" class="form-label">封面图片（可选）</label>
+                            <input type="file" class="form-control" id="cover" name="cover" 
+                                   accept="image/*">
+                            <div class="form-text">
+                                支持JPG、PNG、GIF格式
+                            </div>
+                        </div>
+
+                        <!-- 分类选择 -->
+                        <div class="mb-3">
+                            <label for="category" class="form-label">分类（可选）</label>
+                            <select class="form-select" id="category" name="category">
+                                <option value="">让AI自动分类</option>
+                                {% for category in categories %}
+                                <option value="{{ category.id }}">{{ category.name }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">
+                                如果不选择，AI会根据书籍内容自动分类
+                            </div>
+                        </div>
+
+                        <!-- 提交按钮 -->
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{% url 'book_list' %}" class="btn btn-outline-secondary me-md-2">
+                                <i class="fas fa-arrow-left"></i> 返回
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-upload"></i> 上传书籍
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- 上传说明 -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h6><i class="fas fa-info-circle"></i> 上传说明</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>支持的文件格式：</h6>
+                            <ul class="list-unstyled">
+                                <li><i class="fas fa-file-pdf text-danger"></i> PDF文档</li>
+                                <li><i class="fas fa-book text-info"></i> EPUB电子书</li>
+                                <li><i class="fas fa-book text-warning"></i> MOBI电子书</li>
+                                <li><i class="fas fa-file-alt text-secondary"></i> TXT文本</li>
+                                <li><i class="fas fa-file-word text-primary"></i> Word文档</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>AI功能：</h6>
+                            <ul class="list-unstyled">
+                                <li><i class="fas fa-robot text-primary"></i> 自动内容提取</li>
+                                <li><i class="fas fa-tags text-success"></i> 智能分类</li>
+                                <li><i class="fas fa-file-alt text-info"></i> 生成摘要</li>
+                                <li><i class="fas fa-key text-warning"></i> 提取关键词</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="alert alert-info mt-3">
+                        <i class="fas fa-lightbulb"></i>
+                        <strong>提示：</strong>上传后，AI会自动分析书籍内容并进行分类。处理时间取决于文件大小，通常在1-3分钟内完成。
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const fileInput = document.getElementById('file');
+    const titleInput = document.getElementById('title');
+    
+    // 自动填充书名
+    fileInput.addEventListener('change', function() {
+        if (this.files.length > 0 && !titleInput.value) {
+            const fileName = this.files[0].name;
+            const title = fileName.replace(/\.[^/.]+$/, "").replace(/[_-]/g, ' ');
+            titleInput.value = title;
+        }
+    });
+    
+    // 文件大小验证
+    fileInput.addEventListener('change', function() {
+        if (this.files.length > 0) {
+            const file = this.files[0];
+            const maxSize = 50 * 1024 * 1024; // 50MB
+            
+            if (file.size > maxSize) {
+                alert('文件大小不能超过50MB');
+                this.value = '';
+                return;
+            }
+        }
+    });
+});
+</script>
+{% endblock %} 

@@ -1,0 +1,480 @@
+{% extends 'base.html' %}
+
+{% block title %}批量上传状态 - Readify{% endblock %}
+
+{% block extra_css %}
+<style>
+.status-card {
+    border-left: 4px solid #667eea;
+}
+
+.status-badge {
+    font-size: 0.9rem;
+    padding: 0.5rem 1rem;
+}
+
+.book-item {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 10px;
+    background: white;
+    transition: all 0.3s ease;
+}
+
+.book-item:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.processing-animation {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+.error-log {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 15px;
+    max-height: 300px;
+    overflow-y: auto;
+    font-family: monospace;
+    font-size: 0.9rem;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8">
+            <!-- 上传状态卡片 -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h4><i class="fas fa-tasks"></i> {{ batch_upload.upload_name }}</h4>
+                        <span class="badge 
+                            {% if batch_upload.status == 'completed' %}bg-success
+                            {% elif batch_upload.status == 'processing' %}bg-warning
+                            {% elif batch_upload.status == 'failed' %}bg-danger
+                            {% elif batch_upload.status == 'partial' %}bg-info
+                            {% else %}bg-secondary{% endif %}">
+                            {{ batch_upload.get_status_display }}
+                        </span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- 总体进度 -->
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="mb-0">总体进度</h6>
+                            <span class="text-muted">{{ batch_upload.processed_files }}/{{ batch_upload.total_files }}</span>
+                        </div>
+                        <div class="progress mb-2" style="height: 8px;">
+                            <div class="progress-bar 
+                                {% if batch_upload.status == 'completed' %}bg-success
+                                {% elif batch_upload.status == 'processing' %}bg-warning
+                                {% elif batch_upload.status == 'failed' %}bg-danger
+                                {% else %}bg-info{% endif %}" 
+                                role="progressbar" 
+                                style="width: {{ batch_upload.progress_percentage }}%">
+                            </div>
+                        </div>
+                        <div class="row text-center">
+                            <div class="col-3">
+                                <div class="text-success">
+                                    <i class="fas fa-check-circle"></i>
+                                    <div class="small">成功</div>
+                                    <div class="fw-bold">{{ batch_upload.successful_files }}</div>
+                                </div>
+                            </div>
+                            <div class="col-3">
+                                <div class="text-danger">
+                                    <i class="fas fa-times-circle"></i>
+                                    <div class="small">失败</div>
+                                    <div class="fw-bold">{{ batch_upload.failed_files }}</div>
+                                </div>
+                            </div>
+                            <div class="col-3">
+                                <div class="text-warning">
+                                    <i class="fas fa-clock"></i>
+                                    <div class="small">处理中</div>
+                                    <div class="fw-bold">{{ processing_count }}</div>
+                                </div>
+                            </div>
+                            <div class="col-3">
+                                <div class="text-muted">
+                                    <i class="fas fa-list"></i>
+                                    <div class="small">总计</div>
+                                    <div class="fw-bold">{{ batch_upload.total_files }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 时间信息 -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <small class="text-muted">
+                                <i class="fas fa-calendar-plus"></i> 开始时间：{{ batch_upload.created_at|date:"Y-m-d H:i:s" }}
+                            </small>
+                        </div>
+                        <div class="col-md-6">
+                            {% if batch_upload.completed_at %}
+                            <small class="text-muted">
+                                <i class="fas fa-calendar-check"></i> 完成时间：{{ batch_upload.completed_at|date:"Y-m-d H:i:s" }}
+                            </small>
+                            {% else %}
+                            <small class="text-muted">
+                                <i class="fas fa-spinner fa-spin"></i> 处理中...
+                            </small>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- 操作按钮 -->
+                    <div class="d-flex gap-2">
+                        <a href="{% url 'book_list' %}" class="btn btn-outline-primary">
+                            <i class="fas fa-list"></i> 查看书籍列表
+                        </a>
+                        <a href="{% url 'batch_upload' %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-plus"></i> 继续上传
+                        </a>
+                        {% if batch_upload.status == 'processing' %}
+                        <button class="btn btn-outline-info" onclick="refreshStatus()">
+                            <i class="fas fa-sync-alt"></i> 刷新状态
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- 书籍处理详情 -->
+            {% if books %}
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h6><i class="fas fa-book"></i> 书籍处理详情</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>书名</th>
+                                    <th>作者</th>
+                                    <th>分类</th>
+                                    <th>处理状态</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for book in books %}
+                                <tr class="book-row" data-book-id="{{ book.id }}">
+                                    <td>
+                                        <i class="fas fa-book text-muted me-2"></i>
+                                        <a href="{% url 'book_detail' book.id %}" class="text-decoration-none">
+                                            {{ book.title|truncatechars:40 }}
+                                        </a>
+                                    </td>
+                                    <td>{{ book.author|default:"未知"|truncatechars:20 }}</td>
+                                    <td>
+                                        {% if book.category %}
+                                        <span class="badge bg-primary">{{ book.category.name }}</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">未分类</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge processing-status
+                                            {% if book.processing_status == 'completed' %}bg-success
+                                            {% elif book.processing_status == 'processing' %}bg-warning
+                                            {% elif book.processing_status == 'failed' %}bg-danger
+                                            {% else %}bg-secondary{% endif %}">
+                                            {% if book.processing_status == 'completed' %}
+                                            <i class="fas fa-check"></i> 完成
+                                            {% elif book.processing_status == 'processing' %}
+                                            <i class="fas fa-spinner fa-spin"></i> 处理中
+                                            {% elif book.processing_status == 'failed' %}
+                                            <i class="fas fa-times"></i> 失败
+                                            {% else %}
+                                            <i class="fas fa-clock"></i> 待处理
+                                            {% endif %}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="{% url 'book_detail' book.id %}" class="btn btn-outline-primary btn-sm">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            {% if book.processing_status == 'failed' %}
+                                            <button class="btn btn-outline-warning btn-sm" onclick="retryClassification({{ book.id }})">
+                                                <i class="fas fa-redo"></i>
+                                            </button>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- 错误日志 -->
+            {% if batch_upload.error_log %}
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h6 class="text-danger"><i class="fas fa-exclamation-triangle"></i> 错误日志</h6>
+                </div>
+                <div class="card-body">
+                    <pre class="text-danger small">{{ batch_upload.error_log }}</pre>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- 侧边栏 -->
+        <div class="col-md-4">
+            <!-- 统计信息 -->
+            <div class="card">
+                <div class="card-header">
+                    <h6><i class="fas fa-chart-pie"></i> 处理统计</h6>
+                </div>
+                <div class="card-body">
+                    <canvas id="statusChart" width="200" height="200"></canvas>
+                    <div class="mt-3">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>成功率：</span>
+                            <span class="fw-bold text-success">
+                                {% if batch_upload.total_files > 0 %}
+                                {{ batch_upload.successful_files|floatformat:0 }}/{{ batch_upload.total_files }} 
+                                ({% widthratio batch_upload.successful_files batch_upload.total_files 100 %}%)
+                                {% else %}0%{% endif %}
+                            </span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>失败率：</span>
+                            <span class="fw-bold text-danger">
+                                {% if batch_upload.total_files > 0 %}
+                                {{ batch_upload.failed_files|floatformat:0 }}/{{ batch_upload.total_files }} 
+                                ({% widthratio batch_upload.failed_files batch_upload.total_files 100 %}%)
+                                {% else %}0%{% endif %}
+                            </span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span>处理进度：</span>
+                            <span class="fw-bold">{{ batch_upload.progress_percentage|floatformat:1 }}%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI分类统计 -->
+            {% if category_stats %}
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h6><i class="fas fa-robot"></i> AI分类结果</h6>
+                </div>
+                <div class="card-body">
+                    {% for stat in category_stats %}
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="small">{{ stat.category__name|default:"未分类" }}</span>
+                        <span class="badge bg-primary">{{ stat.count }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- 操作提示 -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h6><i class="fas fa-lightbulb"></i> 操作提示</h6>
+                </div>
+                <div class="card-body">
+                    <div class="small">
+                        {% if batch_upload.status == 'processing' %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i>
+                            正在处理中，页面会自动刷新显示最新状态。
+                        </div>
+                        {% elif batch_upload.status == 'completed' %}
+                        <div class="alert alert-success">
+                            <i class="fas fa-check-circle"></i>
+                            所有文件处理完成！您可以在书籍列表中查看上传的书籍。
+                        </div>
+                        {% elif batch_upload.status == 'failed' %}
+                        <div class="alert alert-danger">
+                            <i class="fas fa-times-circle"></i>
+                            批量上传失败，请检查错误日志并重试。
+                        </div>
+                        {% elif batch_upload.status == 'partial' %}
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            部分文件处理成功，请检查失败的文件并重新上传。
+                        </div>
+                        {% endif %}
+                        
+                        <ul class="list-unstyled mt-3">
+                            <li><i class="fas fa-check text-success"></i> 成功的书籍已添加到您的书库</li>
+                            <li><i class="fas fa-robot text-primary"></i> AI正在分析书籍内容并自动分类</li>
+                            <li><i class="fas fa-redo text-warning"></i> 失败的分类可以手动重试</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 初始化图表
+    initStatusChart();
+    
+    // 如果正在处理，自动刷新
+    {% if batch_upload.status == 'processing' %}
+    setInterval(function() {
+        refreshStatus();
+    }, 5000); // 每5秒刷新一次
+    {% endif %}
+});
+
+function initStatusChart() {
+    const ctx = document.getElementById('statusChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['成功', '失败', '处理中'],
+            datasets: [{
+                data: [
+                    {{ batch_upload.successful_files }},
+                    {{ batch_upload.failed_files }},
+                    {{ processing_count }}
+                ],
+                backgroundColor: [
+                    '#28a745',
+                    '#dc3545',
+                    '#ffc107'
+                ],
+                borderWidth: 2,
+                borderColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 20,
+                        usePointStyle: true
+                    }
+                }
+            }
+        }
+    });
+}
+
+function refreshStatus() {
+    fetch(`/api/batch-upload/{{ batch_upload.id }}/status/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // 更新页面状态
+                updateBatchStatus(data.batch_upload);
+                updateBookStatuses(data.books);
+                
+                // 如果完成了，停止自动刷新
+                if (data.batch_upload.status !== 'processing') {
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 2000);
+                }
+            }
+        })
+        .catch(error => {
+            console.error('刷新状态失败:', error);
+        });
+}
+
+function updateBatchStatus(batchData) {
+    // 更新进度条
+    const progressBar = document.querySelector('.progress-bar');
+    progressBar.style.width = batchData.progress_percentage + '%';
+    
+    // 更新统计数字
+    document.querySelector('.text-success .fw-bold').textContent = batchData.successful_files;
+    document.querySelector('.text-danger .fw-bold').textContent = batchData.failed_files;
+}
+
+function updateBookStatuses(books) {
+    books.forEach(book => {
+        const row = document.querySelector(`[data-book-id="${book.id}"]`);
+        if (row) {
+            const statusBadge = row.querySelector('.processing-status');
+            let statusClass = 'bg-secondary';
+            let statusText = '待处理';
+            let statusIcon = 'fas fa-clock';
+            
+            switch (book.processing_status) {
+                case 'completed':
+                    statusClass = 'bg-success';
+                    statusText = '完成';
+                    statusIcon = 'fas fa-check';
+                    break;
+                case 'processing':
+                    statusClass = 'bg-warning';
+                    statusText = '处理中';
+                    statusIcon = 'fas fa-spinner fa-spin';
+                    break;
+                case 'failed':
+                    statusClass = 'bg-danger';
+                    statusText = '失败';
+                    statusIcon = 'fas fa-times';
+                    break;
+            }
+            
+            statusBadge.className = `badge processing-status ${statusClass}`;
+            statusBadge.innerHTML = `<i class="${statusIcon}"></i> ${statusText}`;
+        }
+    });
+}
+
+function retryClassification(bookId) {
+    if (confirm('确定要重新进行AI分类吗？')) {
+        fetch(`/api/books/${bookId}/classify/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('重新分类请求已提交，请稍后刷新页面查看结果');
+                setTimeout(() => {
+                    refreshStatus();
+                }, 2000);
+            } else {
+                alert('重新分类失败：' + (data.error || '未知错误'));
+            }
+        })
+        .catch(error => {
+            console.error('重新分类失败:', error);
+            alert('重新分类失败，请重试');
+        });
+    }
+}
+</script>
+{% endblock %} 

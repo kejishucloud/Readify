@@ -1,0 +1,362 @@
+{% extends 'base.html' %}
+
+{% block title %}批量上传 - Readify{% endblock %}
+
+{% block extra_css %}
+<style>
+.upload-area {
+    border: 2px dashed #dee2e6;
+    border-radius: 8px;
+    padding: 40px;
+    text-align: center;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.upload-area:hover {
+    border-color: #007bff;
+    background-color: #f8f9fa;
+}
+
+.upload-area.dragover {
+    border-color: #007bff;
+    background-color: #e3f2fd;
+}
+
+.file-item {
+    transition: all 0.3s ease;
+}
+
+.file-item.uploading {
+    background-color: #fff3cd;
+}
+
+.file-item.success {
+    background-color: #d1edff;
+}
+
+.file-item.error {
+    background-color: #f8d7da;
+}
+
+.progress-mini {
+    height: 4px;
+    margin-top: 5px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="card">
+                <div class="card-header">
+                    <h4><i class="fas fa-cloud-upload-alt"></i> 批量上传书籍</h4>
+                </div>
+                <div class="card-body">
+                    <form id="batchUploadForm" method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        
+                        <!-- 上传名称 -->
+                        <div class="mb-3">
+                            <label for="batchName" class="form-label">批次名称</label>
+                            <input type="text" class="form-control" id="batchName" name="batch_name" 
+                                   placeholder="例如：2024年1月新书" value="批量上传_{{ current_time|date:'Y年m月d日' }}">
+                        </div>
+
+                        <!-- 文件上传区域 -->
+                        <div class="mb-4">
+                            <label class="form-label">选择书籍文件</label>
+                            <div class="upload-area" id="uploadArea">
+                                <div class="upload-content">
+                                    <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
+                                    <h5>拖拽文件到这里或点击选择</h5>
+                                    <p class="text-muted">支持 PDF、EPUB、MOBI、TXT、DOC、DOCX 格式</p>
+                                    <p class="text-muted">单个文件最大 50MB，可同时上传多个文件</p>
+                                    <input type="file" id="fileInput" name="files" multiple 
+                                           accept=".pdf,.epub,.mobi,.txt,.doc,.docx" style="display: none;">
+                                    <button type="button" class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
+                                        <i class="fas fa-folder-open"></i> 选择文件
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 文件列表 -->
+                        <div id="fileList" class="mb-4" style="display: none;">
+                            <h6><i class="fas fa-list"></i> 已选择的文件</h6>
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>文件名</th>
+                                            <th>大小</th>
+                                            <th>格式</th>
+                                            <th>状态</th>
+                                            <th>操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="fileTableBody">
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- 上传选项 -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="autoClassify" name="auto_classify" checked>
+                                    <label class="form-check-label" for="autoClassify">
+                                        <i class="fas fa-robot text-primary"></i> 启用AI自动分类
+                                    </label>
+                                </div>
+                                <small class="text-muted">AI会根据书籍内容自动分类到合适的学科领域</small>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="extractContent" name="extract_content" checked>
+                                    <label class="form-check-label" for="extractContent">
+                                        <i class="fas fa-file-alt text-info"></i> 提取文本内容
+                                    </label>
+                                </div>
+                                <small class="text-muted">自动提取书籍文本内容，支持全文搜索和AI问答</small>
+                            </div>
+                        </div>
+
+                        <!-- 提交按钮 -->
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{% url 'book_list' %}" class="btn btn-outline-secondary me-md-2">
+                                <i class="fas fa-arrow-left"></i> 返回
+                            </a>
+                            <button type="submit" class="btn btn-primary" id="uploadBtn" disabled>
+                                <i class="fas fa-upload"></i> 开始上传
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- 上传说明 -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h6><i class="fas fa-info-circle"></i> 批量上传说明</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <h6><i class="fas fa-file-upload text-primary"></i> 上传流程</h6>
+                            <ol class="small">
+                                <li>选择或拖拽多个书籍文件</li>
+                                <li>设置批次名称和选项</li>
+                                <li>点击开始上传</li>
+                                <li>等待处理完成</li>
+                            </ol>
+                        </div>
+                        <div class="col-md-4">
+                            <h6><i class="fas fa-cogs text-success"></i> AI处理功能</h6>
+                            <ul class="small list-unstyled">
+                                <li><i class="fas fa-check text-success"></i> 自动内容提取</li>
+                                <li><i class="fas fa-check text-success"></i> 智能分类识别</li>
+                                <li><i class="fas fa-check text-success"></i> 关键词提取</li>
+                                <li><i class="fas fa-check text-success"></i> 摘要生成</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-4">
+                            <h6><i class="fas fa-exclamation-triangle text-warning"></i> 注意事项</h6>
+                            <ul class="small list-unstyled">
+                                <li><i class="fas fa-info-circle text-info"></i> 单文件最大50MB</li>
+                                <li><i class="fas fa-info-circle text-info"></i> 处理时间1-3分钟</li>
+                                <li><i class="fas fa-info-circle text-info"></i> 支持断点续传</li>
+                                <li><i class="fas fa-info-circle text-info"></i> 可查看详细进度</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const uploadArea = document.getElementById('uploadArea');
+    const fileInput = document.getElementById('fileInput');
+    const fileList = document.getElementById('fileList');
+    const fileTableBody = document.getElementById('fileTableBody');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const form = document.getElementById('batchUploadForm');
+    
+    let selectedFiles = [];
+    
+    // 拖拽上传
+    uploadArea.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        uploadArea.classList.add('dragover');
+    });
+    
+    uploadArea.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        uploadArea.classList.remove('dragover');
+    });
+    
+    uploadArea.addEventListener('drop', function(e) {
+        e.preventDefault();
+        uploadArea.classList.remove('dragover');
+        const files = Array.from(e.dataTransfer.files);
+        addFiles(files);
+    });
+    
+    // 点击上传
+    uploadArea.addEventListener('click', function() {
+        fileInput.click();
+    });
+    
+    fileInput.addEventListener('change', function() {
+        const files = Array.from(this.files);
+        addFiles(files);
+    });
+    
+    function addFiles(files) {
+        files.forEach(file => {
+            if (isValidFile(file) && !isDuplicate(file)) {
+                selectedFiles.push(file);
+                addFileToTable(file);
+            }
+        });
+        
+        updateUI();
+    }
+    
+    function isValidFile(file) {
+        const validExtensions = ['.pdf', '.epub', '.mobi', '.txt', '.doc', '.docx'];
+        const extension = '.' + file.name.split('.').pop().toLowerCase();
+        const maxSize = 50 * 1024 * 1024; // 50MB
+        
+        if (!validExtensions.includes(extension)) {
+            alert(`不支持的文件格式: ${file.name}`);
+            return false;
+        }
+        
+        if (file.size > maxSize) {
+            alert(`文件过大: ${file.name} (最大50MB)`);
+            return false;
+        }
+        
+        return true;
+    }
+    
+    function isDuplicate(file) {
+        return selectedFiles.some(f => f.name === file.name && f.size === file.size);
+    }
+    
+    function addFileToTable(file) {
+        const row = document.createElement('tr');
+        row.className = 'file-item';
+        row.innerHTML = `
+            <td>
+                <i class="fas fa-file-alt text-muted me-2"></i>
+                ${file.name}
+            </td>
+            <td>${formatFileSize(file.size)}</td>
+            <td>
+                <span class="badge bg-secondary">${getFileExtension(file.name).toUpperCase()}</span>
+            </td>
+            <td>
+                <span class="badge bg-info">待上传</span>
+            </td>
+            <td>
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeFile('${file.name}')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </td>
+        `;
+        fileTableBody.appendChild(row);
+    }
+    
+    function updateUI() {
+        if (selectedFiles.length > 0) {
+            fileList.style.display = 'block';
+            uploadBtn.disabled = false;
+        } else {
+            fileList.style.display = 'none';
+            uploadBtn.disabled = true;
+        }
+    }
+    
+    window.removeFile = function(fileName) {
+        selectedFiles = selectedFiles.filter(f => f.name !== fileName);
+        
+        // 移除表格行
+        const rows = fileTableBody.querySelectorAll('tr');
+        rows.forEach(row => {
+            if (row.cells[0].textContent.trim().includes(fileName)) {
+                row.remove();
+            }
+        });
+        
+        updateUI();
+    };
+    
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+    
+    function getFileExtension(filename) {
+        return filename.split('.').pop().toLowerCase();
+    }
+    
+    // 表单提交
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        if (selectedFiles.length === 0) {
+            alert('请选择要上传的文件');
+            return;
+        }
+        
+        // 创建FormData
+        const formData = new FormData();
+        formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+        formData.append('batch_name', document.getElementById('batchName').value);
+        formData.append('auto_classify', document.getElementById('autoClassify').checked);
+        formData.append('extract_content', document.getElementById('extractContent').checked);
+        
+        selectedFiles.forEach(file => {
+            formData.append('files', file);
+        });
+        
+        // 提交上传
+        uploadBtn.disabled = true;
+        uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 上传中...';
+        
+        fetch(window.location.href, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // 跳转到状态页面
+                window.location.href = `/books/batch-upload/status/${data.batch_id}/`;
+            } else {
+                alert('上传失败: ' + (data.error || '未知错误'));
+                uploadBtn.disabled = false;
+                uploadBtn.innerHTML = '<i class="fas fa-upload"></i> 开始上传';
+            }
+        })
+        .catch(error => {
+            console.error('上传失败:', error);
+            alert('上传失败，请重试');
+            uploadBtn.disabled = false;
+            uploadBtn.innerHTML = '<i class="fas fa-upload"></i> 开始上传';
+        });
+    });
+});
+</script>
+{% endblock %} 

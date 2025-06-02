@@ -1,0 +1,35 @@
+Django==5.0.6
+djangorestframework==3.14.0
+Pillow==10.0.0
+python-magic==0.4.27
+PyPDF2==3.0.1
+python-docx==0.8.11
+ebooklib==0.18
+beautifulsoup4==4.12.2
+openai==1.3.0
+requests==2.31.0
+celery==5.3.0
+redis==4.6.0
+# ChatTTS相关依赖
+ChatTTS==0.1.0
+torch>=2.0.0
+torchaudio>=2.0.0
+numpy>=1.21.0
+scipy>=1.7.0
+librosa>=0.9.0
+soundfile>=0.12.0
+# 音频处理
+pydub==0.25.1
+# 语言检测和处理
+langdetect==1.0.9
+# 文本处理
+markdown==3.5.1
+bleach==6.0.0
+# 跨域支持
+django-cors-headers==4.3.1
+# 环境变量
+python-decouple==3.8
+# 中文字符编码支持
+chardet==5.2.0
+# 异步HTTP客户端
+httpx==0.25.0 

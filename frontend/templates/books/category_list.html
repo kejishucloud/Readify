@@ -1,0 +1,191 @@
+{% extends 'base.html' %}
+
+{% block title %}分类浏览 - Readify{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-tags"></i> 书籍分类</h2>
+                <div>
+                    <a href="{% url 'book_upload' %}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> 上传书籍
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 搜索框 -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="input-group">
+                <input type="text" class="form-control" id="categorySearch" placeholder="搜索分类...">
+                <button class="btn btn-outline-secondary" type="button">
+                    <i class="fas fa-search"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 分类网格 -->
+    <div class="row" id="categoryGrid">
+        {% for category in categories %}
+        <div class="col-md-4 col-lg-3 mb-4 category-item" data-name="{{ category.name|lower }}">
+            <div class="card h-100 category-card">
+                <div class="card-body text-center">
+                    <div class="category-icon mb-3">
+                        {% if category.code == 'science' %}
+                        <i class="fas fa-flask fa-3x text-primary"></i>
+                        {% elif category.code == 'literature' %}
+                        <i class="fas fa-feather-alt fa-3x text-info"></i>
+                        {% elif category.code == 'history' %}
+                        <i class="fas fa-landmark fa-3x text-warning"></i>
+                        {% elif category.code == 'philosophy' %}
+                        <i class="fas fa-yin-yang fa-3x text-secondary"></i>
+                        {% elif category.code == 'economics' %}
+                        <i class="fas fa-chart-line fa-3x text-success"></i>
+                        {% elif category.code == 'education' %}
+                        <i class="fas fa-graduation-cap fa-3x text-primary"></i>
+                        {% elif category.code == 'medicine' %}
+                        <i class="fas fa-heartbeat fa-3x text-danger"></i>
+                        {% elif category.code == 'law' %}
+                        <i class="fas fa-balance-scale fa-3x text-dark"></i>
+                        {% elif category.code == 'engineering' %}
+                        <i class="fas fa-cogs fa-3x text-secondary"></i>
+                        {% elif category.code == 'computer' %}
+                        <i class="fas fa-laptop-code fa-3x text-info"></i>
+                        {% elif category.code == 'mathematics' %}
+                        <i class="fas fa-calculator fa-3x text-primary"></i>
+                        {% elif category.code == 'physics' %}
+                        <i class="fas fa-atom fa-3x text-warning"></i>
+                        {% elif category.code == 'chemistry' %}
+                        <i class="fas fa-vial fa-3x text-success"></i>
+                        {% elif category.code == 'biology' %}
+                        <i class="fas fa-dna fa-3x text-success"></i>
+                        {% elif category.code == 'psychology' %}
+                        <i class="fas fa-brain fa-3x text-info"></i>
+                        {% elif category.code == 'sociology' %}
+                        <i class="fas fa-users fa-3x text-primary"></i>
+                        {% elif category.code == 'language' %}
+                        <i class="fas fa-language fa-3x text-warning"></i>
+                        {% elif category.code == 'art' %}
+                        <i class="fas fa-palette fa-3x text-danger"></i>
+                        {% elif category.code == 'music' %}
+                        <i class="fas fa-music fa-3x text-info"></i>
+                        {% elif category.code == 'sports' %}
+                        <i class="fas fa-running fa-3x text-success"></i>
+                        {% elif category.code == 'cooking' %}
+                        <i class="fas fa-utensils fa-3x text-warning"></i>
+                        {% elif category.code == 'travel' %}
+                        <i class="fas fa-globe-americas fa-3x text-primary"></i>
+                        {% elif category.code == 'biography' %}
+                        <i class="fas fa-user-circle fa-3x text-secondary"></i>
+                        {% elif category.code == 'fiction' %}
+                        <i class="fas fa-book-open fa-3x text-info"></i>
+                        {% elif category.code == 'poetry' %}
+                        <i class="fas fa-pen-fancy fa-3x text-danger"></i>
+                        {% elif category.code == 'drama' %}
+                        <i class="fas fa-theater-masks fa-3x text-warning"></i>
+                        {% elif category.code == 'children' %}
+                        <i class="fas fa-child fa-3x text-success"></i>
+                        {% elif category.code == 'reference' %}
+                        <i class="fas fa-book fa-3x text-dark"></i>
+                        {% else %}
+                        <i class="fas fa-folder fa-3x text-muted"></i>
+                        {% endif %}
+                    </div>
+                    <h6 class="card-title">{{ category.name }}</h6>
+                    <p class="text-muted">{{ category.book_count }} 本书籍</p>
+                    <a href="{% url 'category_books' category.code %}" class="btn btn-outline-primary btn-sm">
+                        <i class="fas fa-eye"></i> 查看书籍
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="text-center py-5">
+                <i class="fas fa-tags fa-3x text-muted mb-3"></i>
+                <h4>还没有分类</h4>
+                <p class="text-muted">上传书籍后，AI会自动创建分类</p>
+                <a href="{% url 'book_upload' %}" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> 上传第一本书
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- 统计信息 -->
+    {% if category_stats %}
+    <div class="row mt-5">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="fas fa-chart-bar"></i> 分类统计</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for stat in category_stats|slice:":8" %}
+                        <div class="col-md-3 mb-3">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span>{{ stat.category__name|default:"未分类" }}</span>
+                                <span class="badge bg-primary">{{ stat.count }}</span>
+                            </div>
+                            <div class="progress mt-1" style="height: 4px;">
+                                <div class="progress-bar" role="progressbar" 
+                                     style="width: {% widthratio stat.count category_stats.0.count 100 %}%"></div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.category-card {
+    border: none;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+}
+
+.category-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+}
+
+.category-icon {
+    transition: all 0.3s ease;
+}
+
+.category-card:hover .category-icon {
+    transform: scale(1.1);
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('categorySearch');
+    const categoryItems = document.querySelectorAll('.category-item');
+
+    searchInput.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        
+        categoryItems.forEach(item => {
+            const categoryName = item.getAttribute('data-name');
+            if (categoryName.includes(searchTerm)) {
+                item.style.display = 'block';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    });
+});
+</script>
+{% endblock %} 
