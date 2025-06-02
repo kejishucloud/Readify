@@ -45,7 +45,38 @@ class AIService:
             # 每次都重新查询数据库，确保获取最新配置
             user_config = UserAIConfig.objects.get(user=self.user, is_active=True)
             
-            # 构建配置字典
+            # 检查用户是否有有效的API密钥，如果没有则使用环境变量配置
+            if not user_config.api_key or user_config.api_key.strip() == '':
+                logger.info(f"用户 {self.user.username} 的API密钥为空，使用环境变量配置")
+                # 使用环境变量配置，但保留用户的其他设置
+                config = {
+                    'provider': getattr(settings, 'OPENAI_MODEL', 'gpt-3.5-turbo').startswith('Qwen') and 'custom' or 'openai',
+                    'api_url': getattr(settings, 'OPENAI_BASE_URL', 'https://api.openai.com/v1'),
+                    'api_key': getattr(settings, 'OPENAI_API_KEY', ''),
+                    'model_id': getattr(settings, 'OPENAI_MODEL', 'gpt-3.5-turbo'),
+                    'max_tokens': user_config.max_tokens,
+                    'temperature': user_config.temperature,
+                    'timeout': user_config.timeout,
+                }
+                
+                # 为环境变量配置生成headers和endpoint
+                if config['provider'] == 'custom':
+                    config['headers'] = {
+                        'Content-Type': 'application/json',
+                        'Authorization': f'Bearer {config["api_key"]}'
+                    }
+                    config['endpoint'] = f"{config['api_url'].rstrip('/')}/chat/completions"
+                else:
+                    config['headers'] = {
+                        'Content-Type': 'application/json',
+                        'Authorization': f'Bearer {config["api_key"]}'
+                    }
+                    config['endpoint'] = f"{config['api_url'].rstrip('/')}/chat/completions"
+                
+                logger.info(f"使用环境变量AI配置: {config['provider']} - {config['model_id']}")
+                return config
+            
+            # 用户有有效的API密钥，使用用户配置
             config = {
                 'provider': user_config.provider,
                 'api_url': user_config.api_url,
@@ -64,28 +95,40 @@ class AIService:
             return config
             
         except UserAIConfig.DoesNotExist:
-            logger.warning(f"用户 {self.user.username} 没有AI配置，使用默认配置")
-            # 如果没有配置，使用默认配置
+            logger.warning(f"用户 {self.user.username} 没有AI配置，使用环境变量配置")
+            # 如果没有配置，使用环境变量配置
+            provider = 'custom' if getattr(settings, 'OPENAI_MODEL', 'gpt-3.5-turbo').startswith('Qwen') else 'openai'
             return {
-                'provider': 'openai',
+                'provider': provider,
                 'api_url': getattr(settings, 'OPENAI_BASE_URL', 'https://api.openai.com/v1'),
                 'api_key': getattr(settings, 'OPENAI_API_KEY', ''),
                 'model_id': getattr(settings, 'OPENAI_MODEL', 'gpt-3.5-turbo'),
                 'max_tokens': 4000,
                 'temperature': 0.7,
-                'timeout': 30
+                'timeout': 30,
+                'headers': {
+                    'Content-Type': 'application/json',
+                    'Authorization': f'Bearer {getattr(settings, "OPENAI_API_KEY", "")}'
+                },
+                'endpoint': f"{getattr(settings, 'OPENAI_BASE_URL', 'https://api.openai.com/v1').rstrip('/')}/chat/completions"
             }
         except Exception as e:
             logger.error(f"获取用户AI配置失败: {str(e)}")
-            # 如果出错，使用默认配置
+            # 如果出错，使用环境变量配置
+            provider = 'custom' if getattr(settings, 'OPENAI_MODEL', 'gpt-3.5-turbo').startswith('Qwen') else 'openai'
             return {
-                'provider': 'openai',
+                'provider': provider,
                 'api_url': getattr(settings, 'OPENAI_BASE_URL', 'https://api.openai.com/v1'),
                 'api_key': getattr(settings, 'OPENAI_API_KEY', ''),
                 'model_id': getattr(settings, 'OPENAI_MODEL', 'gpt-3.5-turbo'),
                 'max_tokens': 4000,
                 'temperature': 0.7,
-                'timeout': 30
+                'timeout': 30,
+                'headers': {
+                    'Content-Type': 'application/json',
+                    'Authorization': f'Bearer {getattr(settings, "OPENAI_API_KEY", "")}'
+                },
+                'endpoint': f"{getattr(settings, 'OPENAI_BASE_URL', 'https://api.openai.com/v1').rstrip('/')}/chat/completions"
             }
     
     def _make_api_request(self, messages: list, system_prompt: str = None) -> Dict[str, Any]:
@@ -502,17 +545,20 @@ class AIService:
             请用中文回答，字数控制在500-800字之间。
             """
             
-            response = self.client.chat.completions.create(
-                model=self.default_model,
-                messages=[
-                    {"role": "system", "content": "你是一个专业的图书分析师，擅长提取书籍的核心内容并生成高质量的摘要。"},
-                    {"role": "user", "content": prompt}
-                ],
-                max_tokens=1000,
-                temperature=0.7
+            # 使用统一的API请求方法
+            result = self._make_api_request(
+                [{"role": "user", "content": prompt}],
+                "你是一个专业的图书分析师，擅长提取书籍的核心内容并生成高质量的摘要。"
             )
             
-            summary = response.choices[0].message.content
+            if not result['success']:
+                task.status = 'failed'
+                task.error_message = result.get('error', '摘要生成失败')
+                task.completed_at = timezone.now()
+                task.save()
+                return task
+            
+            summary = result['content']
             
             # 更新书籍摘要
             book.summary = summary
@@ -536,8 +582,8 @@ class AIService:
                 task.save()
             raise e
     
-    def extract_keywords(self, book_id, user):
-        """提取书籍关键词"""
+    def extract_keywords_task(self, book_id, user):
+        """提取书籍关键词（任务版本）"""
         try:
             book = Book.objects.get(id=book_id, user=user)
             
@@ -577,17 +623,20 @@ class AIService:
             请以JSON格式返回关键词列表，例如：["关键词1", "关键词2", "关键词3"]
             """
             
-            response = self.client.chat.completions.create(
-                model=self.default_model,
-                messages=[
-                    {"role": "system", "content": "你是一个专业的文本分析师，擅长提取文本的关键词和核心概念。"},
-                    {"role": "user", "content": prompt}
-                ],
-                max_tokens=300,
-                temperature=0.3
+            # 使用统一的API请求方法
+            result = self._make_api_request(
+                [{"role": "user", "content": prompt}],
+                "你是一个专业的文本分析师，擅长提取文本的关键词和核心概念。"
             )
             
-            keywords_text = response.choices[0].message.content
+            if not result['success']:
+                task.status = 'failed'
+                task.error_message = result.get('error', '关键词提取失败')
+                task.completed_at = timezone.now()
+                task.save()
+                return task
+            
+            keywords_text = result['content']
             
             # 尝试解析JSON格式的关键词
             try:

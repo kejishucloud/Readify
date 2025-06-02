@@ -35,24 +35,13 @@ urlpatterns = [
     
     # 阅读助手API
     path('api/books/<int:book_id>/assistant/toggle/', views.toggle_reading_assistant, name='toggle_reading_assistant'),
-    path('api/books/<int:book_id>/assistant/ask/', views.ask_reading_question, name='ask_reading_question'),
-    path('api/books/<int:book_id>/assistant/summary/', views.generate_chapter_summary, name='generate_chapter_summary'),
-    path('api/books/<int:book_id>/assistant/statistics/', views.get_reading_statistics, name='get_reading_statistics'),
-    path('api/books/<int:book_id>/assistant/qa-history/', views.get_qa_history, name='get_qa_history'),
-    path('api/books/<int:book_id>/assistant/summaries/', views.get_chapter_summaries, name='get_chapter_summaries'),
-    path('api/books/<int:book_id>/tts/', views.text_to_speech, name='text_to_speech'),
     
     # 阅读会话管理
-    path('api/books/<int:book_id>/session/start/', views.start_reading_session, name='start_reading_session'),
-    path('api/session/end/', views.end_reading_session, name='end_reading_session'),
-    
-    # 问答评价
-    path('api/qa/<int:qa_id>/rate/', views.rate_qa_answer, name='rate_qa_answer'),
+    path('start-session/<int:book_id>/', views.start_reading_session, name='start_reading_session'),
+    path('end-session/', views.end_reading_session, name='end_reading_session'),
     
     # 阅读统计相关
     path('statistics/', views.reading_statistics, name='reading_statistics'),
-    path('start-session/<int:book_id>/', views.start_reading_session, name='start_reading_session'),
-    path('end-session/', views.end_reading_session, name='end_reading_session'),
     
     # 笔记相关
     path('<int:book_id>/notes/', views.book_notes, name='book_notes'),
@@ -67,10 +56,6 @@ urlpatterns = [
     path('<int:book_id>/summaries/', views.book_summaries, name='book_summaries'),
     path('<int:book_id>/summaries/create/', views.create_book_summary, name='create_book_summary'),
     path('summaries/paragraph/create/', views.create_paragraph_summary, name='create_paragraph_summary'),
-    
-    # 阅读相关
-    path('read/<int:book_id>/', views.book_read, name='book_read'),
-    path('smart-reader/<int:book_id>/', views.smart_reader, name='smart_reader'),
     
     # AI助手功能
     path('ai-analysis/<int:book_id>/', views.ai_text_analysis, name='ai_text_analysis'),

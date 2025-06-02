@@ -1,3 +1,4 @@
+{% load custom_filters %}
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -19,6 +20,8 @@
             padding: 20px;
             border-radius: 10px;
             margin-bottom: 20px;
+            position: relative;
+            z-index: 1;
         }
         
         .reading-content {
@@ -46,6 +49,7 @@
             height: fit-content;
             position: sticky;
             top: 20px;
+            z-index: 10;
         }
         
         .progress-bar-container {
@@ -54,10 +58,17 @@
         
         .chapter-nav {
             margin: 20px 0;
+            position: relative;
+            z-index: 20;
         }
         
         .chapter-nav button {
             margin: 5px;
+        }
+        
+        .chapter-nav select {
+            position: relative;
+            z-index: 25;
         }
         
         .reading-controls {
@@ -242,7 +253,7 @@
             
             <div class="reading-content">
                 <!-- 主要内容区域 -->
-                <div class="main-content book-type-{{ book.category.code|default:'general' }}" id="mainContent">
+                <div class="main-content book-type-{{ book|get_book_type }}" id="mainContent">
                     <div class="page-indicator" id="pageIndicator">
                         第 <span id="currentPage">1</span> 页 / 共 <span id="totalPages">1</span> 页
                     </div>
@@ -253,8 +264,9 @@
                     
                     <div class="chapter-content" id="chapterContent">
                         {% if current_chapter %}
-                            {% load custom_filters %}
-                            {{ current_chapter.content|format_book_content:book.category.code|default:"general"|safe }}
+                            {% with book_type=book|get_book_type %}
+                                {{ current_chapter.content|format_book_content:book_type|safe }}
+                            {% endwith %}
                         {% else %}
                             正在加载内容，请稍候...
                         {% endif %}
