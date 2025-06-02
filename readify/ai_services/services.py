@@ -43,35 +43,55 @@ class AIService:
         try:
             from readify.user_management.models import UserAIConfig
             # 每次都重新查询数据库，确保获取最新配置
-            user_config = UserAIConfig.objects.get(user=self.user, is_active=True)
+            user_config = UserAIConfig.objects.filter(user=self.user, is_active=True).first()
             
-            # 检查用户是否有有效的API密钥，如果没有则使用环境变量配置
-            if not user_config.api_key or user_config.api_key.strip() == '':
-                logger.info(f"用户 {self.user.username} 的API密钥为空，使用环境变量配置")
-                # 使用环境变量配置，但保留用户的其他设置
+            # 如果用户没有配置或API密钥为空，使用环境变量配置
+            if not user_config or not user_config.api_key or user_config.api_key.strip() == '':
+                logger.info(f"用户 {self.user.username} 没有有效的AI配置，使用环境变量配置")
+                
+                # 检测环境变量中的模型类型
+                env_model = getattr(settings, 'OPENAI_MODEL', 'gpt-3.5-turbo')
+                env_api_key = getattr(settings, 'OPENAI_API_KEY', '')
+                env_base_url = getattr(settings, 'OPENAI_BASE_URL', 'https://api.openai.com/v1')
+                
+                # 如果环境变量的API密钥也为空，返回错误配置
+                if not env_api_key or env_api_key.strip() == '':
+                    logger.error(f"用户 {self.user.username} 和环境变量都没有有效的API密钥")
+                    return {
+                        'provider': 'openai',
+                        'api_url': 'https://api.openai.com/v1',
+                        'api_key': '',
+                        'model_id': 'gpt-3.5-turbo',
+                        'max_tokens': 4000,
+                        'temperature': 0.7,
+                        'timeout': 30,
+                        'error': 'API密钥未配置'
+                    }
+                
+                # 根据模型名称判断提供商
+                if env_model.startswith('Qwen') or 'qwen' in env_model.lower():
+                    provider = 'custom'
+                elif env_model.startswith('gpt'):
+                    provider = 'openai'
+                else:
+                    provider = 'custom'
+                
                 config = {
-                    'provider': getattr(settings, 'OPENAI_MODEL', 'gpt-3.5-turbo').startswith('Qwen') and 'custom' or 'openai',
-                    'api_url': getattr(settings, 'OPENAI_BASE_URL', 'https://api.openai.com/v1'),
-                    'api_key': getattr(settings, 'OPENAI_API_KEY', ''),
-                    'model_id': getattr(settings, 'OPENAI_MODEL', 'gpt-3.5-turbo'),
-                    'max_tokens': user_config.max_tokens,
-                    'temperature': user_config.temperature,
-                    'timeout': user_config.timeout,
+                    'provider': provider,
+                    'api_url': env_base_url,
+                    'api_key': env_api_key,
+                    'model_id': env_model,
+                    'max_tokens': user_config.max_tokens if user_config else 4000,
+                    'temperature': user_config.temperature if user_config else 0.7,
+                    'timeout': user_config.timeout if user_config else 30,
                 }
                 
                 # 为环境变量配置生成headers和endpoint
-                if config['provider'] == 'custom':
-                    config['headers'] = {
-                        'Content-Type': 'application/json',
-                        'Authorization': f'Bearer {config["api_key"]}'
-                    }
-                    config['endpoint'] = f"{config['api_url'].rstrip('/')}/chat/completions"
-                else:
-                    config['headers'] = {
-                        'Content-Type': 'application/json',
-                        'Authorization': f'Bearer {config["api_key"]}'
-                    }
-                    config['endpoint'] = f"{config['api_url'].rstrip('/')}/chat/completions"
+                config['headers'] = {
+                    'Content-Type': 'application/json',
+                    'Authorization': f'Bearer {config["api_key"]}'
+                }
+                config['endpoint'] = f"{config['api_url'].rstrip('/')}/chat/completions"
                 
                 logger.info(f"使用环境变量AI配置: {config['provider']} - {config['model_id']}")
                 return config
@@ -94,46 +114,63 @@ class AIService:
             logger.info(f"使用用户自定义AI配置: {user_config.provider} - {user_config.model_id} (ID: {user_config.id})")
             return config
             
-        except UserAIConfig.DoesNotExist:
-            logger.warning(f"用户 {self.user.username} 没有AI配置，使用环境变量配置")
-            # 如果没有配置，使用环境变量配置
-            provider = 'custom' if getattr(settings, 'OPENAI_MODEL', 'gpt-3.5-turbo').startswith('Qwen') else 'openai'
-            return {
-                'provider': provider,
-                'api_url': getattr(settings, 'OPENAI_BASE_URL', 'https://api.openai.com/v1'),
-                'api_key': getattr(settings, 'OPENAI_API_KEY', ''),
-                'model_id': getattr(settings, 'OPENAI_MODEL', 'gpt-3.5-turbo'),
-                'max_tokens': 4000,
-                'temperature': 0.7,
-                'timeout': 30,
-                'headers': {
-                    'Content-Type': 'application/json',
-                    'Authorization': f'Bearer {getattr(settings, "OPENAI_API_KEY", "")}'
-                },
-                'endpoint': f"{getattr(settings, 'OPENAI_BASE_URL', 'https://api.openai.com/v1').rstrip('/')}/chat/completions"
-            }
         except Exception as e:
             logger.error(f"获取用户AI配置失败: {str(e)}")
             # 如果出错，使用环境变量配置
-            provider = 'custom' if getattr(settings, 'OPENAI_MODEL', 'gpt-3.5-turbo').startswith('Qwen') else 'openai'
+            env_api_key = getattr(settings, 'OPENAI_API_KEY', '')
+            env_model = getattr(settings, 'OPENAI_MODEL', 'gpt-3.5-turbo')
+            env_base_url = getattr(settings, 'OPENAI_BASE_URL', 'https://api.openai.com/v1')
+            
+            if not env_api_key or env_api_key.strip() == '':
+                logger.error(f"环境变量中也没有有效的API密钥")
+                return {
+                    'provider': 'openai',
+                    'api_url': 'https://api.openai.com/v1',
+                    'api_key': '',
+                    'model_id': 'gpt-3.5-turbo',
+                    'max_tokens': 4000,
+                    'temperature': 0.7,
+                    'timeout': 30,
+                    'error': 'API密钥未配置'
+                }
+            
+            provider = 'custom' if env_model.startswith('Qwen') or 'qwen' in env_model.lower() else 'openai'
             return {
                 'provider': provider,
-                'api_url': getattr(settings, 'OPENAI_BASE_URL', 'https://api.openai.com/v1'),
-                'api_key': getattr(settings, 'OPENAI_API_KEY', ''),
-                'model_id': getattr(settings, 'OPENAI_MODEL', 'gpt-3.5-turbo'),
+                'api_url': env_base_url,
+                'api_key': env_api_key,
+                'model_id': env_model,
                 'max_tokens': 4000,
                 'temperature': 0.7,
                 'timeout': 30,
                 'headers': {
                     'Content-Type': 'application/json',
-                    'Authorization': f'Bearer {getattr(settings, "OPENAI_API_KEY", "")}'
+                    'Authorization': f'Bearer {env_api_key}'
                 },
-                'endpoint': f"{getattr(settings, 'OPENAI_BASE_URL', 'https://api.openai.com/v1').rstrip('/')}/chat/completions"
+                'endpoint': f"{env_base_url.rstrip('/')}/chat/completions"
             }
     
     def _make_api_request(self, messages: list, system_prompt: str = None) -> Dict[str, Any]:
         """通用API请求方法"""
         try:
+            # 检查配置是否有错误
+            if 'error' in self.config:
+                error_msg = f"AI配置错误: {self.config['error']}"
+                logger.error(error_msg)
+                return {
+                    'success': False,
+                    'error': error_msg
+                }
+            
+            # 检查API密钥是否为空
+            if not self.config.get('api_key') or self.config['api_key'].strip() == '':
+                error_msg = "API密钥未配置，请在用户设置中配置AI服务"
+                logger.error(error_msg)
+                return {
+                    'success': False,
+                    'error': error_msg
+                }
+            
             start_time = time.time()
             
             if system_prompt:
@@ -178,7 +215,10 @@ class AIService:
                 try:
                     error_json = response.json()
                     if 'error' in error_json:
-                        error_detail += f": {error_json['error'].get('message', '未知错误')}"
+                        if isinstance(error_json['error'], dict):
+                            error_detail += f": {error_json['error'].get('message', '未知错误')}"
+                        else:
+                            error_detail += f": {error_json['error']}"
                     else:
                         error_detail += f": {error_json}"
                 except:
@@ -186,11 +226,23 @@ class AIService:
                 
                 logger.error(f"API请求失败: {error_detail}")
                 logger.error(f"请求端点: {endpoint}")
-                logger.error(f"请求头: {dict(headers)}")  # 记录请求头（但不记录敏感信息）
+                
+                # 根据错误类型提供更友好的错误信息
+                if response.status_code == 401:
+                    if "api key" in error_detail.lower() or "unauthorized" in error_detail.lower():
+                        user_friendly_error = "API密钥无效或已过期，请检查您的AI配置"
+                    else:
+                        user_friendly_error = "身份验证失败，请检查API配置"
+                elif response.status_code == 429:
+                    user_friendly_error = "API请求频率过高，请稍后重试"
+                elif response.status_code == 500:
+                    user_friendly_error = "AI服务暂时不可用，请稍后重试"
+                else:
+                    user_friendly_error = f"AI服务请求失败: {error_detail}"
                 
                 return {
                     'success': False,
-                    'error': f'API请求失败: {error_detail}'
+                    'error': user_friendly_error
                 }
             
             result = response.json()
@@ -209,30 +261,25 @@ class AIService:
             }
             
         except requests.exceptions.Timeout:
-            error_msg = f"请求超时（{self.config['timeout']}秒）"
+            error_msg = f"请求超时（{self.config['timeout']}秒），请检查网络连接或稍后重试"
             logger.error(error_msg)
             return {
                 'success': False,
                 'error': error_msg
             }
         except requests.exceptions.ConnectionError:
-            error_msg = f"无法连接到API服务器: {self.config['api_url']}"
+            error_msg = f"无法连接到AI服务器: {self.config.get('api_url', '未知')}"
             logger.error(error_msg)
             return {
                 'success': False,
                 'error': error_msg
             }
-        except requests.exceptions.RequestException as e:
-            logger.error(f"API请求失败: {str(e)}")
-            return {
-                'success': False,
-                'error': f'API请求失败: {str(e)}'
-            }
         except Exception as e:
-            logger.error(f"AI服务错误: {str(e)}")
+            error_msg = f"AI请求处理异常: {str(e)}"
+            logger.error(error_msg)
             return {
                 'success': False,
-                'error': f'AI服务错误: {str(e)}'
+                'error': error_msg
             }
     
     def _build_openai_request(self, messages: list) -> dict:
@@ -329,9 +376,23 @@ class AIService:
         
         # 删除其他可能的思考标签
         content = re.sub(r'<thought>.*?</thought>', '', content, flags=re.DOTALL)
+        content = re.sub(r'<thoughts>.*?</thoughts>', '', content, flags=re.DOTALL)
+        content = re.sub(r'<reasoning>.*?</reasoning>', '', content, flags=re.DOTALL)
+        content = re.sub(r'<analysis>.*?</analysis>', '', content, flags=re.DOTALL)
+        content = re.sub(r'<internal>.*?</internal>', '', content, flags=re.DOTALL)
+        
+        # 删除常见的思考过程文本模式
+        content = re.sub(r'让我想想.*?(?=\n\n|\n[A-Z]|$)', '', content, flags=re.DOTALL)
+        content = re.sub(r'我需要.*?(?=\n\n|\n[A-Z]|$)', '', content, flags=re.DOTALL)
+        content = re.sub(r'首先.*?分析.*?(?=\n\n|\n[A-Z]|$)', '', content, flags=re.DOTALL)
+        
+        # 删除以特定模式开头的思考段落
+        content = re.sub(r'^思考：.*?(?=\n\n|\n[^思]|$)', '', content, flags=re.MULTILINE | re.DOTALL)
+        content = re.sub(r'^分析：.*?(?=\n\n|\n[^分]|$)', '', content, flags=re.MULTILINE | re.DOTALL)
         
         # 清理多余的空行
         content = re.sub(r'\n\s*\n\s*\n', '\n\n', content)
+        content = re.sub(r'^\s*\n+', '', content)  # 删除开头的空行
         
         # 去除首尾空白
         content = content.strip()

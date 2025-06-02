@@ -1402,7 +1402,7 @@
         function updateProgress() {
             const progress = (currentChapter / totalChapters) * 100;
             
-            fetch(`/books/api/books/${bookId}/progress/`, {
+            fetch(`/api/books/${bookId}/progress/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

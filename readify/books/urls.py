@@ -75,6 +75,7 @@ urlpatterns = [
     
     # 收藏功能
     path('books/<int:book_id>/toggle-favorite/', views.toggle_book_favorite, name='toggle_book_favorite'),
+    path('books/<int:book_id>/favorite-status/', views.check_book_favorite_status, name='check_book_favorite_status'),
     path('favorites/', views.favorite_books, name='favorite_books'),
     
     # 最近阅读

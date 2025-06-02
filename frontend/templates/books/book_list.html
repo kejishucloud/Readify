@@ -854,7 +854,47 @@ document.addEventListener('DOMContentLoaded', function() {
             bar.style.width = width;
         }, 500);
     });
+    
+    // 初始化收藏状态
+    initializeFavoriteStatus();
 });
+
+// 初始化收藏状态
+function initializeFavoriteStatus() {
+    const favoriteButtons = document.querySelectorAll('.book-action-btn');
+    favoriteButtons.forEach(button => {
+        const bookId = button.getAttribute('onclick').match(/\d+/)[0];
+        checkFavoriteStatus(bookId, button);
+    });
+}
+
+// 检查收藏状态
+function checkFavoriteStatus(bookId, button) {
+    fetch(`/books/${bookId}/favorite-status/`, {
+        method: 'GET',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const icon = button.querySelector('i');
+            if (data.is_favorited) {
+                icon.classList.remove('far');
+                icon.classList.add('fas');
+                icon.style.color = '#dc3545'; // 红色
+            } else {
+                icon.classList.remove('fas');
+                icon.classList.add('far');
+                icon.style.color = ''; // 默认颜色
+            }
+        }
+    })
+    .catch(error => {
+        console.error('检查收藏状态失败:', error);
+    });
+}
 
 // 查看书籍详情
 function viewBook(bookId) {
@@ -900,24 +940,24 @@ function filterByCategory(categoryId) {
 
 // 筛选书籍
 function filterBooks(type) {
-    const bookItems = document.querySelectorAll('.book-item');
-    
-    bookItems.forEach(item => {
-        switch(type) {
-            case 'all':
+    switch(type) {
+        case 'all':
+            // 显示所有书籍
+            const bookItems = document.querySelectorAll('.book-item');
+            bookItems.forEach(item => {
                 item.style.display = 'block';
-                break;
-            case 'recent':
-                // 这里可以根据实际需求实现最近阅读的筛选逻辑
-                item.style.display = 'block';
-                break;
-            case 'favorites':
-                // 这里可以根据实际需求实现收藏书籍的筛选逻辑
-                item.style.display = 'block';
-                break;
-        }
-        item.style.animation = 'fadeInUp 0.3s ease';
-    });
+                item.style.animation = 'fadeInUp 0.3s ease';
+            });
+            break;
+        case 'recent':
+            // 跳转到最近阅读页面
+            window.location.href = '/recent/';
+            break;
+        case 'favorites':
+            // 跳转到收藏书籍页面
+            window.location.href = '/favorites/';
+            break;
+    }
 }
 
 // 切换视图模式
@@ -942,18 +982,53 @@ function toggleFavorite(bookId) {
     const btn = event.target;
     const icon = btn.querySelector('i') || btn;
     
-    // 切换图标状态
-    if (icon.classList.contains('fas')) {
-        icon.classList.remove('fas');
-        icon.classList.add('far');
-        showMessage('已取消收藏', 'info');
-    } else {
-        icon.classList.remove('far');
-        icon.classList.add('fas');
-        showMessage('已添加到收藏', 'success');
+    // 发送AJAX请求到服务器
+    fetch(`/books/${bookId}/toggle-favorite/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+            'Content-Type': 'application/json',
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // 根据服务器返回的状态更新图标
+            if (data.is_favorited) {
+                icon.classList.remove('far');
+                icon.classList.add('fas');
+                icon.style.color = '#dc3545'; // 红色
+                showMessage('已添加到收藏', 'success');
+            } else {
+                icon.classList.remove('fas');
+                icon.classList.add('far');
+                icon.style.color = ''; // 恢复默认颜色
+                showMessage('已取消收藏', 'info');
+            }
+        } else {
+            showMessage(data.error || '操作失败', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showMessage('网络错误，请重试', 'error');
+    });
+}
+
+// 获取CSRF Token
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
     }
-    
-    // 这里可以添加AJAX请求来更新服务器状态
+    return cookieValue;
 }
 
 // 显示书籍统计

@@ -1970,6 +1970,30 @@ def toggle_book_favorite(request, book_id):
 
 
 @login_required
+@require_http_methods(["GET"])
+def check_book_favorite_status(request, book_id):
+    """检查书籍收藏状态"""
+    try:
+        book = get_object_or_404(Book, id=book_id, user=request.user)
+        
+        is_favorited = BookFavorite.objects.filter(
+            user=request.user,
+            book=book
+        ).exists()
+        
+        return JsonResponse({
+            'success': True,
+            'is_favorited': is_favorited
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'检查失败: {str(e)}'
+        }, status=500)
+
+
+@login_required
 def favorite_books(request):
     """收藏书籍列表页面"""
     # 获取用户收藏的书籍

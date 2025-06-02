@@ -469,10 +469,12 @@
     <script>
         // 增强用户交互功能
         document.addEventListener('DOMContentLoaded', function() {
-            // 用户头像点击效果
-            const userAvatars = document.querySelectorAll('.user-avatar');
+            // 用户头像点击效果 - 只对特定的用户头像元素生效
+            const userAvatars = document.querySelectorAll('.user-avatar:not(.books-avatar)');
             userAvatars.forEach(avatar => {
-                avatar.addEventListener('click', function() {
+                avatar.addEventListener('click', function(e) {
+                    // 防止事件冒泡
+                    e.stopPropagation();
                     this.style.transform = 'scale(1.2)';
                     setTimeout(() => {
                         this.style.transform = 'scale(1)';
@@ -480,8 +482,8 @@
                 });
             });
             
-            // 导航链接悬停效果
-            const navLinks = document.querySelectorAll('.nav-link');
+            // 导航链接悬停效果 - 只对导航栏的链接生效
+            const navLinks = document.querySelectorAll('.navbar .nav-link');
             navLinks.forEach(link => {
                 link.addEventListener('mouseenter', function() {
                     this.style.transform = 'translateY(-2px)';
@@ -501,7 +503,43 @@
                     }, 500);
                 });
             }, 5000);
+            
+            // 确保Bootstrap dropdown正常工作
+            const dropdownTriggers = document.querySelectorAll('[data-bs-toggle="dropdown"]');
+            dropdownTriggers.forEach(trigger => {
+                trigger.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                });
+            });
         });
+        
+        // 全局错误处理函数
+        window.showMessage = function(message, type = 'info') {
+            const alertClass = type === 'error' ? 'danger' : type;
+            const toast = document.createElement('div');
+            toast.className = `alert alert-${alertClass} alert-dismissible fade show position-fixed`;
+            toast.style.cssText = `
+                top: 20px;
+                right: 20px;
+                z-index: 9999;
+                min-width: 300px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            `;
+            toast.innerHTML = `
+                <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-triangle' : 'info-circle'} me-2"></i>
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            document.body.appendChild(toast);
+            
+            // 3秒后自动移除
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.parentNode.removeChild(toast);
+                }
+            }, 3000);
+        };
     </script>
     
     {% block extra_js %}{% endblock %}
