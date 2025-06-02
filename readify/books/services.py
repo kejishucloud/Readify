@@ -351,7 +351,7 @@ class BookProcessingService:
 可选分类：
 {category_text}
 
-请返回JSON格式的结果，包含以下字段：
+请直接返回JSON格式的结果，不要包含任何其他文本或标签，包含以下字段：
 - category_code: 分类代码
 - confidence: 置信度(0-1)
 - reason: 分类理由
@@ -371,14 +371,29 @@ class BookProcessingService:
             # 调用AI服务
             result = self.ai_service._make_api_request(
                 [{"role": "user", "content": prompt}],
-                "你是一个专业的图书分类专家，能够准确识别书籍的学科领域和主题。"
+                "你是一个专业的图书分类专家，能够准确识别书籍的学科领域和主题。请直接返回JSON格式的结果，不要包含任何思考过程或其他文本。"
             )
             
             if result['success']:
                 # 解析AI响应
                 import json
+                import re
+                
                 try:
-                    ai_result = json.loads(result['content'])
+                    # 清理响应内容，移除<think>标签和其他非JSON内容
+                    content = result['content']
+                    
+                    # 移除<think>标签及其内容
+                    content = re.sub(r'<think>.*?</think>', '', content, flags=re.DOTALL)
+                    
+                    # 尝试提取JSON部分
+                    json_match = re.search(r'\{.*\}', content, re.DOTALL)
+                    if json_match:
+                        json_str = json_match.group()
+                        ai_result = json.loads(json_str)
+                    else:
+                        # 如果没有找到JSON，尝试直接解析整个内容
+                        ai_result = json.loads(content.strip())
                     
                     # 更新书籍信息
                     category_code = ai_result.get('category_code')
@@ -386,6 +401,7 @@ class BookProcessingService:
                         try:
                             category = BookCategory.objects.get(code=category_code)
                             book.category = category
+                            logger.info(f"书籍《{book.title}》分类为：{category.name}")
                         except BookCategory.DoesNotExist:
                             # 如果分类不存在，创建一个
                             category_name = dict(categories).get(category_code, category_code)
@@ -394,6 +410,7 @@ class BookProcessingService:
                                 defaults={'name': category_name}
                             )
                             book.category = category
+                            logger.info(f"创建新分类并分类书籍《{book.title}》为：{category.name}")
                     
                     book.summary = ai_result.get('summary', '')
                     book.keywords = ai_result.get('keywords', [])
@@ -407,16 +424,48 @@ class BookProcessingService:
                         'summary': ai_result.get('summary', '')
                     }
                     
-                except json.JSONDecodeError:
-                    # 如果JSON解析失败，尝试简单的文本解析
-                    content = result['content']
-                    book.summary = content[:500]
+                except (json.JSONDecodeError, AttributeError) as e:
+                    logger.warning(f"AI分类结果JSON解析失败: {str(e)}, 原始内容: {result['content'][:500]}")
+                    
+                    # 如果JSON解析失败，尝试基于内容进行简单分类
+                    content_lower = content.lower()
+                    title_lower = book.title.lower()
+                    
+                    # 基于关键词的简单分类逻辑
+                    if any(keyword in content_lower or keyword in title_lower for keyword in ['计算机', '编程', '程序', '软件', '代码', 'python', 'java', 'javascript']):
+                        category_code = 'computer'
+                    elif any(keyword in content_lower or keyword in title_lower for keyword in ['心理', '心理学', '情绪', '焦虑']):
+                        category_code = 'psychology'
+                    elif any(keyword in content_lower or keyword in title_lower for keyword in ['自媒体', '营销', '商业', '管理', '经济']):
+                        category_code = 'economics'
+                    elif any(keyword in content_lower or keyword in title_lower for keyword in ['小说', '故事', '文学']):
+                        category_code = 'literature'
+                    elif any(keyword in content_lower or keyword in title_lower for keyword in ['历史', '文化']):
+                        category_code = 'history'
+                    else:
+                        category_code = 'other'
+                    
+                    try:
+                        category = BookCategory.objects.get(code=category_code)
+                        book.category = category
+                        logger.info(f"使用关键词分类，书籍《{book.title}》分类为：{category.name}")
+                    except BookCategory.DoesNotExist:
+                        # 如果分类不存在，使用"其他"分类
+                        category, created = BookCategory.objects.get_or_create(
+                            code='other',
+                            defaults={'name': '其他'}
+                        )
+                        book.category = category
+                        logger.info(f"使用默认分类，书籍《{book.title}》分类为：{category.name}")
+                    
+                    book.summary = result['content'][:500]
                     book.processing_status = 'completed'
                     book.save()
                     
                     return {
                         'success': True,
-                        'summary': content[:500]
+                        'category': category_code,
+                        'summary': result['content'][:500]
                     }
             else:
                 book.processing_status = 'failed'

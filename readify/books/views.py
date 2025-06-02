@@ -423,7 +423,9 @@ def category_books(request, category_code):
     
     context = {
         'category': category,
+        'books': page_obj,  # 添加books变量供模板使用
         'page_obj': page_obj,
+        'is_paginated': page_obj.has_other_pages(),
     }
     
     return render(request, 'books/category_books.html', context)
