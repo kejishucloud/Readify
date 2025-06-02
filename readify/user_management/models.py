@@ -43,7 +43,51 @@ class UserPreferences(models.Model):
         ('male', '男声'),
         ('child', '童声')
     ], verbose_name='语音类型')
+    voice_engine = models.CharField(max_length=30, default='system', choices=[
+        ('system', '系统语音'),
+        ('azure', 'Azure语音'),
+        ('google', 'Google语音'),
+        ('baidu', '百度语音'),
+        ('iflytek', '科大讯飞'),
+    ], verbose_name='语音引擎')
+    voice_language = models.CharField(max_length=10, default='zh-CN', choices=[
+        ('zh-CN', '中文(普通话)'),
+        ('zh-TW', '中文(台湾)'),
+        ('zh-HK', '中文(香港)'),
+        ('en-US', '英语(美国)'),
+        ('en-GB', '英语(英国)'),
+        ('ja-JP', '日语'),
+        ('ko-KR', '韩语'),
+    ], verbose_name='语音语言')
+    voice_pitch = models.FloatField(default=1.0, verbose_name='音调高低')
+    voice_volume = models.FloatField(default=1.0, verbose_name='音量大小')
     auto_read = models.BooleanField(default=False, verbose_name='自动朗读')
+    auto_read_delay = models.IntegerField(default=3, verbose_name='自动朗读延迟(秒)')
+    
+    # 阅读设置
+    reading_font_size = models.IntegerField(default=16, verbose_name='阅读字体大小')
+    reading_line_height = models.FloatField(default=1.6, verbose_name='行高')
+    reading_background = models.CharField(max_length=20, default='white', choices=[
+        ('white', '白色'),
+        ('beige', '米色'),
+        ('green', '护眼绿'),
+        ('dark', '深色'),
+    ], verbose_name='阅读背景')
+    reading_mode = models.CharField(max_length=20, default='normal', choices=[
+        ('normal', '普通模式'),
+        ('focus', '专注模式'),
+        ('immersive', '沉浸模式'),
+    ], verbose_name='阅读模式')
+    
+    # AI助手设置
+    ai_assistant_enabled = models.BooleanField(default=True, verbose_name='启用AI助手')
+    ai_auto_summary = models.BooleanField(default=False, verbose_name='自动生成章节总结')
+    ai_context_memory = models.BooleanField(default=True, verbose_name='AI上下文记忆')
+    ai_response_style = models.CharField(max_length=20, default='balanced', choices=[
+        ('concise', '简洁'),
+        ('balanced', '平衡'),
+        ('detailed', '详细'),
+    ], verbose_name='AI回答风格')
     
     created_at = models.DateTimeField(default=timezone.now, verbose_name='创建时间')
     updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')

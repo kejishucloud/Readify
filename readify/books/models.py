@@ -418,11 +418,220 @@ class BatchUpload(models.Model):
         ordering = ['-created_at']
     
     def __str__(self):
-        return f"{self.upload_name} - {self.get_status_display()}"
+        return f'{self.user.username} - {self.upload_name}'
     
     @property
     def progress_percentage(self):
-        """计算进度百分比"""
         if self.total_files == 0:
             return 0
         return (self.processed_files / self.total_files) * 100
+
+
+class ReadingAssistant(models.Model):
+    """AI阅读助手会话模型"""
+    SESSION_STATUS = [
+        ('active', '活跃'),
+        ('paused', '暂停'),
+        ('ended', '结束'),
+    ]
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name='用户')
+    book = models.ForeignKey(Book, on_delete=models.CASCADE, verbose_name='书籍')
+    session_name = models.CharField(max_length=200, blank=True, verbose_name='会话名称')
+    current_chapter = models.IntegerField(default=1, verbose_name='当前章节')
+    status = models.CharField(max_length=20, choices=SESSION_STATUS, default='active', verbose_name='状态')
+    is_enabled = models.BooleanField(default=True, verbose_name='是否启用AI助手')
+    auto_summary = models.BooleanField(default=False, verbose_name='自动生成章节总结')
+    context_memory = models.JSONField(default=dict, verbose_name='上下文记忆')
+    created_at = models.DateTimeField(default=timezone.now, verbose_name='创建时间')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
+    last_active_at = models.DateTimeField(default=timezone.now, verbose_name='最后活跃时间')
+    
+    class Meta:
+        verbose_name = 'AI阅读助手'
+        verbose_name_plural = 'AI阅读助手'
+        unique_together = ['user', 'book']
+        ordering = ['-last_active_at']
+    
+    def __str__(self):
+        return f'{self.user.username} - {self.book.title} 阅读助手'
+    
+    def update_activity(self):
+        """更新最后活跃时间"""
+        self.last_active_at = timezone.now()
+        self.save(update_fields=['last_active_at'])
+
+
+class ReadingQA(models.Model):
+    """阅读问答记录模型"""
+    QUESTION_TYPES = [
+        ('text', '文本问答'),
+        ('paragraph', '段落问答'),
+        ('chapter', '章节问答'),
+        ('book', '全书问答'),
+        ('concept', '概念解释'),
+        ('summary', '内容总结'),
+    ]
+    
+    assistant = models.ForeignKey(ReadingAssistant, on_delete=models.CASCADE, related_name='qa_records', verbose_name='阅读助手')
+    question_type = models.CharField(max_length=20, choices=QUESTION_TYPES, default='text', verbose_name='问题类型')
+    question = models.TextField(verbose_name='问题')
+    selected_text = models.TextField(blank=True, verbose_name='选中文本')
+    chapter_number = models.IntegerField(null=True, blank=True, verbose_name='章节号')
+    position_start = models.IntegerField(null=True, blank=True, verbose_name='开始位置')
+    position_end = models.IntegerField(null=True, blank=True, verbose_name='结束位置')
+    answer = models.TextField(blank=True, verbose_name='AI回答')
+    context_used = models.TextField(blank=True, verbose_name='使用的上下文')
+    ai_model_used = models.CharField(max_length=100, blank=True, verbose_name='使用的AI模型')
+    processing_time = models.FloatField(default=0.0, verbose_name='处理时间(秒)')
+    tokens_used = models.IntegerField(default=0, verbose_name='使用的令牌数')
+    is_helpful = models.BooleanField(null=True, blank=True, verbose_name='是否有帮助')
+    created_at = models.DateTimeField(default=timezone.now, verbose_name='创建时间')
+    
+    class Meta:
+        verbose_name = '阅读问答'
+        verbose_name_plural = '阅读问答'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['assistant', 'question_type']),
+            models.Index(fields=['chapter_number']),
+        ]
+    
+    def __str__(self):
+        return f'{self.assistant.book.title} - {self.get_question_type_display()}'
+
+
+class ChapterSummary(models.Model):
+    """章节总结模型"""
+    SUMMARY_TYPES = [
+        ('auto', '自动总结'),
+        ('manual', '手动总结'),
+        ('key_points', '要点提取'),
+        ('detailed', '详细总结'),
+    ]
+    
+    book = models.ForeignKey(Book, on_delete=models.CASCADE, related_name='chapter_summaries', verbose_name='书籍')
+    chapter_number = models.IntegerField(verbose_name='章节号')
+    chapter_title = models.CharField(max_length=200, blank=True, verbose_name='章节标题')
+    summary_type = models.CharField(max_length=20, choices=SUMMARY_TYPES, default='auto', verbose_name='总结类型')
+    summary_content = models.TextField(verbose_name='总结内容')
+    key_points = models.JSONField(default=list, verbose_name='关键要点')
+    word_count = models.IntegerField(default=0, verbose_name='总结字数')
+    original_word_count = models.IntegerField(default=0, verbose_name='原文字数')
+    compression_ratio = models.FloatField(default=0.0, verbose_name='压缩比')
+    ai_model_used = models.CharField(max_length=100, blank=True, verbose_name='使用的AI模型')
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name='创建者')
+    created_at = models.DateTimeField(default=timezone.now, verbose_name='创建时间')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
+    
+    class Meta:
+        verbose_name = '章节总结'
+        verbose_name_plural = '章节总结'
+        unique_together = ['book', 'chapter_number', 'summary_type']
+        ordering = ['book', 'chapter_number']
+        indexes = [
+            models.Index(fields=['book', 'chapter_number']),
+        ]
+    
+    def __str__(self):
+        return f'{self.book.title} - 第{self.chapter_number}章总结'
+    
+    def calculate_compression_ratio(self):
+        """计算压缩比"""
+        if self.original_word_count > 0:
+            self.compression_ratio = self.word_count / self.original_word_count
+        else:
+            self.compression_ratio = 0.0
+
+
+class ReadingTimeTracker(models.Model):
+    """阅读时间追踪模型"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name='用户')
+    book = models.ForeignKey(Book, on_delete=models.CASCADE, verbose_name='书籍')
+    chapter_number = models.IntegerField(verbose_name='章节号')
+    start_time = models.DateTimeField(default=timezone.now, verbose_name='开始时间')
+    end_time = models.DateTimeField(null=True, blank=True, verbose_name='结束时间')
+    duration_seconds = models.IntegerField(default=0, verbose_name='阅读时长(秒)')
+    words_read = models.IntegerField(default=0, verbose_name='阅读字数')
+    reading_speed = models.FloatField(default=0.0, verbose_name='阅读速度(字/分钟)')
+    is_active = models.BooleanField(default=True, verbose_name='是否活跃')
+    pause_count = models.IntegerField(default=0, verbose_name='暂停次数')
+    created_at = models.DateTimeField(default=timezone.now, verbose_name='创建时间')
+    
+    class Meta:
+        verbose_name = '阅读时间追踪'
+        verbose_name_plural = '阅读时间追踪'
+        ordering = ['-start_time']
+        indexes = [
+            models.Index(fields=['user', 'book']),
+            models.Index(fields=['start_time']),
+        ]
+    
+    def __str__(self):
+        return f'{self.user.username} - {self.book.title} 第{self.chapter_number}章'
+    
+    def end_tracking(self):
+        """结束时间追踪"""
+        if self.is_active and not self.end_time:
+            self.end_time = timezone.now()
+            self.duration_seconds = int((self.end_time - self.start_time).total_seconds())
+            self.is_active = False
+            
+            # 计算阅读速度
+            if self.duration_seconds > 0:
+                self.reading_speed = (self.words_read / self.duration_seconds) * 60
+            
+            self.save()
+
+
+class ReadingGoal(models.Model):
+    """阅读目标模型"""
+    GOAL_TYPES = [
+        ('daily', '每日目标'),
+        ('weekly', '每周目标'),
+        ('monthly', '每月目标'),
+        ('yearly', '年度目标'),
+    ]
+    
+    GOAL_METRICS = [
+        ('time', '阅读时间'),
+        ('pages', '阅读页数'),
+        ('books', '阅读书籍数'),
+        ('words', '阅读字数'),
+    ]
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name='用户')
+    goal_type = models.CharField(max_length=20, choices=GOAL_TYPES, verbose_name='目标类型')
+    metric_type = models.CharField(max_length=20, choices=GOAL_METRICS, verbose_name='指标类型')
+    target_value = models.IntegerField(verbose_name='目标值')
+    current_value = models.IntegerField(default=0, verbose_name='当前值')
+    start_date = models.DateField(verbose_name='开始日期')
+    end_date = models.DateField(verbose_name='结束日期')
+    is_active = models.BooleanField(default=True, verbose_name='是否活跃')
+    is_completed = models.BooleanField(default=False, verbose_name='是否完成')
+    created_at = models.DateTimeField(default=timezone.now, verbose_name='创建时间')
+    completed_at = models.DateTimeField(null=True, blank=True, verbose_name='完成时间')
+    
+    class Meta:
+        verbose_name = '阅读目标'
+        verbose_name_plural = '阅读目标'
+        ordering = ['-created_at']
+        unique_together = ['user', 'goal_type', 'metric_type', 'start_date']
+    
+    def __str__(self):
+        return f'{self.user.username} - {self.get_goal_type_display()}{self.get_metric_type_display()}目标'
+    
+    @property
+    def progress_percentage(self):
+        """计算完成百分比"""
+        if self.target_value == 0:
+            return 0
+        return min((self.current_value / self.target_value) * 100, 100)
+    
+    def update_progress(self, value):
+        """更新进度"""
+        self.current_value += value
+        if self.current_value >= self.target_value and not self.is_completed:
+            self.is_completed = True
+            self.completed_at = timezone.now()
+        self.save()

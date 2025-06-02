@@ -1,0 +1,514 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}阅读 - {{ book.title }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/reader.css' %}">
+<style>
+    .reader-container {
+        display: flex;
+        height: calc(100vh - 60px);
+        background: {{ preferences.reading_background|default:'white' }};
+    }
+    
+    .reader-sidebar {
+        width: 300px;
+        background: #f8f9fa;
+        border-right: 1px solid #dee2e6;
+        overflow-y: auto;
+        transition: transform 0.3s ease;
+    }
+    
+    .reader-sidebar.collapsed {
+        transform: translateX(-100%);
+    }
+    
+    .reader-main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+    
+    .reader-toolbar {
+        background: #fff;
+        border-bottom: 1px solid #dee2e6;
+        padding: 10px 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    
+    .reader-content {
+        flex: 1;
+        padding: 20px 40px;
+        overflow-y: auto;
+        font-size: {{ preferences.reading_font_size|default:16 }}px;
+        line-height: {{ preferences.reading_line_height|default:1.6 }};
+        max-width: 800px;
+        margin: 0 auto;
+        width: 100%;
+    }
+    
+    .chapter-content {
+        margin-bottom: 40px;
+    }
+    
+    .chapter-title {
+        font-size: 1.8em;
+        font-weight: bold;
+        margin-bottom: 20px;
+        color: #333;
+        border-bottom: 2px solid #007bff;
+        padding-bottom: 10px;
+    }
+    
+    .chapter-text {
+        text-align: justify;
+        color: #444;
+    }
+    
+    .chapter-text p {
+        margin-bottom: 1em;
+        text-indent: 2em;
+    }
+    
+    .ai-assistant {
+        position: fixed;
+        right: 20px;
+        bottom: 20px;
+        width: 350px;
+        max-height: 500px;
+        background: #fff;
+        border: 1px solid #dee2e6;
+        border-radius: 10px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 1000;
+        transition: transform 0.3s ease;
+    }
+    
+    .ai-assistant.collapsed {
+        transform: translateY(calc(100% - 50px));
+    }
+    
+    .ai-assistant-header {
+        background: #007bff;
+        color: white;
+        padding: 10px 15px;
+        border-radius: 10px 10px 0 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        cursor: pointer;
+    }
+    
+    .ai-assistant-body {
+        padding: 15px;
+        max-height: 400px;
+        overflow-y: auto;
+    }
+    
+    .ai-chat {
+        max-height: 250px;
+        overflow-y: auto;
+        margin-bottom: 15px;
+        border: 1px solid #eee;
+        border-radius: 5px;
+        padding: 10px;
+    }
+    
+    .ai-message {
+        margin-bottom: 10px;
+        padding: 8px 12px;
+        border-radius: 8px;
+        max-width: 90%;
+    }
+    
+    .ai-message.user {
+        background: #007bff;
+        color: white;
+        margin-left: auto;
+        text-align: right;
+    }
+    
+    .ai-message.assistant {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+    }
+    
+    .ai-input-group {
+        display: flex;
+        gap: 5px;
+    }
+    
+    .ai-input {
+        flex: 1;
+        border: 1px solid #dee2e6;
+        border-radius: 5px;
+        padding: 8px 12px;
+        font-size: 14px;
+    }
+    
+    .ai-send-btn {
+        background: #007bff;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        padding: 8px 15px;
+        cursor: pointer;
+        font-size: 14px;
+    }
+    
+    .ai-send-btn:hover {
+        background: #0056b3;
+    }
+    
+    .ai-send-btn:disabled {
+        background: #6c757d;
+        cursor: not-allowed;
+    }
+    
+    .toolbar-group {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .btn-icon {
+        background: none;
+        border: 1px solid #dee2e6;
+        border-radius: 5px;
+        padding: 8px 12px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 14px;
+        transition: all 0.2s;
+    }
+    
+    .btn-icon:hover {
+        background: #f8f9fa;
+        border-color: #007bff;
+    }
+    
+    .btn-icon.active {
+        background: #007bff;
+        color: white;
+        border-color: #007bff;
+    }
+    
+    .progress-bar {
+        height: 4px;
+        background: #e9ecef;
+        border-radius: 2px;
+        overflow: hidden;
+        margin: 10px 0;
+    }
+    
+    .progress-fill {
+        height: 100%;
+        background: #007bff;
+        transition: width 0.3s ease;
+    }
+    
+    .chapter-nav {
+        padding: 15px;
+        border-bottom: 1px solid #dee2e6;
+    }
+    
+    .chapter-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+    
+    .chapter-item {
+        padding: 8px 12px;
+        cursor: pointer;
+        border-radius: 5px;
+        margin-bottom: 2px;
+        transition: background 0.2s;
+    }
+    
+    .chapter-item:hover {
+        background: #f8f9fa;
+    }
+    
+    .chapter-item.active {
+        background: #007bff;
+        color: white;
+    }
+    
+    .summary-panel {
+        padding: 15px;
+        border-top: 1px solid #dee2e6;
+        background: #f8f9fa;
+    }
+    
+    .summary-content {
+        font-size: 14px;
+        line-height: 1.5;
+        color: #666;
+    }
+    
+    .key-points {
+        margin-top: 10px;
+    }
+    
+    .key-points ul {
+        margin: 5px 0;
+        padding-left: 20px;
+    }
+    
+    .key-points li {
+        margin-bottom: 3px;
+    }
+    
+    .reading-stats {
+        padding: 15px;
+        border-bottom: 1px solid #dee2e6;
+        font-size: 14px;
+    }
+    
+    .stat-item {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 5px;
+    }
+    
+    .text-selection {
+        background: #fff3cd;
+        border-radius: 3px;
+        padding: 2px 4px;
+        cursor: pointer;
+    }
+    
+    .text-selection.active {
+        background: #ffc107;
+    }
+    
+    @media (max-width: 768px) {
+        .reader-container {
+            flex-direction: column;
+        }
+        
+        .reader-sidebar {
+            width: 100%;
+            height: 200px;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            z-index: 999;
+            transform: translateY(100%);
+        }
+        
+        .reader-sidebar.show {
+            transform: translateY(0);
+        }
+        
+        .ai-assistant {
+            width: calc(100% - 40px);
+            right: 20px;
+            left: 20px;
+        }
+        
+        .reader-content {
+            padding: 20px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="reader-container">
+    <!-- 侧边栏 -->
+    <div class="reader-sidebar" id="readerSidebar">
+        <!-- 章节导航 -->
+        <div class="chapter-nav">
+            <h6 class="mb-3">章节目录</h6>
+            <ul class="chapter-list" id="chapterList">
+                {% for chapter in chapters %}
+                <li class="chapter-item {% if chapter.chapter_number == current_chapter %}active{% endif %}" 
+                    data-chapter="{{ chapter.chapter_number }}">
+                    第{{ chapter.chapter_number }}章 {{ chapter.chapter_title|default:"" }}
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        
+        <!-- 阅读统计 -->
+        <div class="reading-stats">
+            <h6 class="mb-3">阅读统计</h6>
+            <div class="stat-item">
+                <span>阅读进度:</span>
+                <span id="readingProgress">{{ progress.progress_percentage|default:0|floatformat:1 }}%</span>
+            </div>
+            <div class="stat-item">
+                <span>阅读时间:</span>
+                <span id="readingTime">{{ progress.reading_time|default:0 }}秒</span>
+            </div>
+            <div class="stat-item">
+                <span>当前章节:</span>
+                <span id="currentChapter">第{{ current_chapter }}章</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: {{ progress.progress_percentage|default:0 }}%"></div>
+            </div>
+        </div>
+        
+        <!-- 章节总结 -->
+        <div class="summary-panel" id="summaryPanel" style="display: none;">
+            <h6 class="mb-3">章节总结</h6>
+            <div class="summary-content" id="summaryContent">
+                <!-- 总结内容将通过JavaScript加载 -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- 主要内容区域 -->
+    <div class="reader-main">
+        <!-- 工具栏 -->
+        <div class="reader-toolbar">
+            <div class="toolbar-group">
+                <button class="btn-icon" id="toggleSidebar" title="切换侧边栏">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <button class="btn-icon" id="toggleAssistant" title="AI助手" 
+                        {% if assistant.is_enabled %}class="active"{% endif %}>
+                    <i class="fas fa-robot"></i>
+                    AI助手
+                </button>
+                <button class="btn-icon" id="generateSummary" title="生成总结">
+                    <i class="fas fa-file-alt"></i>
+                    章节总结
+                </button>
+            </div>
+            
+            <div class="toolbar-group">
+                <button class="btn-icon" id="toggleTTS" title="语音朗读"
+                        {% if preferences.voice_enabled %}class="active"{% endif %}>
+                    <i class="fas fa-volume-up"></i>
+                    朗读
+                </button>
+                <button class="btn-icon" id="fontSizeDown" title="减小字体">
+                    <i class="fas fa-minus"></i>
+                    A
+                </button>
+                <button class="btn-icon" id="fontSizeUp" title="增大字体">
+                    <i class="fas fa-plus"></i>
+                    A
+                </button>
+                <select class="form-select form-select-sm" id="readingMode" style="width: auto;">
+                    <option value="normal" {% if preferences.reading_mode == 'normal' %}selected{% endif %}>普通模式</option>
+                    <option value="focus" {% if preferences.reading_mode == 'focus' %}selected{% endif %}>专注模式</option>
+                    <option value="immersive" {% if preferences.reading_mode == 'immersive' %}selected{% endif %}>沉浸模式</option>
+                </select>
+            </div>
+        </div>
+        
+        <!-- 阅读内容 -->
+        <div class="reader-content" id="readerContent">
+            <div class="chapter-content" id="chapterContent">
+                <!-- 章节内容将通过JavaScript加载 -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- AI助手面板 -->
+    <div class="ai-assistant {% if not assistant.is_enabled %}collapsed{% endif %}" id="aiAssistant">
+        <div class="ai-assistant-header" id="aiAssistantHeader">
+            <span>
+                <i class="fas fa-robot"></i>
+                AI阅读助手
+            </span>
+            <div>
+                <button class="btn btn-sm btn-outline-light" id="clearChat" title="清空对话">
+                    <i class="fas fa-trash"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-light" id="toggleAIPanel" title="收起/展开">
+                    <i class="fas fa-chevron-down"></i>
+                </button>
+            </div>
+        </div>
+        
+        <div class="ai-assistant-body" id="aiAssistantBody">
+            <div class="ai-chat" id="aiChat">
+                <div class="ai-message assistant">
+                    <div>你好！我是你的AI阅读助手。你可以：</div>
+                    <ul style="margin: 5px 0; padding-left: 20px; font-size: 13px;">
+                        <li>选中文本后提问</li>
+                        <li>询问章节内容</li>
+                        <li>请求概念解释</li>
+                        <li>生成内容总结</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="ai-input-group">
+                <input type="text" class="ai-input" id="aiInput" placeholder="输入你的问题..." maxlength="500">
+                <button class="ai-send-btn" id="aiSendBtn">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+            
+            <div class="mt-2">
+                <small class="text-muted">
+                    问题类型: 
+                    <select class="form-select form-select-sm d-inline" id="questionType" style="width: auto;">
+                        <option value="text">文本问答</option>
+                        <option value="chapter">章节问答</option>
+                        <option value="concept">概念解释</option>
+                        <option value="summary">内容总结</option>
+                    </select>
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 音频播放器 -->
+<audio id="ttsPlayer" style="display: none;" controls></audio>
+
+<!-- 加载提示 -->
+<div class="modal fade" id="loadingModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-body text-center">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">加载中...</span>
+                </div>
+                <div class="mt-2" id="loadingText">处理中...</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/reader.js' %}"></script>
+<script>
+// 初始化阅读器
+document.addEventListener('DOMContentLoaded', function() {
+    const reader = new BookReader({
+        bookId: {{ book.id }},
+        currentChapter: {{ current_chapter }},
+        assistantEnabled: {{ assistant.is_enabled|yesno:"true,false" }},
+        preferences: {
+            fontSize: {{ preferences.reading_font_size|default:16 }},
+            lineHeight: {{ preferences.reading_line_height|default:1.6 }},
+            background: '{{ preferences.reading_background|default:"white" }}',
+            voiceEnabled: {{ preferences.voice_enabled|yesno:"true,false" }},
+            autoRead: {{ preferences.auto_read|yesno:"true,false" }},
+            autoReadDelay: {{ preferences.auto_read_delay|default:3 }}
+        }
+    });
+    
+    // 全局变量
+    window.bookReader = reader;
+});
+</script>
+{% endblock %} 

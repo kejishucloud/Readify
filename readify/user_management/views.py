@@ -101,7 +101,7 @@ def update_preferences(request):
         
         preferences, created = UserPreferences.objects.get_or_create(user=request.user)
         
-        # 更新字段
+        # 基本设置
         if 'theme' in data:
             preferences.theme = data['theme']
         if 'language' in data:
@@ -120,8 +120,38 @@ def update_preferences(request):
             preferences.voice_speed = float(data['voice_speed'])
         if 'voice_type' in data:
             preferences.voice_type = data['voice_type']
+        if 'voice_engine' in data:
+            preferences.voice_engine = data['voice_engine']
+        if 'voice_language' in data:
+            preferences.voice_language = data['voice_language']
+        if 'voice_pitch' in data:
+            preferences.voice_pitch = float(data['voice_pitch'])
+        if 'voice_volume' in data:
+            preferences.voice_volume = float(data['voice_volume'])
         if 'auto_read' in data:
             preferences.auto_read = data['auto_read']
+        if 'auto_read_delay' in data:
+            preferences.auto_read_delay = int(data['auto_read_delay'])
+        
+        # 阅读设置
+        if 'reading_font_size' in data:
+            preferences.reading_font_size = int(data['reading_font_size'])
+        if 'reading_line_height' in data:
+            preferences.reading_line_height = float(data['reading_line_height'])
+        if 'reading_background' in data:
+            preferences.reading_background = data['reading_background']
+        if 'reading_mode' in data:
+            preferences.reading_mode = data['reading_mode']
+        
+        # AI助手设置
+        if 'ai_assistant_enabled' in data:
+            preferences.ai_assistant_enabled = data['ai_assistant_enabled']
+        if 'ai_auto_summary' in data:
+            preferences.ai_auto_summary = data['ai_auto_summary']
+        if 'ai_context_memory' in data:
+            preferences.ai_context_memory = data['ai_context_memory']
+        if 'ai_response_style' in data:
+            preferences.ai_response_style = data['ai_response_style']
         
         preferences.save()
         

@@ -6,9 +6,11 @@ from django.core.paginator import Paginator
 from django.db.models import Q, Count
 from django.views.decorators.http import require_http_methods
 import json
+from django.views.decorators.csrf import csrf_exempt
 
-from .models import Book, BookContent, ReadingProgress, BookNote, BookQuestion, BookCategory, BatchUpload, ReadingSession, ReadingStatistics, NoteCollection, ParagraphSummary, BookSummary
+from .models import Book, BookContent, ReadingProgress, BookNote, BookQuestion, BookCategory, BatchUpload, ReadingSession, ReadingStatistics, NoteCollection, ParagraphSummary, BookSummary, ReadingAssistant, ReadingQA, ChapterSummary, ReadingTimeTracker
 from .services import BookProcessingService, CategoryService, ReadingStatisticsService, BookNoteService, AISummaryService
+from .reading_assistant import ReadingAssistantService
 
 
 def home(request):
@@ -834,3 +836,438 @@ def create_paragraph_summary(request):
             })
     
     return JsonResponse({'success': False, 'message': '无效请求'})
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def book_reader(request, book_id):
+    """书籍阅读器页面"""
+    book = get_object_or_404(Book, id=book_id, user=request.user)
+    
+    # 获取或创建阅读助手
+    assistant_service = ReadingAssistantService(request.user, book)
+    
+    # 获取阅读进度
+    progress = ReadingProgress.objects.filter(user=request.user, book=book).first()
+    current_chapter = progress.current_chapter if progress else 1
+    
+    # 获取章节列表
+    chapters = BookContent.objects.filter(book=book).order_by('chapter_number')
+    
+    # 获取用户偏好设置
+    try:
+        from readify.user_management.models import UserPreferences
+        preferences = UserPreferences.objects.get(user=request.user)
+    except UserPreferences.DoesNotExist:
+        preferences = None
+    
+    context = {
+        'book': book,
+        'chapters': chapters,
+        'current_chapter': current_chapter,
+        'assistant': assistant_service.assistant,
+        'preferences': preferences,
+        'progress': progress,
+    }
+    
+    return render(request, 'books/reader.html', context)
+
+
+@login_required
+@csrf_exempt
+@require_http_methods(["POST"])
+def toggle_reading_assistant(request, book_id):
+    """启用/禁用阅读助手"""
+    try:
+        book = get_object_or_404(Book, id=book_id, user=request.user)
+        data = json.loads(request.body)
+        enabled = data.get('enabled', True)
+        
+        assistant_service = ReadingAssistantService(request.user, book)
+        result = assistant_service.toggle_assistant(enabled)
+        
+        return JsonResponse(result)
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'操作失败: {str(e)}'
+        }, status=500)
+
+
+@login_required
+@csrf_exempt
+@require_http_methods(["POST"])
+def ask_reading_question(request, book_id):
+    """向阅读助手提问"""
+    try:
+        book = get_object_or_404(Book, id=book_id, user=request.user)
+        data = json.loads(request.body)
+        
+        question = data.get('question', '').strip()
+        if not question:
+            return JsonResponse({
+                'success': False,
+                'error': '问题不能为空'
+            }, status=400)
+        
+        question_type = data.get('question_type', 'text')
+        selected_text = data.get('selected_text', '')
+        chapter_number = data.get('chapter_number')
+        position_start = data.get('position_start')
+        position_end = data.get('position_end')
+        
+        assistant_service = ReadingAssistantService(request.user, book)
+        result = assistant_service.ask_question(
+            question=question,
+            question_type=question_type,
+            selected_text=selected_text,
+            chapter_number=chapter_number,
+            position_start=position_start,
+            position_end=position_end
+        )
+        
+        return JsonResponse(result)
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'提问失败: {str(e)}'
+        }, status=500)
+
+
+@login_required
+@csrf_exempt
+@require_http_methods(["POST"])
+def generate_chapter_summary(request, book_id):
+    """生成章节总结"""
+    try:
+        book = get_object_or_404(Book, id=book_id, user=request.user)
+        data = json.loads(request.body)
+        
+        chapter_number = data.get('chapter_number')
+        if not chapter_number:
+            return JsonResponse({
+                'success': False,
+                'error': '章节号不能为空'
+            }, status=400)
+        
+        summary_type = data.get('summary_type', 'auto')
+        
+        assistant_service = ReadingAssistantService(request.user, book)
+        result = assistant_service.generate_chapter_summary(chapter_number, summary_type)
+        
+        return JsonResponse(result)
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'生成总结失败: {str(e)}'
+        }, status=500)
+
+
+@login_required
+@csrf_exempt
+@require_http_methods(["POST"])
+def start_reading_session(request, book_id):
+    """开始阅读会话"""
+    try:
+        book = get_object_or_404(Book, id=book_id, user=request.user)
+        data = json.loads(request.body)
+        
+        chapter_number = data.get('chapter_number', 1)
+        
+        assistant_service = ReadingAssistantService(request.user, book)
+        result = assistant_service.start_reading_session(chapter_number)
+        
+        return JsonResponse(result)
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'开始阅读失败: {str(e)}'
+        }, status=500)
+
+
+@login_required
+@csrf_exempt
+@require_http_methods(["POST"])
+def end_reading_session(request):
+    """结束阅读会话"""
+    try:
+        data = json.loads(request.body)
+        
+        tracker_id = data.get('tracker_id')
+        words_read = data.get('words_read', 0)
+        
+        if not tracker_id:
+            return JsonResponse({
+                'success': False,
+                'error': '会话ID不能为空'
+            }, status=400)
+        
+        # 直接通过tracker_id获取并结束会话
+        try:
+            tracker = ReadingTimeTracker.objects.get(
+                id=tracker_id,
+                user=request.user,
+                is_active=True
+            )
+            
+            tracker.words_read = words_read
+            tracker.end_tracking()
+            
+            # 更新阅读进度
+            progress = ReadingProgress.objects.get(user=request.user, book=tracker.book)
+            progress.reading_time += tracker.duration_seconds
+            progress.save()
+            
+            return JsonResponse({
+                'success': True,
+                'duration': tracker.duration_seconds,
+                'words_read': words_read,
+                'reading_speed': tracker.reading_speed,
+                'message': f'阅读会话结束，用时{tracker.duration_seconds}秒'
+            })
+            
+        except ReadingTimeTracker.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'error': '未找到活跃的阅读会话'
+            }, status=404)
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'结束阅读失败: {str(e)}'
+        }, status=500)
+
+
+@login_required
+@require_http_methods(["GET"])
+def get_reading_statistics(request, book_id):
+    """获取阅读统计"""
+    try:
+        book = get_object_or_404(Book, id=book_id, user=request.user)
+        
+        assistant_service = ReadingAssistantService(request.user, book)
+        result = assistant_service.get_reading_statistics()
+        
+        return JsonResponse(result)
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'获取统计失败: {str(e)}'
+        }, status=500)
+
+
+@login_required
+@require_http_methods(["GET"])
+def get_chapter_content(request, book_id, chapter_number):
+    """获取章节内容"""
+    try:
+        book = get_object_or_404(Book, id=book_id, user=request.user)
+        
+        try:
+            chapter = BookContent.objects.get(book=book, chapter_number=chapter_number)
+            
+            return JsonResponse({
+                'success': True,
+                'chapter': {
+                    'number': chapter.chapter_number,
+                    'title': chapter.chapter_title,
+                    'content': chapter.content,
+                    'word_count': chapter.word_count,
+                }
+            })
+            
+        except BookContent.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'error': f'未找到第{chapter_number}章内容'
+            }, status=404)
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'获取章节内容失败: {str(e)}'
+        }, status=500)
+
+
+@login_required
+@require_http_methods(["GET"])
+def get_qa_history(request, book_id):
+    """获取问答历史"""
+    try:
+        book = get_object_or_404(Book, id=book_id, user=request.user)
+        
+        # 获取阅读助手
+        try:
+            assistant = ReadingAssistant.objects.get(user=request.user, book=book)
+        except ReadingAssistant.DoesNotExist:
+            return JsonResponse({
+                'success': True,
+                'qa_history': []
+            })
+        
+        # 获取问答记录
+        qa_records = ReadingQA.objects.filter(assistant=assistant).order_by('-created_at')[:50]
+        
+        qa_history = []
+        for qa in qa_records:
+            qa_history.append({
+                'id': qa.id,
+                'question': qa.question,
+                'answer': qa.answer,
+                'question_type': qa.question_type,
+                'selected_text': qa.selected_text,
+                'chapter_number': qa.chapter_number,
+                'is_helpful': qa.is_helpful,
+                'created_at': qa.created_at.isoformat(),
+                'processing_time': qa.processing_time,
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'qa_history': qa_history
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'获取问答历史失败: {str(e)}'
+        }, status=500)
+
+
+@login_required
+@csrf_exempt
+@require_http_methods(["POST"])
+def rate_qa_answer(request, qa_id):
+    """评价问答回答"""
+    try:
+        data = json.loads(request.body)
+        is_helpful = data.get('is_helpful')
+        
+        if is_helpful is None:
+            return JsonResponse({
+                'success': False,
+                'error': '评价参数不能为空'
+            }, status=400)
+        
+        # 获取问答记录
+        qa = get_object_or_404(ReadingQA, id=qa_id, assistant__user=request.user)
+        qa.is_helpful = is_helpful
+        qa.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': '评价已保存'
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'评价失败: {str(e)}'
+        }, status=500)
+
+
+@login_required
+@require_http_methods(["GET"])
+def get_chapter_summaries(request, book_id):
+    """获取章节总结列表"""
+    try:
+        book = get_object_or_404(Book, id=book_id, user=request.user)
+        
+        summaries = ChapterSummary.objects.filter(book=book).order_by('chapter_number')
+        
+        summary_list = []
+        for summary in summaries:
+            summary_list.append({
+                'id': summary.id,
+                'chapter_number': summary.chapter_number,
+                'chapter_title': summary.chapter_title,
+                'summary_type': summary.summary_type,
+                'summary_content': summary.summary_content,
+                'key_points': summary.key_points,
+                'word_count': summary.word_count,
+                'compression_ratio': summary.compression_ratio,
+                'created_at': summary.created_at.isoformat(),
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'summaries': summary_list
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'获取总结列表失败: {str(e)}'
+        }, status=500)
+
+
+@login_required
+@csrf_exempt
+@require_http_methods(["POST"])
+def text_to_speech(request, book_id):
+    """文本转语音"""
+    try:
+        book = get_object_or_404(Book, id=book_id, user=request.user)
+        data = json.loads(request.body)
+        
+        text = data.get('text', '').strip()
+        if not text:
+            return JsonResponse({
+                'success': False,
+                'error': '文本不能为空'
+            }, status=400)
+        
+        # 获取用户语音偏好
+        try:
+            from readify.user_management.models import UserPreferences
+            preferences = UserPreferences.objects.get(user=request.user)
+            voice_settings = {
+                'voice_speed': preferences.voice_speed,
+                'voice_type': preferences.voice_type,
+                'voice_engine': preferences.voice_engine,
+                'voice_language': preferences.voice_language,
+                'voice_pitch': preferences.voice_pitch,
+                'voice_volume': preferences.voice_volume,
+            }
+        except UserPreferences.DoesNotExist:
+            voice_settings = {
+                'voice_speed': 1.0,
+                'voice_type': 'female',
+                'voice_engine': 'system',
+                'voice_language': 'zh-CN',
+                'voice_pitch': 1.0,
+                'voice_volume': 1.0,
+            }
+        
+        # 调用TTS服务
+        from readify.tts_service.services import EnhancedChatTTSService
+        result = EnhancedChatTTSService.text_to_speech_with_preferences(
+            text=text,
+            user=request.user,
+            book=book
+        )
+        
+        if result['success']:
+            return JsonResponse({
+                'success': True,
+                'audio_url': result['audio_url'],
+                'duration': result.get('duration', 0),
+                'message': '语音生成成功'
+            })
+        else:
+            return JsonResponse({
+                'success': False,
+                'error': result.get('error', '语音生成失败')
+            }, status=500)
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'语音生成失败: {str(e)}'
+        }, status=500)

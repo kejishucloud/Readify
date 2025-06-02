@@ -15,6 +15,9 @@ urlpatterns = [
     path('books/<int:book_id>/delete/', views.book_delete, name='book_delete'),
     path('books/<int:book_id>/notes/', views.notes_list, name='notes_list'),
     
+    # 新的阅读器功能
+    path('books/<int:book_id>/reader/', views.book_reader, name='book_reader'),
+    
     # 分类管理
     path('categories/', views.category_list, name='category_list'),
     path('categories/<str:category_code>/', views.category_books, name='category_books'),
@@ -29,6 +32,22 @@ urlpatterns = [
     path('api/books/<int:book_id>/classify/', views.classify_book, name='classify_book'),
     path('api/batch-upload/<int:batch_id>/progress/', views.get_batch_upload_progress, name='get_batch_upload_progress'),
     path('api/categories/stats/', views.get_category_stats, name='get_category_stats'),
+    
+    # 阅读助手API
+    path('api/books/<int:book_id>/assistant/toggle/', views.toggle_reading_assistant, name='toggle_reading_assistant'),
+    path('api/books/<int:book_id>/assistant/ask/', views.ask_reading_question, name='ask_reading_question'),
+    path('api/books/<int:book_id>/assistant/summary/', views.generate_chapter_summary, name='generate_chapter_summary'),
+    path('api/books/<int:book_id>/assistant/statistics/', views.get_reading_statistics, name='get_reading_statistics'),
+    path('api/books/<int:book_id>/assistant/qa-history/', views.get_qa_history, name='get_qa_history'),
+    path('api/books/<int:book_id>/assistant/summaries/', views.get_chapter_summaries, name='get_chapter_summaries'),
+    path('api/books/<int:book_id>/tts/', views.text_to_speech, name='text_to_speech'),
+    
+    # 阅读会话管理
+    path('api/books/<int:book_id>/session/start/', views.start_reading_session, name='start_reading_session'),
+    path('api/session/end/', views.end_reading_session, name='end_reading_session'),
+    
+    # 问答评价
+    path('api/qa/<int:qa_id>/rate/', views.rate_qa_answer, name='rate_qa_answer'),
     
     # 阅读统计相关
     path('statistics/', views.reading_statistics, name='reading_statistics'),
