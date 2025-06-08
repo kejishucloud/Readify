@@ -108,37 +108,42 @@ def fix_ai_models():
     
     try:
         from readify.ai_services.models import AIModel
-        
+        from django.conf import settings
+
         # 创建默认AI模型
         models_to_create = [
             {
                 'name': 'Qwen3-30B-A3B',
                 'provider': 'custom',
+                'api_endpoint': getattr(settings, 'OPENAI_BASE_URL', 'https://dashscope.aliyuncs.com/api/v1'),
                 'model_id': 'Qwen3-30B-A3B',
                 'description': '通义千问3代30B模型',
                 'max_tokens': 8000,
+                'temperature': 0.7,
                 'is_active': True
             },
             {
                 'name': 'GPT-3.5-Turbo',
                 'provider': 'openai',
+                'api_endpoint': 'https://api.openai.com/v1',
                 'model_id': 'gpt-3.5-turbo',
                 'description': 'OpenAI GPT-3.5 Turbo模型',
                 'max_tokens': 4000,
+                'temperature': 0.7,
                 'is_active': True
             }
         ]
         
         for model_data in models_to_create:
-            model, created = AIModel.objects.get_or_create(
+            model, created = AIModel.objects.update_or_create(
                 model_id=model_data['model_id'],
                 defaults=model_data
             )
-            
+
             if created:
                 print(f"✅ 创建AI模型: {model_data['name']}")
             else:
-                print(f"✅ AI模型已存在: {model_data['name']}")
+                print(f"✅ 更新AI模型: {model_data['name']}")
         
         return True
     except Exception as e:
