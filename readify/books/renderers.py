@@ -24,6 +24,12 @@ from bs4 import BeautifulSoup
 import markdown
 import re
 
+
+def html_to_text(html: str) -> str:
+    """Extract plain text from HTML content."""
+    soup = BeautifulSoup(html, "html.parser")
+    return soup.get_text(separator="\n", strip=True)
+
 logger = logging.getLogger(__name__)
 
 
@@ -143,7 +149,8 @@ class EPUBRenderer(BaseRenderer):
                 'renderer_type': 'epub_webkit',
                 'supports_pagination': True,
                 'css_files': self._get_css_files(),
-                'images': self._get_images_in_chapter(content_html)
+                'images': self._get_images_in_chapter(content_html),
+                'text_content': html_to_text(content_html),
             }
             
         except Exception as e:
@@ -493,14 +500,15 @@ class FB2Renderer(BaseRenderer):
                 return {'error': '章节不存在'}
             
             chapter = self.chapters[chapter_number - 1]
-            
+
             return {
                 'content': chapter['content'],
                 'chapter_title': chapter['title'],
                 'chapter_number': chapter_number,
                 'total_chapters': len(self.chapters),
                 'renderer_type': 'fb2_xhtml',
-                'supports_pagination': True
+                'supports_pagination': True,
+                'text_content': html_to_text(chapter['content'])
             }
             
         except Exception as e:
@@ -690,14 +698,15 @@ class TextRenderer(BaseRenderer):
                 return {'error': '章节不存在'}
             
             chapter = self.chapters[chapter_number - 1]
-            
+
             return {
                 'content': chapter['content'],
                 'chapter_title': chapter['title'],
                 'chapter_number': chapter_number,
                 'total_chapters': len(self.chapters),
                 'renderer_type': f'text_{self.book_format}',
-                'supports_pagination': True
+                'supports_pagination': True,
+                'text_content': html_to_text(chapter['content'])
             }
             
         except Exception as e:

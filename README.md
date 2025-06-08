@@ -28,6 +28,13 @@
    python manage.py runserver 0.0.0.0:8000
    ```
 
+### 一键优化
+```bash
+python optimize_project.py
+```
+执行后将依次运行 `fix_ai_assistant.py` 和 `optimize_ai_translation.py`，
+自动完成 AI 助手及翻译功能的优化配置。
+
 ### 一键启动
 - Windows批处理: 双击 `start_server.bat`
 - PowerShell: 运行 `.\start_server.ps1`
@@ -57,6 +64,7 @@
 - **TXT** - 纯文本文件
 - **DOCX** - Word文档格式
 - **HTML** - 网页格式
+- **自动文本提取** - 所有格式均可提取纯文本，用于AI分析和翻译
 
 ### 🤖 AI智能功能
 - **智能摘要** - 使用大语言模型自动生成书籍摘要
