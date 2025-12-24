@@ -279,19 +279,25 @@ def ai_config_view(request):
             
             ai_config, created = UserAIConfig.objects.get_or_create(user=request.user)
             
-            # 更新AI配置
-            if 'openai_api_key' in data:
-                ai_config.openai_api_key = data['openai_api_key']
-            if 'openai_model' in data:
-                ai_config.openai_model = data['openai_model']
-            if 'openai_base_url' in data:
-                ai_config.openai_base_url = data['openai_base_url']
-            if 'max_tokens' in data:
-                ai_config.max_tokens = int(data['max_tokens'])
-            if 'temperature' in data:
-                ai_config.temperature = float(data['temperature'])
-            if 'enabled' in data:
-                ai_config.enabled = data['enabled']
+            # 更新AI配置（兼容前端键名和旧键名）
+            ai_config.provider = data.get('ai_provider') or data.get('provider', ai_config.provider)
+            # 仅在用户提供非空密钥时更新，避免空提交覆盖
+            if 'ai_api_key' in data or 'api_key' in data:
+                incoming_key = (data.get('ai_api_key') or data.get('api_key') or '').strip()
+                if incoming_key:
+                    ai_config.api_key = incoming_key
+            if 'ai_api_url' in data or 'api_url' in data:
+                ai_config.api_url = data.get('ai_api_url') or data.get('api_url') or ai_config.api_url
+            if 'ai_model_id' in data or 'model_id' in data:
+                ai_config.model_id = data.get('ai_model_id') or data.get('model_id') or ai_config.model_id
+            if 'ai_max_tokens' in data or 'max_tokens' in data:
+                ai_config.max_tokens = int(data.get('ai_max_tokens') or data.get('max_tokens') or ai_config.max_tokens)
+            if 'ai_temperature' in data or 'temperature' in data:
+                ai_config.temperature = float(data.get('ai_temperature') or data.get('temperature') or ai_config.temperature)
+            if 'ai_timeout' in data or 'timeout' in data:
+                ai_config.timeout = int(data.get('ai_timeout') or data.get('timeout') or ai_config.timeout)
+            if 'ai_is_active' in data or 'is_active' in data:
+                ai_config.is_active = bool(data.get('ai_is_active', data.get('is_active')))
             
             ai_config.save()
             
@@ -315,14 +321,13 @@ def test_ai_config_view(request):
     try:
         ai_config = UserAIConfig.objects.get(user=request.user)
         
-        if not ai_config.enabled:
+        if not ai_config.is_active:
             return JsonResponse({
                 'success': False,
                 'message': 'AI功能未启用'
             })
         
-        # 这里可以添加实际的AI测试逻辑
-        ai_service = AIService(ai_config)
+        ai_service = AIService(request.user)
         test_result = ai_service.test_connection()
         
         return JsonResponse({

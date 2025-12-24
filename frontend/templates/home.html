@@ -5,172 +5,124 @@
 {% block extra_css %}
 <style>
 .hero-section {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    padding: 80px 0;
+    background: linear-gradient(180deg, rgba(15, 118, 110, 0.12) 0%, rgba(15, 118, 110, 0.02) 100%);
+    padding: 64px 0;
     text-align: center;
+    border-bottom: 1px solid var(--border-color);
     position: relative;
-    overflow: hidden;
 }
 
 .hero-section::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="20" cy="20" r="2" fill="rgba(255,255,255,0.1)"/><circle cx="80" cy="40" r="1.5" fill="rgba(255,255,255,0.1)"/><circle cx="40" cy="80" r="1" fill="rgba(255,255,255,0.1)"/></svg>');
-    animation: float 20s infinite linear;
+    pointer-events: none;
+    z-index: 0;
 }
 
-@keyframes float {
-    0% { transform: translateY(0px) rotate(0deg); }
-    100% { transform: translateY(-100px) rotate(360deg); }
+.hero-section .container {
+    position: relative;
+    z-index: 1;
 }
 
 .feature-card {
-    border: none;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    transition: all 0.3s ease;
+    border: 1px solid var(--border-color);
+    box-shadow: none;
+    transition: var(--transition);
     height: 100%;
     cursor: pointer;
+    border-radius: var(--border-radius);
+    background: var(--surface-color);
 }
+
 .feature-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
 }
+
 .feature-icon {
-    font-size: 3rem;
-    margin-bottom: 20px;
-    color: #667eea;
+    font-size: 2.6rem;
+    margin-bottom: 16px;
+    color: var(--primary-color);
 }
+
 .stats-section {
-    background: #f8f9fa;
-    padding: 60px 0;
+    background: transparent;
+    padding: 48px 0;
 }
+
 .stat-item {
     text-align: center;
-    margin-bottom: 30px;
+    margin-bottom: 24px;
 }
+
 .stat-number {
-    font-size: 3rem;
-    font-weight: bold;
-    color: #667eea;
+    font-size: 2.4rem;
+    font-weight: 600;
+    color: var(--primary-color);
 }
+
 .recent-books {
-    padding: 60px 0;
-}
-.book-card {
-    border: none;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    transition: all 0.3s ease;
-    cursor: pointer;
-}
-.book-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 4px 15px rgba(0,0,0,0.15);
-}
-.navbar-brand {
-    font-weight: bold;
-    font-size: 1.5rem;
+    padding: 48px 0;
 }
 
-/* 用户交互增强样式 */
 .user-welcome-card {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    border-radius: 20px;
-    padding: 30px;
-    margin-bottom: 30px;
-    position: relative;
-    overflow: hidden;
-}
-
-.user-welcome-card::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    right: -50%;
-    width: 100%;
-    height: 100%;
-    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
-    animation: rotate 10s linear infinite;
-}
-
-@keyframes rotate {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    background: var(--surface-color);
+    border-radius: var(--border-radius);
+    padding: 24px;
+    margin-bottom: 24px;
+    border: 1px solid var(--border-color);
 }
 
 .user-avatar-large {
-    width: 80px;
-    height: 80px;
+    width: 72px;
+    height: 72px;
     border-radius: 50%;
-    background: rgba(255,255,255,0.2);
+    background: #0f172a;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 2rem;
-    font-weight: bold;
+    font-size: 1.8rem;
+    font-weight: 600;
     cursor: pointer;
-    transition: all 0.3s ease;
-    border: 3px solid rgba(255,255,255,0.3);
-    margin: 0 auto 20px;
-}
-
-.user-avatar-large:hover {
-    transform: scale(1.1) rotate(5deg);
-    border-color: rgba(255,255,255,0.8);
-    box-shadow: 0 0 20px rgba(255,255,255,0.3);
+    transition: var(--transition);
+    color: white;
+    margin: 0 auto 14px;
 }
 
 .stat-card-enhanced {
-    border: none;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    transition: all 0.3s ease;
+    border: 1px solid var(--border-color);
+    box-shadow: none;
+    transition: var(--transition);
     cursor: pointer;
-    border-radius: 15px;
-    overflow: hidden;
+    border-radius: var(--border-radius);
     position: relative;
+    background: var(--surface-color);
 }
 
 .stat-card-enhanced:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-}
-
-.stat-card-enhanced::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 4px;
-    background: linear-gradient(90deg, #667eea, #764ba2);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
 }
 
 .user-activity-timeline {
-    background: white;
-    border-radius: 15px;
+    background: var(--surface-color);
+    border-radius: var(--border-radius);
     padding: 20px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    border: 1px solid var(--border-color);
+    box-shadow: none;
 }
 
 .timeline-item {
     display: flex;
     align-items: center;
-    padding: 15px 0;
-    border-bottom: 1px solid #f0f0f0;
-    transition: all 0.3s ease;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-color);
+    transition: var(--transition);
     cursor: pointer;
 }
 
 .timeline-item:hover {
-    background: #f8f9fa;
-    transform: translateX(5px);
+    background: #f8fafc;
     border-radius: 10px;
-    padding-left: 15px;
+    padding-left: 10px;
 }
 
 .timeline-item:last-child {
@@ -178,82 +130,80 @@
 }
 
 .timeline-icon {
-    width: 40px;
-    height: 40px;
+    width: 38px;
+    height: 38px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-right: 15px;
-    font-size: 1.2rem;
+    margin-right: 12px;
+    font-size: 1rem;
+    color: white;
 }
 
 .timeline-icon.read {
-    background: linear-gradient(135deg, #28a745, #20c997);
-    color: white;
+    background: #16a34a;
 }
 
 .timeline-icon.upload {
-    background: linear-gradient(135deg, #007bff, #6610f2);
-    color: white;
+    background: #2563eb;
 }
 
 .timeline-icon.note {
-    background: linear-gradient(135deg, #ffc107, #fd7e14);
-    color: white;
+    background: #d97706;
 }
 
 .user-quick-actions {
     display: flex;
-    gap: 15px;
-    margin-top: 20px;
+    gap: 12px;
+    margin-top: 16px;
     flex-wrap: wrap;
 }
 
 .quick-action-item {
     flex: 1;
     min-width: 120px;
-    padding: 15px;
-    background: rgba(255,255,255,0.1);
-    border-radius: 10px;
+    padding: 12px;
+    background: var(--surface-color);
+    border-radius: var(--border-radius);
     text-align: center;
     text-decoration: none;
-    color: white;
-    transition: all 0.3s ease;
-    border: 1px solid rgba(255,255,255,0.2);
+    color: var(--dark-color);
+    transition: var(--transition);
+    border: 1px solid var(--border-color);
 }
 
 .quick-action-item:hover {
-    background: rgba(255,255,255,0.2);
-    transform: translateY(-3px);
-    color: white;
-    border-color: rgba(255,255,255,0.4);
+    transform: translateY(-1px);
+    color: var(--primary-color);
+    border-color: var(--primary-color);
 }
 
 .recent-book-enhanced {
-    transition: all 0.3s ease;
+    transition: var(--transition);
     cursor: pointer;
-    border-radius: 10px;
-    padding: 15px;
-    margin-bottom: 15px;
+    border-radius: var(--border-radius);
+    padding: 12px;
+    margin-bottom: 12px;
+    border: 1px solid var(--border-color);
+    background: var(--surface-color);
 }
 
 .recent-book-enhanced:hover {
-    background: #f8f9fa;
-    transform: translateX(10px);
+    background: #f8fafc;
 }
 
 .book-progress-bar {
     height: 4px;
-    background: #e9ecef;
-    border-radius: 2px;
+    background: #eef2f7;
+    border-radius: 999px;
     overflow: hidden;
     margin-top: 10px;
 }
 
 .book-progress-fill {
     height: 100%;
-    background: linear-gradient(90deg, #667eea, #764ba2);
+    background: var(--primary-color);
     transition: width 0.3s ease;
 }
 
@@ -261,13 +211,14 @@
     position: absolute;
     top: 10px;
     right: 10px;
-    background: rgba(255,255,255,0.9);
-    color: #667eea;
-    padding: 5px 10px;
-    border-radius: 15px;
-    font-size: 0.8rem;
+    background: var(--surface-color);
+    color: var(--secondary-color);
+    padding: 4px 8px;
+    border-radius: 999px;
+    font-size: 0.75rem;
     opacity: 0;
-    transition: all 0.3s ease;
+    transition: var(--transition);
+    border: 1px solid var(--border-color);
 }
 
 .stat-card-enhanced:hover .user-interaction-hint {
@@ -280,61 +231,48 @@
     align-items: center;
     padding: 12px 15px;
     margin-bottom: 10px;
-    background: white;
-    border-radius: 10px;
-    transition: all 0.3s ease;
+    background: var(--surface-color);
+    border-radius: var(--border-radius);
+    transition: var(--transition);
     cursor: pointer;
-    border-left: 4px solid transparent;
+    border: 1px solid var(--border-color);
 }
 
 .category-stat-enhanced:hover {
-    background: #f8f9fa;
-    border-left-color: #667eea;
-    transform: translateX(5px);
+    border-color: var(--primary-color);
 }
 
 .user-greeting {
-    font-size: 1.5rem;
-    font-weight: bold;
-    margin-bottom: 10px;
-    animation: fadeInUp 1s ease;
-}
-
-@keyframes fadeInUp {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+    font-size: 1.4rem;
+    font-weight: 600;
+    margin-bottom: 8px;
 }
 
 .user-status-badge {
-    display: inline-block;
-    padding: 4px 12px;
-    background: rgba(255,255,255,0.2);
-    border-radius: 15px;
-    font-size: 0.9rem;
-    margin-left: 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    background: rgba(15, 118, 110, 0.08);
+    border-radius: 999px;
+    font-size: 0.85rem;
+    color: var(--primary-color);
 }
 
 .clickable-user-element {
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: var(--transition);
 }
 
 .clickable-user-element:hover {
-    color: #ffd700 !important;
-    text-shadow: 0 0 10px rgba(255,215,0,0.5);
+    color: var(--primary-color) !important;
 }
 </style>
 {% endblock %}
 
 {% block content %}
 <!-- 英雄区域 -->
-<section class="hero-section bg-primary text-white py-5">
+<section class="hero-section py-5">
     <div class="container">
         <div class="row align-items-center">
             <div class="col-lg-6">
@@ -347,17 +285,17 @@
                 </p>
                 <div class="d-flex gap-3">
                     {% if user.is_authenticated %}
-                    <a href="{% url 'book_list' %}" class="btn btn-light btn-lg">
+                    <a href="{% url 'book_list' %}" class="btn btn-primary btn-lg">
                         <i class="fas fa-book"></i> 我的书籍
                     </a>
-                    <a href="{% url 'batch_upload' %}" class="btn btn-outline-light btn-lg">
+                    <a href="{% url 'batch_upload' %}" class="btn btn-outline-primary btn-lg">
                         <i class="fas fa-cloud-upload-alt"></i> 批量上传
                     </a>
                     {% else %}
-                    <a href="{% url 'user_management:register' %}" class="btn btn-light btn-lg">
+                    <a href="{% url 'user_management:register' %}" class="btn btn-primary btn-lg">
                         <i class="fas fa-user-plus"></i> 立即注册
                     </a>
-                    <a href="{% url 'user_management:login' %}" class="btn btn-outline-light btn-lg">
+                    <a href="{% url 'user_management:login' %}" class="btn btn-outline-primary btn-lg">
                         <i class="fas fa-sign-in-alt"></i> 登录
                     </a>
                     {% endif %}

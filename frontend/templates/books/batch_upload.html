@@ -160,12 +160,19 @@
                                     <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
                                     <h5>拖拽文件到这里或点击选择</h5>
                                     <p class="text-muted">支持 PDF、EPUB、MOBI、TXT、DOC、DOCX 格式</p>
-                                    <p class="text-muted">单个文件最大 50MB，可同时上传多个文件</p>
+                                    <p class="text-muted">可选择整个文件夹或多文件，单个文件最大 50MB</p>
                                     <input type="file" id="fileInput" name="files" multiple 
                                            accept=".pdf,.epub,.mobi,.txt,.doc,.docx" style="display: none;">
-                                    <button type="button" class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
-                                        <i class="fas fa-folder-open"></i> 选择文件
-                                    </button>
+                                    <input type="file" id="folderInput" name="files" multiple webkitdirectory directory
+                                           accept=".pdf,.epub,.mobi,.txt,.doc,.docx" style="display: none;">
+                                    <div class="d-flex flex-wrap justify-content-center gap-2">
+                                        <button type="button" class="btn btn-primary" onclick="event.stopPropagation(); document.getElementById('fileInput').click()">
+                                            <i class="fas fa-folder-open"></i> 选择文件
+                                        </button>
+                                        <button type="button" class="btn btn-outline-primary" onclick="event.stopPropagation(); document.getElementById('folderInput').click()">
+                                            <i class="fas fa-folder"></i> 选择文件夹
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -233,7 +240,7 @@
                         <div class="col-md-4">
                             <h6><i class="fas fa-file-upload text-primary"></i> 上传流程</h6>
                             <ol class="small">
-                                <li>选择或拖拽多个书籍文件</li>
+                                <li>选择文件夹或拖拽多个书籍文件</li>
                                 <li>设置批次名称和选项</li>
                                 <li>点击开始上传</li>
                                 <li>实时查看每个文件的处理进度</li>
@@ -268,6 +275,7 @@
 document.addEventListener('DOMContentLoaded', function() {
     const uploadArea = document.getElementById('uploadArea');
     const fileInput = document.getElementById('fileInput');
+    const folderInput = document.getElementById('folderInput');
     const fileList = document.getElementById('fileList');
     const fileTableBody = document.getElementById('fileTableBody');
     const uploadBtn = document.getElementById('uploadBtn');
@@ -307,6 +315,13 @@ document.addEventListener('DOMContentLoaded', function() {
     fileInput.addEventListener('change', function() {
         const files = Array.from(this.files);
         addFiles(files);
+        this.value = '';
+    });
+
+    folderInput.addEventListener('change', function() {
+        const files = Array.from(this.files);
+        addFiles(files);
+        this.value = '';
     });
     
     function addFiles(files) {
@@ -348,10 +363,12 @@ document.addEventListener('DOMContentLoaded', function() {
         const row = document.createElement('tr');
         row.className = 'file-item';
         row.setAttribute('data-filename', file.name);
+        const displayName = getDisplayName(file);
+        const safeDisplayName = escapeHtml(displayName);
         row.innerHTML = `
             <td>
                 <i class="fas fa-file-alt text-muted me-2"></i>
-                ${file.name}
+                <span class="file-name" title="${safeDisplayName}">${safeDisplayName}</span>
             </td>
             <td>${formatFileSize(file.size)}</td>
             <td>
@@ -367,12 +384,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
             </td>
             <td>
-                <button type="button" class="btn btn-sm btn-outline-danger remove-btn" onclick="removeFile('${file.name}')">
+                <button type="button" class="btn btn-sm btn-outline-danger remove-btn">
                     <i class="fas fa-times"></i>
                 </button>
             </td>
         `;
         fileTableBody.appendChild(row);
+
+        const removeButton = row.querySelector('.remove-btn');
+        removeButton.addEventListener('click', () => removeFile(file.name));
     }
     
     function updateUI() {
@@ -412,6 +432,16 @@ document.addEventListener('DOMContentLoaded', function() {
     
     function getFileExtension(filename) {
         return filename.split('.').pop().toLowerCase();
+    }
+
+    function getDisplayName(file) {
+        return file.webkitRelativePath || file.name;
+    }
+
+    function escapeHtml(value) {
+        const span = document.createElement('span');
+        span.textContent = value;
+        return span.innerHTML;
     }
     
     function updateFileProgress(fileName, progress, status, message) {

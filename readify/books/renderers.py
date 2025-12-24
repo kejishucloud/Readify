@@ -13,6 +13,9 @@ import json
 import logging
 import tempfile
 import subprocess
+import html
+import shutil
+from urllib.parse import quote, urlparse
 from typing import Dict, Any, Optional, List, Tuple
 from pathlib import Path
 from django.conf import settings
@@ -244,37 +247,49 @@ class PDFRenderer(BaseRenderer):
     def render(self, chapter_number: int = 1, page_number: int = 1) -> Dict[str, Any]:
         """渲染PDF页面"""
         try:
-            if page_number > self.page_count:
+            effective_page = page_number if page_number and page_number != 1 else chapter_number
+            if not effective_page or effective_page < 1:
+                effective_page = 1
+            if self.page_count and effective_page > self.page_count:
                 return {'error': '页面不存在'}
             
-            # 使用PyMuPDF进行高质量渲染
+            media_root = Path(settings.MEDIA_ROOT).resolve()
+            file_path = Path(self.book_file_path).resolve()
             try:
-                import fitz  # PyMuPDF
-                doc = fitz.open(self.book_file_path)
-                page = doc[page_number - 1]
-                
-                # 渲染为HTML
-                html_content = page.get_text("html")
-                
-                # 渲染为图片（备用方案）
-                pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))  # 2x缩放提高清晰度
-                img_data = pix.tobytes("png")
-                
-                doc.close()
-                
-                return {
-                    'content': html_content,
-                    'page_image': img_data,
-                    'page_number': page_number,
-                    'total_pages': self.page_count,
-                    'renderer_type': 'pdf_mupdf',
-                    'supports_pagination': True,
-                    'text_content': page.get_text()
-                }
-                
-            except ImportError:
-                # 回退到PyPDF2
-                return self._render_with_pypdf2(page_number)
+                rel_path = file_path.relative_to(media_root)
+                base_url = settings.MEDIA_URL or '/media/'
+                if base_url.startswith('http://') or base_url.startswith('https://'):
+                    parsed_url = urlparse(base_url)
+                    base_url = parsed_url.path or '/media/'
+                if not base_url.startswith('/'):
+                    base_url = '/' + base_url
+                if not base_url.endswith('/'):
+                    base_url += '/'
+                file_url = base_url + quote(rel_path.as_posix(), safe='/')
+            except ValueError:
+                file_url = ''
+            
+            if not file_url:
+                return {'error': '无法生成PDF访问地址'}
+            
+            escaped_url = html.escape(file_url, quote=True)
+            content = (
+                "<div class='pdf-embed' style='width: 100%;'>"
+                f"<iframe src='{escaped_url}#page={effective_page}' "
+                "style='width: 100%; height: 80vh; border: none;' "
+                "title='PDF'></iframe>"
+                "</div>"
+            )
+            
+            return {
+                'content': content,
+                'file_url': file_url,
+                'page_number': effective_page,
+                'total_pages': self.page_count,
+                'renderer_type': 'pdf_native',
+                'supports_pagination': True,
+                'text_content': ''
+            }
                 
         except Exception as e:
             logger.error(f"PDF渲染失败: {str(e)}")
@@ -287,10 +302,13 @@ class PDFRenderer(BaseRenderer):
             with open(self.book_file_path, 'rb') as f:
                 reader = PyPDF2.PdfReader(f)
                 page = reader.pages[page_number - 1]
-                text_content = page.extract_text()
+                text_content = page.extract_text() or ''
                 
                 # 简单的HTML格式化
-                html_content = f"<div class='pdf-content'><pre>{text_content}</pre></div>"
+                if text_content.strip():
+                    html_content = f"<div class='pdf-content'><pre>{text_content}</pre></div>"
+                else:
+                    html_content = "<div class='alert alert-info'>该PDF页面为图片或无法提取文本。</div>"
                 
                 return {
                     'content': html_content,
@@ -525,6 +543,135 @@ class FB2Renderer(BaseRenderer):
                 for ch in self.chapters]
 
 
+class DocxRenderer(BaseRenderer):
+    """DOCX/DOC渲染器 - 解析Word文档并生成HTML内容"""
+    
+    def __init__(self, book_file_path: str, book_format: str = 'docx'):
+        super().__init__(book_file_path, book_format)
+        self.chapters = []
+        self.metadata = {}
+        self.error_message = None
+        self._load_document()
+        
+    def _load_document(self):
+        """加载Word文档内容"""
+        if self.book_format == 'doc':
+            self._load_legacy_doc()
+            return
+        
+        try:
+            import docx
+        except ImportError:
+            logger.warning("python-docx未安装，无法处理DOCX文件")
+            self.error_message = "python-docx未安装，无法渲染DOCX文件"
+            return
+        
+        try:
+            doc = docx.Document(self.book_file_path)
+        except Exception as e:
+            logger.error(f"DOCX加载失败: {str(e)}")
+            self.error_message = f"DOCX加载失败: {str(e)}"
+            return
+        
+        props = doc.core_properties
+        self.metadata = {
+            'title': props.title,
+            'author': props.author,
+            'subject': props.subject,
+            'category': props.category,
+        }
+        
+        current_chapter = {'title': '正文', 'content': []}
+        for paragraph in doc.paragraphs:
+            text = paragraph.text.strip()
+            if not text:
+                continue
+            
+            style_name = paragraph.style.name.lower() if paragraph.style else ''
+            if style_name.startswith('heading'):
+                if current_chapter['content']:
+                    self._append_chapter(current_chapter)
+                current_chapter = {'title': text, 'content': []}
+            else:
+                current_chapter['content'].append(f"<p>{html.escape(text)}</p>")
+        
+        if current_chapter['content'] or not self.chapters:
+            self._append_chapter(current_chapter)
+        
+    def _load_legacy_doc(self):
+        """加载旧版DOC文件"""
+        tool = shutil.which('antiword') or shutil.which('catdoc')
+        if not tool:
+            self.error_message = "DOC格式需要安装antiword或catdoc才能解析"
+            return
+        
+        try:
+            result = subprocess.run(
+                [tool, self.book_file_path],
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+        except Exception as e:
+            logger.error(f"DOC解析失败: {str(e)}")
+            self.error_message = f"DOC解析失败: {str(e)}"
+            return
+        
+        if result.returncode != 0:
+            logger.error(f"DOC解析失败: {result.stderr.strip()}")
+            self.error_message = f"DOC解析失败: {result.stderr.strip()}"
+            return
+        
+        content = result.stdout.strip()
+        if not content:
+            self.error_message = "DOC文档内容为空"
+            return
+        
+        paragraphs = [p.strip() for p in content.splitlines() if p.strip()]
+        html_content = ''.join(f"<p>{html.escape(p)}</p>" for p in paragraphs)
+        self.chapters = [{
+            'chapter_number': 1,
+            'title': '全文',
+            'content': html_content
+        }]
+        
+    def _append_chapter(self, chapter_data: Dict[str, Any]):
+        """追加章节数据"""
+        self.chapters.append({
+            'chapter_number': len(self.chapters) + 1,
+            'title': chapter_data['title'],
+            'content': ''.join(chapter_data['content'])
+        })
+        
+    def render(self, chapter_number: int = 1, page_number: int = 1) -> Dict[str, Any]:
+        """渲染DOCX/DOC内容"""
+        if self.error_message:
+            return {'error': self.error_message}
+        
+        if not self.chapters or chapter_number > len(self.chapters):
+            return {'error': '章节不存在'}
+        
+        chapter = self.chapters[chapter_number - 1]
+        return {
+            'content': chapter['content'],
+            'chapter_title': chapter['title'],
+            'chapter_number': chapter_number,
+            'total_chapters': len(self.chapters),
+            'renderer_type': f'word_{self.book_format}',
+            'supports_pagination': False,
+            'text_content': html_to_text(chapter['content'])
+        }
+        
+    def get_metadata(self) -> Dict[str, Any]:
+        """获取DOCX/DOC元数据"""
+        return {k: v for k, v in self.metadata.items() if v}
+        
+    def get_table_of_contents(self) -> List[Dict[str, Any]]:
+        """获取DOCX/DOC目录"""
+        return [{'chapter_number': ch['chapter_number'], 'title': ch['title']} 
+                for ch in self.chapters]
+
+
 class TextRenderer(BaseRenderer):
     """文本渲染器 - 处理TXT/Markdown/HTML，使用浏览器/WebView渲染"""
     
@@ -548,9 +695,9 @@ class TextRenderer(BaseRenderer):
                     continue
             
             # 根据格式处理内容
-            if self.book_format == 'markdown':
+            if self.book_format in ['markdown', 'md']:
                 self._process_markdown()
-            elif self.book_format == 'html':
+            elif self.book_format in ['html', 'htm']:
                 self._process_html()
             else:
                 self._process_text()
@@ -737,6 +884,8 @@ class RendererFactory:
         'mobi': MOBIRenderer,
         'azw3': MOBIRenderer,
         'fb2': FB2Renderer,
+        'docx': DocxRenderer,
+        'doc': DocxRenderer,
         'txt': TextRenderer,
         'markdown': TextRenderer,
         'md': TextRenderer,

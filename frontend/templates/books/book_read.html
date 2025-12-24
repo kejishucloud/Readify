@@ -219,6 +219,9 @@
                 width: 100%;
                 position: static;
             }
+            .ai-floating-panel {
+                width: 90vw;
+            }
         }
         
         /* AI回答显示样式 */
@@ -397,6 +400,73 @@
             border-color: #007bff;
             color: #007bff;
         }
+        
+        /* 悬浮AI助手气泡 */
+        .ai-floating-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #4a6cf7 0%, #7c3aed 100%);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            cursor: grab;
+            z-index: 11000;
+            border: 3px solid #fff;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            user-select: none;
+            touch-action: none;
+        }
+        
+        .ai-floating-btn:active {
+            cursor: grabbing;
+        }
+        
+        .ai-floating-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 32px rgba(0,0,0,0.28);
+        }
+        
+        .ai-floating-btn.is-open {
+            transform: scale(1.05);
+        }
+        
+        .ai-floating-panel {
+            position: fixed;
+            bottom: 90px;
+            right: 20px;
+            width: 320px;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.18);
+            z-index: 11000;
+            display: none;
+            overflow: hidden;
+        }
+        
+        .ai-floating-panel .panel-header {
+            background: linear-gradient(135deg, #4a6cf7 0%, #7c3aed 100%);
+            color: #fff;
+            padding: 12px 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: move;
+        }
+        
+        .ai-floating-panel .panel-header .draggable-hint {
+            font-size: 12px;
+            opacity: 0.85;
+        }
+        
+        .ai-floating-panel .panel-body {
+            padding: 12px 14px 16px;
+        }
     </style>
 </head>
 <body>
@@ -441,11 +511,21 @@
                     </div>
                     
                     <div id="chapterTitle">
-                        <h3>{% if current_chapter %}{{ current_chapter.chapter_title|default:"第"|add:current_chapter.chapter_number|add:"章" }}{% else %}内容加载中...{% endif %}</h3>
+                        <h3>
+                            {% if plugin_render_result and plugin_render_result.chapter_title %}
+                                {{ plugin_render_result.chapter_title }}
+                            {% elif current_chapter %}
+                                {{ current_chapter.chapter_title|default:"第"|add:current_chapter.chapter_number|add:"章" }}
+                            {% else %}
+                                内容加载中...
+                            {% endif %}
+                        </h3>
                     </div>
                     
                     <div class="chapter-content" id="chapterContent">
-                        {% if current_chapter %}
+                        {% if plugin_render_result and not plugin_render_result.error %}
+                            {{ plugin_render_result.content|safe }}
+                        {% elif current_chapter %}
                             {% with book_type=book|get_book_type %}
                                 {{ current_chapter.content|format_book_content:book_type|safe }}
                             {% endwith %}
@@ -511,7 +591,14 @@
                             </button>
                         </div>
                         <select class="form-select" id="chapterSelect" onchange="goToChapter(this.value)">
-                            {% if chapters %}
+                            {% if plugin_toc %}
+                                {% for chapter in plugin_toc %}
+                                <option value="{{ chapter.chapter_number }}" 
+                                        {% if chapter.chapter_number == progress.current_chapter %}selected{% endif %}>
+                                    第{{ chapter.chapter_number }}章 - {{ chapter.title|default:"无标题" }}
+                                </option>
+                                {% endfor %}
+                            {% elif chapters %}
                                 {% for chapter in chapters %}
                                 <option value="{{ chapter.chapter_number }}" 
                                         {% if chapter.chapter_number == progress.current_chapter %}selected{% endif %}>
@@ -522,54 +609,6 @@
                                 <option value="1" selected>第1章 - 内容解析中</option>
                             {% endif %}
                         </select>
-                    </div>
-                    
-                    <!-- AI助手 -->
-                    <div class="ai-summary">
-                        <h6><i class="fas fa-robot"></i> AI助手</h6>
-                        <button class="btn btn-info btn-sm w-100 mb-2" onclick="generateSummary()">
-                            <i class="fas fa-magic"></i> 生成本章总结
-                        </button>
-                        <button class="btn btn-success btn-sm w-100 mb-2" onclick="generateBookSummary()">
-                            <i class="fas fa-book"></i> 生成全书概要
-                        </button>
-                        
-                        <!-- AI问答区域 -->
-                        <div class="ai-qa-section mt-3">
-                            <h6><i class="fas fa-question-circle"></i> AI问答</h6>
-                            <div class="mb-2">
-                                <textarea class="form-control form-control-sm" id="aiQuestion" 
-                                         placeholder="选择文本后输入问题，或直接提问..." rows="2"></textarea>
-                            </div>
-                            <button class="btn btn-primary btn-sm w-100 mb-2" onclick="askAIQuestion()">
-                                <i class="fas fa-paper-plane"></i> 提问
-                            </button>
-                            <div id="selectedTextInfo" class="text-muted small mb-2" style="display: none;">
-                                已选择文本: <span id="selectedTextPreview"></span>
-                            </div>
-                        </div>
-                        
-                        <div id="summaryContent" class="mt-2" style="display: none;">
-                            <div class="alert alert-info">
-                                <div class="d-flex justify-content-between align-items-start mb-2">
-                                    <h6><i class="fas fa-magic"></i> AI总结</h6>
-                                    <button class="ai-expand-btn" onclick="expandAIAnswer('summaryText', 'AI章节总结')">
-                                        <i class="fas fa-expand"></i> 放大查看
-                                    </button>
-                                </div>
-                                <div class="ai-answer-preview">
-                                    <div id="summaryText" class="ai-answer-content"></div>
-                                </div>
-                                <div class="ai-answer-actions">
-                                    <button class="ai-action-btn" onclick="copyAIContent('summaryText')">
-                                        <i class="fas fa-copy"></i> 复制
-                                    </button>
-                                    <button class="ai-action-btn" onclick="regenerateSummary()">
-                                        <i class="fas fa-redo"></i> 重新生成
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
                     </div>
                     
                     <!-- 翻译功能 -->
@@ -724,6 +763,67 @@
                 <button class="btn btn-primary" onclick="closeAIFullscreen()">
                     <i class="fas fa-times"></i> 关闭
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 悬浮AI助手 -->
+    <div class="ai-floating-btn" id="aiFloatingBtn" title="AI助手">
+        <i class="fas fa-comments"></i>
+    </div>
+
+    <div class="ai-floating-panel" id="aiFloatingPanel">
+        <div class="panel-header" id="aiFloatingHeader">
+            <div>
+                <strong><i class="fas fa-robot"></i> AI助手</strong>
+                <div class="draggable-hint">书中自有黄金屋</div>
+            </div>
+            <button class="btn btn-light btn-sm" id="aiFloatingClose">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="panel-body">
+            <div class="d-grid gap-2 mb-2">
+                <button class="btn btn-info btn-sm" onclick="generateSummary()">
+                    <i class="fas fa-magic"></i> 本章总结
+                </button>
+                <button class="btn btn-success btn-sm" onclick="generateBookSummary()">
+                    <i class="fas fa-book"></i> 全书概要
+                </button>
+            </div>
+            <div class="ai-qa-section mt-3">
+                <h6><i class="fas fa-question-circle"></i> AI问答</h6>
+                <div class="mb-2">
+                    <textarea class="form-control form-control-sm" id="aiQuestion" 
+                             placeholder="选择文本后输入问题，或直接提问..." rows="2"></textarea>
+                </div>
+                <button class="btn btn-primary btn-sm w-100 mb-2" onclick="askAIQuestion()">
+                    <i class="fas fa-paper-plane"></i> 提问
+                </button>
+                <div id="selectedTextInfo" class="text-muted small mb-2" style="display: none;">
+                    已选择文本: <span id="selectedTextPreview"></span>
+                </div>
+            </div>
+            <div id="summaryContent" class="mt-2" style="display: none;">
+                <div class="alert alert-info">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h6><i class="fas fa-magic"></i> AI总结</h6>
+                        <button class="ai-expand-btn" onclick="expandAIAnswer('summaryText', 'AI章节总结')">
+                            <i class="fas fa-expand"></i> 放大查看
+                        </button>
+                    </div>
+                    <div class="ai-answer-preview">
+                        <div id="summaryText" class="ai-answer-content"></div>
+                    </div>
+                    <div class="ai-answer-actions">
+                        <button class="ai-action-btn" onclick="copyAIContent('summaryText')">
+                            <i class="fas fa-copy"></i> 复制
+                        </button>
+                        <button class="ai-action-btn" onclick="regenerateSummary()">
+                            <i class="fas fa-redo"></i> 重新生成
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -1064,6 +1164,9 @@
             
             // 启动阅读计时器
             startReadingTimer();
+            
+            // 初始化悬浮AI助手
+            initFloatingAI();
         });
         
         // 启动阅读计时器
@@ -1328,35 +1431,52 @@
             chapterTitle.innerHTML = '<h3><i class="fas fa-spinner fa-spin"></i> 加载中...</h3>';
             chapterContent.innerHTML = '<div class="text-center"><i class="fas fa-spinner fa-spin"></i> 正在加载章节内容...</div>';
             
-            fetch(`/api/books/${bookId}/chapters/${chapterNumber}/`)
+            fetch(`/books/${bookId}/enhanced-content/?chapter=${chapterNumber}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.data && !data.data.error) {
+                        const renderData = data.data;
+                        const chapterTitleText = renderData.chapter_title || renderData.title || `第${chapterNumber}章`;
+                        const contentHtml = renderData.content || renderData.html || renderData.rendered_content;
+                        
+                        document.getElementById('chapterTitle').innerHTML = `<h3>${chapterTitleText}</h3>`;
+                        document.getElementById('chapterContent').innerHTML = contentHtml || '<div class="alert alert-info">暂无内容</div>';
+                        
+                        currentChapter = parseInt(chapterNumber);
+                        if (renderData.total_chapters) {
+                            totalChapters = renderData.total_chapters;
+                        }
+                        if (renderData.table_of_contents || renderData.toc) {
+                            updateChapterSelectFromToc(renderData.table_of_contents || renderData.toc);
+                        }
+                        
+                        afterChapterLoaded(chapterNumber);
+                        return;
+                    }
+                    
+                    // 如果插件渲染失败，使用文本渲染作为兜底
+                    return fetchLegacyChapter(chapterNumber);
+                })
+                .catch(() => {
+                    return fetchLegacyChapter(chapterNumber);
+                });
+        }
+        
+        function fetchLegacyChapter(chapterNumber) {
+            return fetch(`/api/books/${bookId}/chapters/${chapterNumber}/`)
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        // 更新章节标题
                         document.getElementById('chapterTitle').innerHTML = 
                             `<h3>${data.title || '第' + chapterNumber + '章'}</h3>`;
                         
-                        // 重新格式化内容
                         const formattedContent = formatBookContent(data.content);
                         document.getElementById('chapterContent').innerHTML = formattedContent;
                         
-                        // 更新当前章节
-                        currentChapter = parseInt(chapterNumber);
-                        
-                        // 更新章节选择器
-                        const chapterSelect = document.getElementById('chapterSelect');
-                        if (chapterSelect) {
-                            chapterSelect.value = chapterNumber;
+                        if (data.total_chapters) {
+                            totalChapters = data.total_chapters;
                         }
-                        
-                        // 更新进度和导航
-                        updateProgress();
-                        updateNavigationButtons();
-                        
-                        // 滚动到顶部
-                        document.getElementById('mainContent').scrollTop = 0;
-                        
-                        console.log(`已切换到第${chapterNumber}章`);
+                        afterChapterLoaded(chapterNumber);
                     } else {
                         console.error('获取章节内容失败:', data.error);
                         document.getElementById('chapterTitle').innerHTML = '<h3>加载失败</h3>';
@@ -1370,6 +1490,33 @@
                     document.getElementById('chapterContent').innerHTML = 
                         '<div class="alert alert-danger">网络错误，请稍后重试</div>';
                 });
+        }
+        
+        function afterChapterLoaded(chapterNumber) {
+            currentChapter = parseInt(chapterNumber);
+            
+            const chapterSelect = document.getElementById('chapterSelect');
+            if (chapterSelect) {
+                chapterSelect.value = chapterNumber;
+            }
+            
+            updateProgress();
+            updateNavigationButtons();
+            document.getElementById('mainContent').scrollTop = 0;
+        }
+        
+        function updateChapterSelectFromToc(toc) {
+            if (!toc || !Array.isArray(toc) || toc.length === 0) return;
+            const chapterSelect = document.getElementById('chapterSelect');
+            if (!chapterSelect) return;
+            
+            totalChapters = toc.length;
+            chapterSelect.innerHTML = toc.map((chapter, index) => {
+                const number = chapter.chapter_number || chapter.number || chapter.index || (index + 1);
+                const title = chapter.title || `第${number}章`;
+                const selected = number === currentChapter ? 'selected' : '';
+                return `<option value="${number}" ${selected}>第${number}章 - ${title}</option>`;
+            }).join('');
         }
         
         // 格式化书籍内容
@@ -1946,6 +2093,169 @@
                     }
                 });
             }
+        }
+
+        // 悬浮AI助手
+        let isBubbleDragging = false;
+        
+        function initFloatingAI() {
+            const bubbleBtn = document.getElementById('aiFloatingBtn');
+            const panel = document.getElementById('aiFloatingPanel');
+            const closeBtn = document.getElementById('aiFloatingClose');
+            
+            if (!bubbleBtn || !panel) return;
+            
+            const canHover = window.matchMedia('(hover: hover)').matches;
+            let hideTimer = null;
+            
+            const showPanel = () => {
+                clearTimeout(hideTimer);
+                panel.style.display = 'block';
+                bubbleBtn.classList.add('is-open');
+                positionFloatingPanel();
+            };
+            
+            const hidePanel = () => {
+                if (isBubbleDragging) return;
+                panel.style.display = 'none';
+                bubbleBtn.classList.remove('is-open');
+            };
+            
+            const scheduleHide = () => {
+                clearTimeout(hideTimer);
+                hideTimer = setTimeout(hidePanel, 180);
+            };
+            
+            if (canHover) {
+                bubbleBtn.addEventListener('mouseenter', showPanel);
+                bubbleBtn.addEventListener('mouseleave', scheduleHide);
+                panel.addEventListener('mouseenter', () => clearTimeout(hideTimer));
+                panel.addEventListener('mouseleave', scheduleHide);
+            } else {
+                bubbleBtn.addEventListener('click', () => {
+                    if (panel.style.display === 'block') {
+                        hidePanel();
+                    } else {
+                        showPanel();
+                    }
+                });
+            }
+            
+            if (closeBtn) {
+                closeBtn.addEventListener('click', hidePanel);
+            }
+            
+            makeBubbleDraggable(bubbleBtn, () => {
+                if (panel.style.display === 'block') {
+                    positionFloatingPanel();
+                }
+            });
+            
+            window.addEventListener('resize', () => {
+                if (panel.style.display === 'block') {
+                    positionFloatingPanel();
+                }
+            });
+        }
+        
+        function positionFloatingPanel() {
+            const bubbleBtn = document.getElementById('aiFloatingBtn');
+            const panel = document.getElementById('aiFloatingPanel');
+            if (!bubbleBtn || !panel) return;
+            
+            const bubbleRect = bubbleBtn.getBoundingClientRect();
+            const panelWidth = panel.offsetWidth || 320;
+            const panelHeight = panel.offsetHeight || 320;
+            
+            let left = bubbleRect.right - panelWidth;
+            let top = bubbleRect.top - panelHeight - 12;
+            
+            if (top < 10) {
+                top = bubbleRect.bottom + 12;
+            }
+            
+            if (left < 10) {
+                left = 10;
+            }
+            
+            if (left + panelWidth > window.innerWidth - 10) {
+                left = window.innerWidth - panelWidth - 10;
+            }
+            
+            if (top + panelHeight > window.innerHeight - 10) {
+                top = window.innerHeight - panelHeight - 10;
+            }
+            
+            panel.style.left = `${left}px`;
+            panel.style.top = `${top}px`;
+            panel.style.right = 'auto';
+            panel.style.bottom = 'auto';
+        }
+        
+        function makeBubbleDraggable(bubbleBtn, onMove) {
+            let startX = 0;
+            let startY = 0;
+            let startLeft = 0;
+            let startTop = 0;
+            
+            const startDrag = (e) => {
+                if (e.type === 'mousedown' && e.button !== 0) return;
+                const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+                const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+                if (clientX == null || clientY == null) return;
+                
+                const rect = bubbleBtn.getBoundingClientRect();
+                startX = clientX;
+                startY = clientY;
+                startLeft = rect.left;
+                startTop = rect.top;
+                isBubbleDragging = true;
+                
+                bubbleBtn.style.left = `${startLeft}px`;
+                bubbleBtn.style.top = `${startTop}px`;
+                bubbleBtn.style.right = 'auto';
+                bubbleBtn.style.bottom = 'auto';
+                
+                document.addEventListener('mousemove', onDrag);
+                document.addEventListener('mouseup', stopDrag);
+                document.addEventListener('touchmove', onDrag, { passive: false });
+                document.addEventListener('touchend', stopDrag);
+            };
+            
+            const onDrag = (e) => {
+                if (!isBubbleDragging) return;
+                const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+                const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+                if (clientX == null || clientY == null) return;
+                
+                let left = startLeft + (clientX - startX);
+                let top = startTop + (clientY - startY);
+                
+                const maxLeft = window.innerWidth - bubbleBtn.offsetWidth - 10;
+                const maxTop = window.innerHeight - bubbleBtn.offsetHeight - 10;
+                left = Math.max(10, Math.min(left, maxLeft));
+                top = Math.max(10, Math.min(top, maxTop));
+                
+                bubbleBtn.style.left = `${left}px`;
+                bubbleBtn.style.top = `${top}px`;
+                
+                if (onMove) {
+                    onMove();
+                }
+                
+                e.preventDefault();
+            };
+            
+            const stopDrag = () => {
+                isBubbleDragging = false;
+                document.removeEventListener('mousemove', onDrag);
+                document.removeEventListener('mouseup', stopDrag);
+                document.removeEventListener('touchmove', onDrag);
+                document.removeEventListener('touchend', stopDrag);
+            };
+            
+            bubbleBtn.addEventListener('mousedown', startDrag);
+            bubbleBtn.addEventListener('touchstart', startDrag, { passive: false });
         }
     </script>
 </body>

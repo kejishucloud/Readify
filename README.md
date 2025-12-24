@@ -10,7 +10,7 @@
 
 1. **激活conda环境**
    ```bash
-   conda activate DL
+   conda activate readify
    ```
 
 2. **安装依赖**
@@ -21,6 +21,9 @@
 3. **检查项目状态**
    ```bash
    python check_status.py
+   python manage.py migrate
+   python manage.py createsuperuser
+
    ```
 
 4. **启动服务器**

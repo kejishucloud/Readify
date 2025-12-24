@@ -1,15 +1,15 @@
-Django==5.0.6
-djangorestframework==3.14.0
-Pillow==10.0.0
-python-magic==0.4.27
-PyPDF2==3.0.1
-python-docx==0.8.11
-ebooklib==0.18
-beautifulsoup4==4.12.2
-openai==1.3.0
-requests==2.31.0
-celery==5.3.0
-redis==4.6.0
+Django
+djangorestframework
+Pillow
+python-magic
+PyPDF2
+python-docx
+ebooklib
+beautifulsoup4
+openai
+requests
+celery
+redis
 
 # 暂时注释掉ChatTTS相关依赖，等待兼容版本
 # ChatTTS==0.1.0
@@ -21,33 +21,33 @@ redis==4.6.0
 # soundfile>=0.12.0
 
 # 音频处理
-# pydub==0.25.1
+pydub
 
 # 语言检测和处理
-langdetect==1.0.9
+langdetect
 
 # 文本处理
-markdown==3.5.1
-bleach==6.0.0
+markdown
+bleach
 
 # 跨域支持
-django-cors-headers==4.3.1
+django-cors-headers
 
 # 环境变量
-python-decouple==3.8
+python-decouple
 
 # 中文字符编码支持
-chardet==5.2.0
+chardet
 
 # 异步HTTP客户端
-httpx==0.25.0
+httpx
 
 # 新增：优化渲染引擎依赖
 # PDF高质量渲染 - MuPDF Python绑定
-PyMuPDF==1.23.8
+PyMuPDF
 
 # XML处理增强
-lxml==4.9.3
+lxml
 
 # MOBI/AZW3支持（可选，需要calibre）
 # calibre>=6.0.0
@@ -56,19 +56,19 @@ lxml==4.9.3
 # python-fb2==0.1.0
 
 # Markdown扩展 - 使用内置扩展
-# markdown-extensions==0.1.3
+markdown-extensions
 
 # 图像处理增强
-opencv-python==4.8.1.78
+opencv-python
 
 # 文本编码检测增强 - 使用标准chardet
-# cchardet==2.1.7
+cchardet
 
 # 图表和数据分析
-matplotlib==3.7.2
-seaborn==0.12.2
-pandas==2.0.3
-numpy==1.24.3
+matplotlib
+seaborn
+pandas
+numpy
 
 # 时间处理
-python-dateutil==2.8.2 
+python-dateutil

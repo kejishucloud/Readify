@@ -658,6 +658,30 @@
                         <i class="fas fa-info-circle me-2"></i>
                         配置您的AI服务提供商，以获得更好的智能阅读体验
                     </div>
+
+                    <!-- 已保存配置概览 -->
+                    <div class="card mb-3">
+                        <div class="card-body d-flex flex-wrap align-items-center justify-content-between">
+                            <div>
+                                <div class="small text-muted">当前保存的配置</div>
+                                <div class="fw-bold">
+                                    {{ ai_config.provider|default:"未配置" }} · {{ ai_config.model_id|default:"-" }}
+                                </div>
+                                <div class="small text-muted">
+                                    端点: {{ ai_config.api_url|default:"-" }}
+                                </div>
+                                <div class="small {{ ai_config.is_active|yesno:'text-success,text-muted' }}">
+                                    状态: {{ ai_config.is_active|yesno:"已启用,未启用" }}
+                                </div>
+                                <div class="small">
+                                    密钥: {% if ai_config.api_key %}已配置{% else %}未配置{% endif %}
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-outline-primary" id="applySavedAIConfig">
+                                <i class="fas fa-check"></i> 使用此配置
+                            </button>
+                        </div>
+                    </div>
                     
                     <div class="row">
                         <div class="col-md-6">
@@ -900,15 +924,18 @@
             if (result.success) {
                 // 如果有AI配置，也保存AI配置
                 const aiData = {
-                    provider: data.ai_provider,
-                    model_id: data.ai_model_id,
-                    api_url: data.ai_api_url,
-                    api_key: data.ai_api_key,
-                    temperature: parseFloat(data.ai_temperature),
-                    max_tokens: parseInt(data.ai_max_tokens),
-                    timeout: parseInt(data.ai_timeout),
-                    is_active: data.ai_is_active
+                    ai_provider: data.ai_provider,
+                    ai_model_id: data.ai_model_id,
+                    ai_api_url: data.ai_api_url,
+                    ai_temperature: parseFloat(data.ai_temperature),
+                    ai_max_tokens: parseInt(data.ai_max_tokens),
+                    ai_timeout: parseInt(data.ai_timeout),
+                    ai_is_active: data.ai_is_active
                 };
+                // 只有在用户填写时才发送密钥，避免清空
+                if (data.ai_api_key && data.ai_api_key.trim() !== '') {
+                    aiData.ai_api_key = data.ai_api_key.trim();
+                }
                 
                 return fetch('/user/ai-config/', {
                     method: 'POST',
@@ -935,6 +962,33 @@
             submitBtn.disabled = false;
         });
     });
+
+    // 载入已保存的AI配置到表单
+    const applyBtn = document.getElementById('applySavedAIConfig');
+    if (applyBtn) {
+        applyBtn.addEventListener('click', () => {
+            const provider = "{{ ai_config.provider|default:'' }}";
+            const modelId = "{{ ai_config.model_id|default:'' }}";
+            const apiUrl = "{{ ai_config.api_url|default:'' }}";
+            const maxTokens = "{{ ai_config.max_tokens|default:'' }}";
+            const temperature = "{{ ai_config.temperature|default:'' }}";
+            const timeout = "{{ ai_config.timeout|default:'' }}";
+            const isActive = "{{ ai_config.is_active|yesno:'true,false' }}";
+            
+            if (provider) document.getElementById('aiProvider').value = provider;
+            if (modelId) document.getElementById('aiModelId').value = modelId;
+            if (apiUrl) document.getElementById('aiApiUrl').value = apiUrl;
+            if (maxTokens) document.getElementById('aiMaxTokens').value = maxTokens;
+            if (temperature) {
+                document.getElementById('aiTemperature').value = temperature;
+                document.getElementById('aiTemperatureValue').textContent = temperature;
+            }
+            if (timeout) document.getElementById('aiTimeout').value = timeout;
+            document.getElementById('aiIsActive').checked = (isActive === 'true');
+            
+            showAlert('已载入保存的AI配置，请保存以生效', 'info');
+        });
+    }
     
     // 显示提示信息
     function showAlert(message, type) {

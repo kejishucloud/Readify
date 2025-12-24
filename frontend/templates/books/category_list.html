@@ -17,6 +17,105 @@
         </div>
     </div>
 
+    <!-- 分类标准设置 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="fas fa-sliders-h"></i> 分类标准</h6>
+                </div>
+                <div class="card-body">
+                    <form method="post" action="{% url 'update_category_standard' %}" id="categoryStandardForm">
+                        {% csrf_token %}
+                        <div class="row g-3 align-items-start">
+                            <div class="col-md-4">
+                                <label class="form-label">选择分类标准</label>
+                                <select class="form-select" name="category_standard" id="categoryStandardSelect">
+                                    {% for standard in category_standards %}
+                                    <option value="{{ standard.id }}" {% if standard.id == selected_standard %}selected{% endif %}>
+                                        {{ standard.name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <div class="form-text">AI 将根据当前标准进行书籍分类</div>
+                            </div>
+                            <div class="col-md-8" id="customCategoryBox">
+                                <label class="form-label">自定义分类列表</label>
+                                <div class="d-flex flex-wrap gap-3">
+                                    {% for category in categories %}
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="custom_category_codes"
+                                               value="{{ category.code }}"
+                                               {% if category.code in custom_category_codes %}checked{% endif %}>
+                                        <label class="form-check-label">{{ category.name }}</label>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                <div class="form-text">勾选需要参与 AI 分类的类别</div>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <button type="submit" class="btn btn-outline-primary">
+                                <i class="fas fa-save"></i> 保存标准
+                            </button>
+                        </div>
+                    </form>
+                    <hr class="my-4">
+                    <div>
+                        <h6 class="mb-3"><i class="fas fa-list"></i> 已有分类</h6>
+                        <div class="d-flex flex-wrap gap-2">
+                            {% for category in categories %}
+                            <form method="post" action="{% url 'delete_category' category.id %}" class="d-inline"
+                                  onsubmit="return confirm('确定要删除分类 {{ category.name }} 吗？该分类下书籍将转入“其他”。');">
+                                {% csrf_token %}
+                                <span class="badge bg-light text-dark border">
+                                    {{ category.name }}
+                                    <button type="submit" class="btn btn-link btn-sm text-danger p-0 ms-2">删除</button>
+                                </span>
+                            </form>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 新增分类 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="fas fa-plus-circle"></i> 新增分类</h6>
+                </div>
+                <div class="card-body">
+                    <form method="post" action="{% url 'create_category' %}">
+                        {% csrf_token %}
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">分类名称</label>
+                                <input type="text" class="form-control" name="name" placeholder="例如：人工智能">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">分类代码（可选）</label>
+                                <input type="text" class="form-control" name="code" placeholder="例如：ai">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">分类描述（可选）</label>
+                                <input type="text" class="form-control" name="description" placeholder="用于说明分类范围">
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <button type="submit" class="btn btn-outline-success">
+                                <i class="fas fa-plus"></i> 添加分类
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- 搜索框 -->
     <div class="row mb-4">
         <div class="col-md-6">
@@ -98,9 +197,18 @@
                     </div>
                     <h6 class="card-title">{{ category.name }}</h6>
                     <p class="text-muted">{{ category.book_count }} 本书籍</p>
-                    <a href="{% url 'category_books' category.code %}" class="btn btn-outline-primary btn-sm">
-                        <i class="fas fa-eye"></i> 查看书籍
-                    </a>
+                    <div class="d-flex justify-content-center gap-2">
+                        <a href="{% url 'category_books' category.code %}" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-eye"></i> 查看书籍
+                        </a>
+                        <form method="post" action="{% url 'delete_category' category.id %}" class="d-inline"
+                              onsubmit="return confirm('确定要删除分类 {{ category.name }} 吗？该分类下书籍将转入“其他”。');">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-outline-danger btn-sm">
+                                <i class="fas fa-trash-alt"></i> 删除
+                            </button>
+                        </form>
+                    </div>
                 </div>
             </div>
         </div>
@@ -173,6 +281,8 @@
 document.addEventListener('DOMContentLoaded', function() {
     const searchInput = document.getElementById('categorySearch');
     const categoryItems = document.querySelectorAll('.category-item');
+    const standardSelect = document.getElementById('categoryStandardSelect');
+    const customCategoryBox = document.getElementById('customCategoryBox');
 
     searchInput.addEventListener('input', function() {
         const searchTerm = this.value.toLowerCase();
@@ -186,6 +296,16 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
+    
+    function toggleCustomCategoryBox() {
+        if (!standardSelect || !customCategoryBox) return;
+        customCategoryBox.style.display = standardSelect.value === 'custom' ? 'block' : 'none';
+    }
+    
+    if (standardSelect) {
+        standardSelect.addEventListener('change', toggleCustomCategoryBox);
+        toggleCustomCategoryBox();
+    }
 });
 </script>
 {% endblock %} 

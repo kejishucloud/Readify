@@ -20,6 +20,9 @@ urlpatterns = [
     
     # 分类管理
     path('categories/', views.category_list, name='category_list'),
+    path('categories/standard/', views.update_category_standard, name='update_category_standard'),
+    path('categories/create/', views.create_category, name='create_category'),
+    path('categories/<int:category_id>/delete/', views.delete_category, name='delete_category'),
     path('categories/<str:category_code>/', views.category_books, name='category_books'),
     
     # 阅读历史
@@ -94,4 +97,10 @@ urlpatterns = [
     
     # 高级搜索
     path('search/advanced/', views.advanced_book_search, name='advanced_book_search'),
+    
+    # 增强插件系统相关路由
+    path('books/<int:book_id>/enhanced-reader/', views.enhanced_book_reader, name='enhanced_book_reader'),
+    path('books/<int:book_id>/enhanced-content/', views.get_enhanced_chapter_content, name='get_enhanced_chapter_content'),
+    path('books/<int:book_id>/detect-format/', views.detect_book_format_api, name='detect_book_format_api'),
+    path('api/plugins/info/', views.get_plugin_info_api, name='get_plugin_info_api'),
 ] 

@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -6,6 +7,7 @@
     <title>优化阅读器 - {{ book.title }} - Readify</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="{% static 'css/main.css' %}" rel="stylesheet">
     
     <!-- EPUB.js for EPUB rendering -->
     <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.93/dist/epub.min.js"></script>
@@ -20,13 +22,14 @@
             flex-direction: column;
         }
         
-        .reader-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 15px 20px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            z-index: 1000;
-        }
+    .reader-header {
+        background: var(--surface-color);
+        color: var(--dark-color);
+        padding: 15px 20px;
+        box-shadow: none;
+        border-bottom: 1px solid var(--border-color);
+        z-index: 1000;
+    }
         
         .reader-body {
             flex: 1;
@@ -34,42 +37,43 @@
             overflow: hidden;
         }
         
-        .reader-sidebar {
-            width: 300px;
-            background: #f8f9fa;
-            border-right: 1px solid #dee2e6;
-            overflow-y: auto;
-            transition: transform 0.3s ease;
-        }
+    .reader-sidebar {
+        width: 300px;
+        background: var(--surface-color);
+        border-right: 1px solid var(--border-color);
+        overflow-y: auto;
+        transition: transform 0.3s ease;
+    }
         
         .reader-sidebar.collapsed {
             transform: translateX(-100%);
         }
         
-        .reader-content {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            background: white;
-        }
+    .reader-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        background: var(--surface-color);
+    }
         
-        .content-toolbar {
-            padding: 10px 20px;
-            background: #f8f9fa;
-            border-bottom: 1px solid #dee2e6;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
+    .content-toolbar {
+        padding: 10px 20px;
+        background: #f8fafc;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
         
-        .content-area {
-            flex: 1;
-            padding: 30px;
-            overflow-y: auto;
-            line-height: 1.8;
-            font-size: 16px;
-            font-family: 'Microsoft YaHei', 'PingFang SC', 'Hiragino Sans GB', sans-serif;
-        }
+    .content-area {
+        flex: 1;
+        padding: 30px;
+        overflow-y: auto;
+        line-height: 1.8;
+        font-size: 16px;
+        font-family: inherit;
+        color: var(--dark-color);
+    }
         
         /* 不同渲染器的样式 */
         .epub-content {
@@ -81,11 +85,11 @@
             text-align: center;
         }
         
-        .pdf-content img {
-            max-width: 100%;
-            height: auto;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        }
+    .pdf-content img {
+        max-width: 100%;
+        height: auto;
+        box-shadow: var(--shadow-sm);
+    }
         
         .text-content p {
             margin-bottom: 1.2em;
@@ -115,55 +119,55 @@
             overflow-x: auto;
         }
         
-        .toc-item {
-            padding: 8px 15px;
-            cursor: pointer;
-            border-bottom: 1px solid #eee;
-            transition: background-color 0.2s;
-        }
+    .toc-item {
+        padding: 8px 15px;
+        cursor: pointer;
+        border-bottom: 1px solid var(--border-color);
+        transition: background-color 0.2s;
+    }
         
-        .toc-item:hover {
-            background-color: #e9ecef;
-        }
+    .toc-item:hover {
+        background-color: #f8fafc;
+    }
+    
+    .toc-item.active {
+        background-color: rgba(15, 118, 110, 0.12);
+        color: var(--primary-color);
+    }
         
-        .toc-item.active {
-            background-color: #007bff;
-            color: white;
-        }
-        
-        .renderer-info {
-            background: #e3f2fd;
-            border: 1px solid #bbdefb;
-            border-radius: 5px;
-            padding: 10px;
-            margin-bottom: 20px;
-        }
+    .renderer-info {
+        background: #f8fafc;
+        border: 1px solid var(--border-color);
+        border-radius: 5px;
+        padding: 10px;
+        margin-bottom: 20px;
+    }
         
         .renderer-info .badge {
             margin-right: 5px;
         }
         
-        .loading-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(255, 255, 255, 0.8);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
-        
-        .error-message {
-            background: #f8d7da;
-            border: 1px solid #f5c6cb;
-            color: #721c24;
-            padding: 15px;
-            border-radius: 5px;
-            margin: 20px 0;
-        }
+    .loading-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(248, 250, 252, 0.9);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+    }
+    
+    .error-message {
+        background: #fef2f2;
+        border: 1px solid #fecaca;
+        color: #991b1b;
+        padding: 15px;
+        border-radius: 5px;
+        margin: 20px 0;
+    }
         
         @media (max-width: 768px) {
             .reader-sidebar {
@@ -186,7 +190,7 @@
         <div class="reader-header">
             <div class="d-flex justify-content-between align-items-center">
                 <div class="d-flex align-items-center">
-                    <button class="btn btn-outline-light btn-sm me-3" id="toggleSidebar">
+                    <button class="btn btn-outline-primary btn-sm me-3" id="toggleSidebar">
                         <i class="fas fa-bars"></i>
                     </button>
                     <h5 class="mb-0">{{ book.title }}</h5>
@@ -200,7 +204,7 @@
                         / 第 {{ current_page }} 页
                         {% endif %}
                     </span>
-                    <a href="{% url 'book_detail' book.id %}" class="btn btn-outline-light btn-sm">
+                    <a href="{% url 'book_detail' book.id %}" class="btn btn-outline-primary btn-sm">
                         <i class="fas fa-arrow-left"></i> 返回
                     </a>
                 </div>

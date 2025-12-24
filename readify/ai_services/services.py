@@ -42,72 +42,37 @@ class AIService:
         
         try:
             from readify.user_management.models import UserAIConfig
-            # 每次都重新查询数据库，确保获取最新配置
-            user_config = UserAIConfig.objects.filter(user=self.user, is_active=True).first()
+            user_config = UserAIConfig.objects.filter(user=self.user).first()
             
-            # 如果用户没有配置或API密钥为空，使用环境变量配置
-            if not user_config or not user_config.api_key or user_config.api_key.strip() == '':
-                logger.info(f"用户 {self.user.username} 没有有效的AI配置，使用环境变量配置")
-                
-                # 检测环境变量中的模型类型
-                env_model = getattr(settings, 'OPENAI_MODEL', 'gpt-3.5-turbo')
-                env_api_key = getattr(settings, 'OPENAI_API_KEY', '')
-                env_base_url = getattr(settings, 'OPENAI_BASE_URL', 'https://api.openai.com/v1')
-                
-                # 如果环境变量的API密钥也为空，返回错误配置
-                if not env_api_key or env_api_key.strip() == '':
-                    logger.error(f"用户 {self.user.username} 和环境变量都没有有效的API密钥")
-                    return {
-                        'provider': 'openai',
-                        'api_url': 'https://api.openai.com/v1',
-                        'api_key': '',
-                        'model_id': 'gpt-3.5-turbo',
-                        'max_tokens': 4000,
-                        'temperature': 0.7,
-                        'timeout': 30,
-                        'error': 'API密钥未配置'
-                    }
-                
-                # 根据模型名称判断提供商
-                if env_model.startswith('Qwen') or 'qwen' in env_model.lower():
-                    provider = 'custom'
-                elif env_model.startswith('gpt'):
-                    provider = 'openai'
-                else:
-                    provider = 'custom'
-                
-                config = {
-                    'provider': provider,
-                    'api_url': env_base_url,
-                    'api_key': env_api_key,
-                    'model_id': env_model,
-                    'max_tokens': user_config.max_tokens if user_config else 4000,
-                    'temperature': user_config.temperature if user_config else 0.7,
-                    'timeout': user_config.timeout if user_config else 30,
+            if not user_config:
+                return {
+                    'error': '请在“AI配置”中先保存配置，再进行调用',
+                    'provider': None
                 }
-                
-                # 为环境变量配置生成headers和endpoint
-                config['headers'] = {
-                    'Content-Type': 'application/json',
-                    'Authorization': f'Bearer {config["api_key"]}'
-                }
-                config['endpoint'] = f"{config['api_url'].rstrip('/')}/chat/completions"
-                
-                logger.info(f"使用环境变量AI配置: {config['provider']} - {config['model_id']}")
-                return config
             
-            # 用户有有效的API密钥，使用用户配置
+            if not user_config.is_active:
+                return {
+                    'error': 'AI配置未启用',
+                    'provider': user_config.provider
+                }
+            
+            clean_key = self._clean_api_key(user_config.api_key)
+            if not clean_key:
+                return {
+                    'error': 'API密钥未配置',
+                    'provider': user_config.provider
+                }
+            
             config = {
                 'provider': user_config.provider,
                 'api_url': user_config.api_url,
-                'api_key': user_config.api_key,
+                'api_key': clean_key,
                 'model_id': user_config.model_id,
                 'max_tokens': user_config.max_tokens,
                 'temperature': user_config.temperature,
                 'timeout': user_config.timeout,
             }
             
-            # 添加headers和endpoint
             config['headers'] = user_config.get_headers()
             config['endpoint'] = user_config.get_chat_endpoint()
             
@@ -116,38 +81,9 @@ class AIService:
             
         except Exception as e:
             logger.error(f"获取用户AI配置失败: {str(e)}")
-            # 如果出错，使用环境变量配置
-            env_api_key = getattr(settings, 'OPENAI_API_KEY', '')
-            env_model = getattr(settings, 'OPENAI_MODEL', 'gpt-3.5-turbo')
-            env_base_url = getattr(settings, 'OPENAI_BASE_URL', 'https://api.openai.com/v1')
-            
-            if not env_api_key or env_api_key.strip() == '':
-                logger.error(f"环境变量中也没有有效的API密钥")
-                return {
-                    'provider': 'openai',
-                    'api_url': 'https://api.openai.com/v1',
-                    'api_key': '',
-                    'model_id': 'gpt-3.5-turbo',
-                    'max_tokens': 4000,
-                    'temperature': 0.7,
-                    'timeout': 30,
-                    'error': 'API密钥未配置'
-                }
-            
-            provider = 'custom' if env_model.startswith('Qwen') or 'qwen' in env_model.lower() else 'openai'
             return {
-                'provider': provider,
-                'api_url': env_base_url,
-                'api_key': env_api_key,
-                'model_id': env_model,
-                'max_tokens': 4000,
-                'temperature': 0.7,
-                'timeout': 30,
-                'headers': {
-                    'Content-Type': 'application/json',
-                    'Authorization': f'Bearer {env_api_key}'
-                },
-                'endpoint': f"{env_base_url.rstrip('/')}/chat/completions"
+                'error': f'获取AI配置失败: {str(e)}',
+                'provider': None
             }
     
     def _make_api_request(self, messages: list, system_prompt: str = None) -> Dict[str, Any]:
@@ -259,7 +195,6 @@ class AIService:
                 'processing_time': processing_time,
                 'tokens_used': tokens_used
             }
-            
         except requests.exceptions.Timeout:
             error_msg = f"请求超时（{self.config['timeout']}秒），请检查网络连接或稍后重试"
             logger.error(error_msg)
@@ -281,6 +216,31 @@ class AIService:
                 'success': False,
                 'error': error_msg
             }
+
+    def test_connection(self) -> Dict[str, Any]:
+        """测试当前配置是否可用"""
+        try:
+            cfg = self.config
+            if 'error' in cfg:
+                return {'success': False, 'message': cfg['error']}
+            if not cfg.get('api_key'):
+                return {'success': False, 'message': 'API密钥未配置'}
+            
+            test_messages = [{"role": "user", "content": "ping"}]
+            result = self._make_api_request(test_messages, "你是一个诊断助手，只需回复 pong")
+            
+            if result.get('success'):
+                return {'success': True, 'message': 'AI配置测试成功'}
+            return {'success': False, 'message': result.get('error', '测试失败')}
+        except Exception as e:
+            logger.error(f"AI配置测试失败: {str(e)}")
+            return {'success': False, 'message': f'测试失败: {str(e)}'}
+
+    def _clean_api_key(self, api_key: str) -> str:
+        """清理API密钥中的换行和空白"""
+        if not api_key:
+            return ''
+        return api_key.replace('\n', '').replace('\r', '').strip()
     
     def _build_openai_request(self, messages: list) -> dict:
         """构建OpenAI格式的请求"""

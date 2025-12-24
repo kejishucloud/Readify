@@ -151,8 +151,9 @@ class BookProcessingService:
     
     def _extract_title_from_filename(self, filename: str) -> str:
         """从文件名提取标题"""
-        # 移除扩展名
-        title = os.path.splitext(filename)[0]
+        # 移除路径与扩展名
+        base_name = os.path.basename(filename)
+        title = os.path.splitext(base_name)[0]
         
         # 清理常见的文件名模式
         title = title.replace('_', ' ').replace('-', ' ')
@@ -309,7 +310,7 @@ class BookProcessingService:
                 return {'success': False, 'error': '无法获取书籍内容'}
             
             # 构建分类提示
-            categories = BookCategory.CATEGORY_TYPES
+            categories = self._get_category_options()
             category_list = [f"{code}: {name}" for code, name in categories]
             category_text = "\n".join(category_list)
             
@@ -368,7 +369,10 @@ class BookProcessingService:
                         ai_result = json.loads(content.strip())
                     
                     # 更新书籍信息
+                    available_codes = {code for code, _ in categories}
                     category_code = ai_result.get('category_code')
+                    if category_code not in available_codes:
+                        category_code = 'other' if 'other' in available_codes else next(iter(available_codes), None)
                     if category_code:
                         try:
                             category = BookCategory.objects.get(code=category_code)
@@ -403,6 +407,7 @@ class BookProcessingService:
                     content_lower = content.lower()
                     title_lower = book.title.lower()
                     
+                    available_codes = {code for code, _ in categories}
                     # 基于关键词的简单分类逻辑
                     if any(keyword in content_lower or keyword in title_lower for keyword in ['计算机', '编程', '程序', '软件', '代码', 'python', 'java', 'javascript']):
                         category_code = 'computer'
@@ -417,18 +422,23 @@ class BookProcessingService:
                     else:
                         category_code = 'other'
                     
+                    if category_code not in available_codes:
+                        category_code = 'other' if 'other' in available_codes else next(iter(available_codes), None)
+                    
                     try:
-                        category = BookCategory.objects.get(code=category_code)
-                        book.category = category
-                        logger.info(f"使用关键词分类，书籍《{book.title}》分类为：{category.name}")
+                        if category_code:
+                            category = BookCategory.objects.get(code=category_code)
+                            book.category = category
+                            logger.info(f"使用关键词分类，书籍《{book.title}》分类为：{category.name}")
                     except BookCategory.DoesNotExist:
-                        # 如果分类不存在，使用"其他"分类
-                        category, created = BookCategory.objects.get_or_create(
-                            code='other',
-                            defaults={'name': '其他'}
-                        )
-                        book.category = category
-                        logger.info(f"使用默认分类，书籍《{book.title}》分类为：{category.name}")
+                        if category_code:
+                            # 如果分类不存在，使用"其他"分类
+                            category, created = BookCategory.objects.get_or_create(
+                                code=category_code,
+                                defaults={'name': dict(categories).get(category_code, category_code)}
+                            )
+                            book.category = category
+                            logger.info(f"使用默认分类，书籍《{book.title}》分类为：{category.name}")
                     
                     book.summary = result['content'][:500]
                     book.processing_status = 'completed'
@@ -449,6 +459,33 @@ class BookProcessingService:
             book.processing_status = 'failed'
             book.save()
             return {'success': False, 'error': str(e)}
+
+    def _get_category_options(self) -> List[tuple]:
+        """获取分类标准选项"""
+        categories = []
+        try:
+            from readify.user_management.models import UserPreferences
+            preferences = UserPreferences.objects.filter(user=self.user).first()
+            if preferences and preferences.category_standard == 'custom':
+                custom_codes = [code for code in preferences.custom_category_codes if isinstance(code, str)]
+                if custom_codes:
+                    categories = list(
+                        BookCategory.objects.filter(code__in=custom_codes)
+                        .order_by('name')
+                        .values_list('code', 'name')
+                    )
+                if categories:
+                    return categories
+                return BookCategory.CATEGORY_TYPES
+            return BookCategory.CATEGORY_TYPES
+        except Exception as e:
+            logger.warning(f"获取分类标准失败: {str(e)}")
+            categories = []
+        
+        if not categories:
+            categories = BookCategory.CATEGORY_TYPES
+        
+        return categories
     
     def _get_book_text_for_classification(self, book: Book) -> str:
         """获取用于分类的书籍文本"""

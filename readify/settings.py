@@ -59,6 +59,8 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+X_FRAME_OPTIONS = 'SAMEORIGIN'
+
 ROOT_URLCONF = 'readify.urls'
 
 TEMPLATES = [
@@ -274,6 +276,9 @@ TRANSLATION_SUPPORTED_LANGUAGES = {
 }
 
 # Logging
+LOG_DIR = BASE_DIR / 'logs'
+LOG_DIR.mkdir(parents=True, exist_ok=True)
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -291,7 +296,7 @@ LOGGING = {
         'file': {
             'level': 'INFO',
             'class': 'logging.FileHandler',
-            'filename': BASE_DIR / 'logs' / 'readify.log',
+            'filename': LOG_DIR / 'readify.log',
             'formatter': 'verbose',
             'encoding': 'utf-8',
         },

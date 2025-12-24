@@ -46,6 +46,8 @@ from .services import (
 )
 from .reading_assistant import ReadingAssistantService
 from .renderers import OptimizedBookRenderer, RendererFactory
+from .renderer_plugins import EnhancedBookRenderer, plugin_manager
+from .format_detector import format_detector
 from .forms import BookUploadForm, BookNoteForm
 
 # 尝试导入翻译服务，如果不存在则跳过
@@ -375,6 +377,23 @@ def book_read(request, book_id):
     
     # 重新获取章节列表（可能已经创建了新的章节）
     chapters = BookContent.objects.filter(book=book).order_by('chapter_number')
+
+    # 使用插件渲染当前章节（优先使用插件，不再仅依赖文本）
+    plugin_render_result = None
+    plugin_toc = []
+    renderer_type = ''
+    try:
+        plugin_renderer = EnhancedBookRenderer(book)
+        plugin_render_result = plugin_renderer.render_chapter(progress.current_chapter or 1)
+        plugin_toc = plugin_renderer.get_table_of_contents()
+        renderer_type = plugin_render_result.get('renderer_type', '')
+    except Exception as e:
+        logger.error(f"插件渲染章节失败: {str(e)}")
+    finally:
+        try:
+            plugin_renderer.cleanup()
+        except Exception:
+            pass
     
     context = {
         'book': book,
@@ -382,6 +401,9 @@ def book_read(request, book_id):
         'chapters': chapters,
         'current_chapter': current_chapter,
         'total_chapters': chapters.count() if chapters.exists() else 1,
+        'plugin_render_result': plugin_render_result,
+        'plugin_toc': plugin_toc,
+        'plugin_renderer_type': renderer_type,
     }
     
     return render(request, 'books/book_read.html', context)
@@ -404,16 +426,126 @@ def book_delete(request, book_id):
 @login_required
 def category_list(request):
     """分类列表视图"""
+    if not BookCategory.objects.exists():
+        CategoryService.initialize_default_categories()
+
     categories = BookCategory.objects.annotate(
         book_count=Count('book', filter=Q(book__user=request.user))
     ).order_by('-book_count', 'name')
     
+    try:
+        from readify.user_management.models import UserPreferences
+        preferences, _ = UserPreferences.objects.get_or_create(user=request.user)
+    except Exception:
+        preferences = None
+    
+    category_standards = [
+        {'id': 'default', 'name': '默认分类标准'},
+        {'id': 'custom', 'name': '自定义分类标准'},
+    ]
+    selected_standard = preferences.category_standard if preferences else 'default'
+    custom_category_codes = preferences.custom_category_codes if preferences else []
+    
     context = {
         'categories': categories,
-        'category_stats': CategoryService.get_category_statistics(request.user)
+        'category_stats': CategoryService.get_category_statistics(request.user),
+        'category_standards': category_standards,
+        'selected_standard': selected_standard,
+        'custom_category_codes': custom_category_codes,
     }
     
     return render(request, 'books/category_list.html', context)
+
+
+@login_required
+@require_http_methods(["POST"])
+def update_category_standard(request):
+    """更新分类标准设置"""
+    from readify.user_management.models import UserPreferences
+    preferences, _ = UserPreferences.objects.get_or_create(user=request.user)
+    selected_standard = request.POST.get('category_standard', 'default')
+    
+    if selected_standard not in ['default', 'custom']:
+        messages.error(request, '无效的分类标准')
+        return redirect('category_list')
+    
+    preferences.category_standard = selected_standard
+    
+    if selected_standard == 'custom':
+        custom_codes = request.POST.getlist('custom_category_codes')
+        preferences.custom_category_codes = custom_codes
+        if not custom_codes:
+            messages.warning(request, '自定义分类为空，将使用默认分类标准')
+    else:
+        preferences.custom_category_codes = []
+    
+    preferences.save()
+    messages.success(request, '分类标准已更新')
+    return redirect('category_list')
+
+
+@login_required
+@require_http_methods(["POST"])
+def create_category(request):
+    """创建自定义分类"""
+    name = (request.POST.get('name') or '').strip()
+    code = (request.POST.get('code') or '').strip().lower()
+    description = (request.POST.get('description') or '').strip()
+    
+    if not name:
+        messages.error(request, '分类名称不能为空')
+        return redirect('category_list')
+    
+    if not code:
+        safe_name = re.sub(r'[^a-zA-Z0-9]+', '_', name).strip('_').lower()
+        code = safe_name or f'custom_{uuid.uuid4().hex[:8]}'
+    
+    if BookCategory.objects.filter(code=code).exists():
+        messages.error(request, f'分类代码 {code} 已存在，请更换')
+        return redirect('category_list')
+    
+    BookCategory.objects.create(
+        name=name,
+        code=code,
+        description=description
+    )
+    
+    messages.success(request, f'分类 {name} 已创建')
+    return redirect('category_list')
+
+
+@login_required
+@require_http_methods(["POST"])
+def delete_category(request, category_id):
+    """删除分类"""
+    category = get_object_or_404(BookCategory, id=category_id)
+    
+    if category.code == 'other':
+        messages.error(request, '默认分类“其他”不可删除')
+        return redirect('category_list')
+    
+    fallback_category, _ = BookCategory.objects.get_or_create(
+        code='other',
+        defaults={'name': '其他'}
+    )
+    
+    Book.objects.filter(category=category).update(category=fallback_category)
+    
+    try:
+        from readify.user_management.models import UserPreferences
+        preferences = UserPreferences.objects.filter(user=request.user).first()
+        if preferences and category.code in preferences.custom_category_codes:
+            preferences.custom_category_codes = [
+                code for code in preferences.custom_category_codes if code != category.code
+            ]
+            preferences.save()
+    except Exception:
+        pass
+    
+    category_name = category.name
+    category.delete()
+    messages.success(request, f'分类 {category_name} 已删除')
+    return redirect('category_list')
 
 
 @login_required
@@ -476,15 +608,19 @@ def reading_history(request):
 # API视图
 @login_required
 @require_http_methods(["POST"])
-def save_reading_progress(request):
+def save_reading_progress(request, book_id=None):
     """保存阅读进度API"""
     try:
         data = json.loads(request.body)
-        book_id = data.get('book_id')
+        payload_book_id = data.get('book_id')
+        effective_book_id = book_id or payload_book_id
         chapter = data.get('chapter', 1)
         progress = data.get('progress', 0)
         
-        book = get_object_or_404(Book, id=book_id, user=request.user)
+        if not effective_book_id:
+            return JsonResponse({'success': False, 'error': '缺少书籍ID'})
+        
+        book = get_object_or_404(Book, id=effective_book_id, user=request.user)
         
         progress_obj, created = ReadingProgress.objects.get_or_create(
             user=request.user,
@@ -1830,21 +1966,13 @@ def optimized_book_reader(request, book_id):
         reading_progress, created = ReadingProgress.objects.get_or_create(
             user=request.user,
             book=book,
-            defaults={'current_chapter': chapter_number, 'current_page': page_number}
+            defaults={'current_chapter': chapter_number, 'current_position': page_number}
         )
         if not created:
             reading_progress.current_chapter = chapter_number
-            reading_progress.current_page = page_number
+            reading_progress.current_position = page_number
             reading_progress.last_read_at = timezone.now()
             reading_progress.save()
-        
-        # 更新阅读会话
-        session, created = ReadingSession.objects.get_or_create(
-            user=request.user,
-            book=book,
-            session_date=timezone.now().date(),
-            defaults={'duration': timedelta(0)}
-        )
         
         context = {
             'book': book,
@@ -1906,14 +2034,17 @@ def get_book_metadata_api(request, book_id):
     try:
         book = get_object_or_404(Book, id=book_id, user=request.user)
         
-        # 创建优化渲染器
-        renderer = OptimizedBookRenderer(book)
+        # 创建增强渲染器
+        renderer = EnhancedBookRenderer(book)
         
         # 获取元数据
         metadata = renderer.get_book_metadata()
         
         # 获取目录
         table_of_contents = renderer.get_table_of_contents()
+        
+        # 获取插件信息
+        plugin_info = plugin_manager.get_plugin_info()
         
         # 清理资源
         renderer.cleanup()
@@ -1922,7 +2053,8 @@ def get_book_metadata_api(request, book_id):
             'success': True,
             'metadata': metadata,
             'table_of_contents': table_of_contents,
-            'supported_formats': RendererFactory.get_supported_formats()
+            'supported_formats': plugin_manager.get_supported_formats(),
+            'available_plugins': plugin_info
         })
         
     except Exception as e:
@@ -2056,8 +2188,8 @@ def reading_statistics_charts(request):
     # 获取基本统计数据
     total_books = Book.objects.filter(user=user).count()
     total_favorites = BookFavorite.objects.filter(user=user).count()
-    total_reading_time = RecentReading.objects.filter(user=user).aggregate(
-        total_time=Sum('reading_duration')
+    total_reading_time = ReadingSession.objects.filter(user=user).aggregate(
+        total_time=Sum('duration_seconds')
     )['total_time'] or 0
     
     # 获取最近阅读的书籍数量
@@ -2077,7 +2209,7 @@ def reading_statistics_charts(request):
         'category__name'
     ).annotate(
         count=Count('id'),
-        reading_time=Sum('recentreading__reading_duration')
+        reading_time=Sum('readingsession__duration_seconds')
     ).order_by('-count')[:10]
     
     # 处理空分类
@@ -2092,13 +2224,13 @@ def reading_statistics_charts(request):
         category_reading_time.append(stat['reading_time'] or 0)
     
     # 获取每日阅读统计
-    daily_reading = RecentReading.objects.filter(
+    daily_reading = ReadingSession.objects.filter(
         user=user,
-        last_read_at__gte=start_date
+        start_time__gte=start_date
     ).annotate(
-        day=TruncDate('last_read_at')
+        day=TruncDate('start_time')
     ).values('day').annotate(
-        reading_time=Sum('reading_duration'),
+        reading_time=Sum('duration_seconds'),
         books_read=Count('book', distinct=True)
     ).order_by('day')
     
@@ -2127,13 +2259,13 @@ def reading_statistics_charts(request):
         current_date += timedelta(days=1)
     
     # 获取月度趋势
-    monthly_data = RecentReading.objects.filter(
+    monthly_data = ReadingSession.objects.filter(
         user=user,
-        last_read_at__gte=timezone.now() - timedelta(days=365)
+        start_time__gte=timezone.now() - timedelta(days=365)
     ).annotate(
-        month=TruncMonth('last_read_at')
+        month=TruncMonth('start_time')
     ).values('month').annotate(
-        reading_time=Sum('reading_duration'),
+        reading_time=Sum('duration_seconds'),
         books_count=Count('book', distinct=True)
     ).order_by('month')
     
@@ -2142,13 +2274,13 @@ def reading_statistics_charts(request):
     monthly_books_data = [item['books_count'] for item in monthly_data]
     
     # 获取24小时阅读分布
-    hourly_data = RecentReading.objects.filter(
+    hourly_data = ReadingSession.objects.filter(
         user=user,
-        last_read_at__gte=start_date
+        start_time__gte=start_date
     ).annotate(
-        hour=Extract('last_read_at', 'hour')
+        hour=Extract('start_time', 'hour')
     ).values('hour').annotate(
-        reading_time=Sum('reading_duration')
+        reading_time=Sum('duration_seconds')
     ).order_by('hour')
     
     # 生成24小时完整数据
@@ -2252,13 +2384,13 @@ def get_reading_charts_data(request):
         
         if chart_type == 'all' or chart_type == 'daily':
             # 每日阅读时长趋势
-            daily_reading = RecentReading.objects.filter(
+            daily_reading = ReadingSession.objects.filter(
                 user=user,
-                last_read_at__gte=start_date
+                start_time__gte=start_date
             ).annotate(
-                day=TruncDate('last_read_at')
+                day=TruncDate('start_time')
             ).values('day').annotate(
-                reading_time=Sum('reading_duration'),
+                reading_time=Sum('duration_seconds'),
                 books_count=Count('book', distinct=True)
             ).order_by('day')
             
@@ -2305,7 +2437,7 @@ def get_reading_charts_data(request):
                 'category__name'
             ).annotate(
                 count=Count('id'),
-                reading_time=Sum('recentreading__reading_duration')
+                reading_time=Sum('readingsession__duration_seconds')
             ).order_by('-count')[:10]
             
             category_labels = []
@@ -2332,13 +2464,13 @@ def get_reading_charts_data(request):
             
         if chart_type == 'all' or chart_type == 'monthly':
             # 月度阅读趋势
-            monthly_data = RecentReading.objects.filter(
+            monthly_data = ReadingSession.objects.filter(
                 user=user,
-                last_read_at__gte=timezone.now() - timedelta(days=365)
+                start_time__gte=timezone.now() - timedelta(days=365)
             ).annotate(
-                month=TruncMonth('last_read_at')
+                month=TruncMonth('start_time')
             ).values('month').annotate(
-                reading_time=Sum('reading_duration'),
+                reading_time=Sum('duration_seconds'),
                 books_count=Count('book', distinct=True)
             ).order_by('month')
             
@@ -2358,13 +2490,13 @@ def get_reading_charts_data(request):
             
         if chart_type == 'all' or chart_type == 'hourly':
             # 24小时阅读分布
-            hourly_data = RecentReading.objects.filter(
+            hourly_data = ReadingSession.objects.filter(
                 user=user,
-                last_read_at__gte=start_date
+                start_time__gte=start_date
             ).annotate(
-                hour=Extract('last_read_at', 'hour')
+                hour=Extract('start_time', 'hour')
             ).values('hour').annotate(
-                reading_time=Sum('reading_duration')
+                reading_time=Sum('duration_seconds')
             ).order_by('hour')
             
             # 生成24小时完整数据
@@ -2411,8 +2543,8 @@ def get_reading_charts_data(request):
         # 添加统计摘要
         total_books = Book.objects.filter(user=user).count()
         total_favorites = BookFavorite.objects.filter(user=user).count()
-        total_reading_time = RecentReading.objects.filter(user=user).aggregate(
-            total_time=Sum('reading_duration')
+        total_reading_time = ReadingSession.objects.filter(user=user).aggregate(
+            total_time=Sum('duration_seconds')
         )['total_time'] or 0
         
         response_data['summary'] = {
@@ -2715,3 +2847,173 @@ def advanced_book_search(request):
     }
     
     return render(request, 'books/advanced_search.html', context)
+
+
+@login_required
+def enhanced_book_reader(request, book_id):
+    """增强的书籍阅读器视图 - 使用插件系统"""
+    try:
+        book = get_object_or_404(Book, id=book_id, user=request.user)
+        
+        # 自动检测书籍格式（如果需要）
+        if not book.format or book.format == 'unknown':
+            detected_format, detection_info = format_detector.detect_format(book.file.path)
+            if detected_format != 'unknown':
+                book.format = detected_format
+                book.save()
+                logger.info(f"自动检测书籍格式: {book.title} -> {detected_format}")
+        
+        # 获取章节和页面参数
+        chapter_number = int(request.GET.get('chapter', 1))
+        page_number = int(request.GET.get('page', 1))
+        
+        # 创建增强渲染器
+        renderer = EnhancedBookRenderer(book)
+        
+        # 渲染内容
+        render_result = renderer.render_chapter(chapter_number, page_number)
+        
+        # 获取目录
+        table_of_contents = renderer.get_table_of_contents()
+        
+        # 获取元数据
+        metadata = renderer.get_book_metadata()
+        
+        # 获取格式信息
+        format_info = format_detector.get_format_info(book.format)
+        
+        # 更新阅读进度
+        reading_progress, created = ReadingProgress.objects.get_or_create(
+            user=request.user,
+            book=book,
+            defaults={'current_chapter': chapter_number, 'current_position': page_number}
+        )
+        if not created:
+            reading_progress.current_chapter = chapter_number
+            reading_progress.current_position = page_number
+            reading_progress.last_read_at = timezone.now()
+            reading_progress.save()
+        
+        context = {
+            'book': book,
+            'render_result': render_result,
+            'table_of_contents': table_of_contents,
+            'metadata': metadata,
+            'format_info': format_info,
+            'current_chapter': chapter_number,
+            'current_page': page_number,
+            'reading_progress': reading_progress,
+            'renderer_type': render_result.get('renderer_type', 'unknown'),
+            'plugin_name': render_result.get('plugin_name', '未知插件'),
+            'plugin_version': render_result.get('plugin_version', ''),
+            'supports_pagination': render_result.get('supports_pagination', False),
+            'available_plugins': plugin_manager.get_plugin_info(),
+            'supported_formats': plugin_manager.get_supported_formats(),
+        }
+        
+        # 清理渲染器资源
+        renderer.cleanup()
+        
+        return render(request, 'books/enhanced_reader.html', context)
+        
+    except Exception as e:
+        logger.error(f"增强阅读器错误: {str(e)}")
+        messages.error(request, f'阅读器加载失败: {str(e)}')
+        return redirect('book_detail', book_id=book_id)
+
+
+@login_required
+def get_enhanced_chapter_content(request, book_id):
+    """AJAX获取增强渲染的章节内容"""
+    try:
+        book = get_object_or_404(Book, id=book_id, user=request.user)
+        
+        chapter_number = int(request.GET.get('chapter', 1))
+        page_number = int(request.GET.get('page', 1))
+        
+        # 创建增强渲染器
+        renderer = EnhancedBookRenderer(book)
+        
+        # 渲染内容
+        render_result = renderer.render_chapter(chapter_number, page_number)
+        
+        # 清理资源
+        renderer.cleanup()
+        
+        return JsonResponse({
+            'success': True,
+            'data': render_result
+        })
+        
+    except Exception as e:
+        logger.error(f"获取章节内容失败: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        })
+
+
+@login_required
+def detect_book_format_api(request, book_id):
+    """API检测书籍格式"""
+    try:
+        book = get_object_or_404(Book, id=book_id, user=request.user)
+        
+        # 检测格式
+        detected_format, detection_info = format_detector.detect_format(book.file.path)
+        
+        # 获取格式信息
+        format_info = format_detector.get_format_info(detected_format)
+        
+        # 更新书籍格式（如果检测到新格式）
+        if detected_format != 'unknown' and book.format != detected_format:
+            old_format = book.format
+            book.format = detected_format
+            book.save()
+            
+            return JsonResponse({
+                'success': True,
+                'detected_format': detected_format,
+                'old_format': old_format,
+                'format_updated': True,
+                'format_info': format_info,
+                'detection_info': detection_info
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'detected_format': detected_format,
+            'current_format': book.format,
+            'format_updated': False,
+            'format_info': format_info,
+            'detection_info': detection_info
+        })
+        
+    except Exception as e:
+        logger.error(f"格式检测失败: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        })
+
+
+@login_required
+def get_plugin_info_api(request):
+    """API获取插件信息"""
+    try:
+        plugin_info = plugin_manager.get_plugin_info()
+        supported_formats = plugin_manager.get_supported_formats()
+        
+        return JsonResponse({
+            'success': True,
+            'plugins': plugin_info,
+            'supported_formats': supported_formats,
+            'total_plugins': len(plugin_info)
+        })
+        
+    except Exception as e:
+        logger.error(f"获取插件信息失败: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        })

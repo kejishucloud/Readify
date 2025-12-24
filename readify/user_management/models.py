@@ -117,6 +117,18 @@ class UserPreferences(models.Model):
         ('balanced', '平衡'),
         ('detailed', '详细'),
     ], verbose_name='AI回答风格')
+
+    # 分类标准设置
+    category_standard = models.CharField(
+        max_length=20,
+        default='default',
+        choices=[
+            ('default', '默认分类标准'),
+            ('custom', '自定义分类标准'),
+        ],
+        verbose_name='分类标准'
+    )
+    custom_category_codes = models.JSONField(default=list, blank=True, verbose_name='自定义分类列表')
     
     created_at = models.DateTimeField(default=timezone.now, verbose_name='创建时间')
     updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
@@ -160,28 +172,29 @@ class UserAIConfig(models.Model):
     
     def get_headers(self):
         """获取API请求头"""
+        clean_key = (self.api_key or '').replace('\n', '').replace('\r', '').strip()
         headers = {
             'Content-Type': 'application/json',
         }
         
         if self.provider == 'openai':
-            headers['Authorization'] = f'Bearer {self.api_key}'
+            headers['Authorization'] = f'Bearer {clean_key}'
         elif self.provider == 'anthropic':
-            headers['x-api-key'] = self.api_key
+            headers['x-api-key'] = clean_key
             headers['anthropic-version'] = '2023-06-01'
         elif self.provider == 'google':
-            headers['Authorization'] = f'Bearer {self.api_key}'
+            headers['Authorization'] = f'Bearer {clean_key}'
         elif self.provider == 'azure':
-            headers['api-key'] = self.api_key
+            headers['api-key'] = clean_key
         else:  # custom - 支持多种认证方式
             # 检查API密钥格式，支持不同的认证方式
-            if self.api_key.startswith('Bearer '):
-                headers['Authorization'] = self.api_key
-            elif self.api_key.startswith('sk-'):
-                headers['Authorization'] = f'Bearer {self.api_key}'
+            if clean_key.startswith('Bearer '):
+                headers['Authorization'] = clean_key
+            elif clean_key.startswith('sk-'):
+                headers['Authorization'] = f'Bearer {clean_key}'
             else:
                 # 对于自定义API，直接使用Bearer认证
-                headers['Authorization'] = f'Bearer {self.api_key}'
+                headers['Authorization'] = f'Bearer {clean_key}'
         
         return headers
     
@@ -191,5 +204,10 @@ class UserAIConfig(models.Model):
             return f"{self.api_url.rstrip('/')}/messages"
         elif self.provider == 'google':
             return f"{self.api_url.rstrip('/')}/models/{self.model_id}:generateContent"
-        else:  # openai, azure, custom
-            return f"{self.api_url.rstrip('/')}/chat/completions" 
+        elif self.provider in ['openai', 'azure']:
+            return f"{self.api_url.rstrip('/')}/chat/completions"
+        else:  # custom，允许直接填写完整端点
+            normalized = self.api_url.rstrip('/')
+            if '/chat/' in normalized or normalized.endswith('/completions'):
+                return normalized
+            return f"{normalized}/chat/completions"
