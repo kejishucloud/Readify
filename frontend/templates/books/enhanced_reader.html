@@ -1,0 +1,634 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load custom_filters %}
+
+{% block title %}{{ book.title }} - 增强阅读器{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/main.css' %}">
+<style>
+    .enhanced-reader {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 24px;
+    }
+    
+    .reader-header {
+        background: var(--surface-color);
+        border-radius: var(--border-radius);
+        padding: 20px;
+        margin-bottom: 16px;
+        border: 1px solid var(--border-color);
+    }
+    
+    .reader-info {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+    }
+    
+    .book-info h1 {
+        margin: 0;
+        color: var(--dark-color);
+        font-size: 1.4rem;
+        font-weight: 600;
+    }
+    
+    .book-meta {
+        color: var(--secondary-color);
+        font-size: 0.9rem;
+    }
+    
+    .plugin-info {
+        background: #f8fafc;
+        padding: 6px 12px;
+        border-radius: 999px;
+        border: 1px solid var(--border-color);
+        font-size: 0.8rem;
+        color: var(--secondary-color);
+    }
+    
+    .plugin-badge {
+        background: rgba(15, 118, 110, 0.12);
+        color: var(--primary-color);
+        padding: 2px 8px;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        margin-left: 8px;
+        border: 1px solid rgba(15, 118, 110, 0.2);
+    }
+    
+    .reader-controls {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+    
+    .btn-control {
+        padding: 6px 12px;
+        border: 1px solid var(--border-color);
+        background: var(--surface-color);
+        border-radius: 999px;
+        cursor: pointer;
+        transition: var(--transition);
+        font-size: 0.85rem;
+        color: var(--dark-color);
+    }
+    
+    .btn-control:hover {
+        background: rgba(15, 118, 110, 0.08);
+        border-color: var(--primary-color);
+        color: var(--primary-color);
+    }
+    
+    .btn-control.active {
+        background: var(--primary-color);
+        color: white;
+        border-color: var(--primary-color);
+    }
+    
+    .reader-main {
+        display: grid;
+        grid-template-columns: 280px 1fr;
+        gap: 16px;
+    }
+    
+    .reader-sidebar {
+        width: auto;
+        flex-shrink: 0;
+    }
+    
+    .sidebar-section {
+        background: var(--surface-color);
+        border-radius: var(--border-radius);
+        margin-bottom: 12px;
+        border: 1px solid var(--border-color);
+    }
+    
+    .sidebar-header {
+        padding: 15px;
+        border-bottom: 1px solid var(--border-color);
+        font-weight: 600;
+        color: var(--dark-color);
+    }
+    
+    .sidebar-content {
+        padding: 15px;
+    }
+    
+    .toc-item {
+        padding: 8px 0;
+        cursor: pointer;
+        border-bottom: 1px solid rgba(229, 231, 235, 0.6);
+        transition: var(--transition);
+    }
+    
+    .toc-item:hover {
+        background: rgba(15, 118, 110, 0.06);
+    }
+    
+    .toc-item.current {
+        background: rgba(15, 118, 110, 0.12);
+        color: var(--primary-color);
+        font-weight: 600;
+    }
+    
+    .reader-content {
+        flex: 1;
+        background: var(--surface-color);
+        border-radius: var(--border-radius);
+        border: 1px solid var(--border-color);
+    }
+    
+    .content-header {
+        padding: 20px;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .chapter-title {
+        margin: 0;
+        color: var(--dark-color);
+        font-size: 1.2rem;
+        font-weight: 600;
+    }
+    
+    .chapter-nav {
+        display: flex;
+        gap: 10px;
+    }
+    
+    .content-body {
+        padding: 30px;
+        line-height: 1.8;
+        font-size: 1rem;
+        color: var(--dark-color);
+        min-height: 500px;
+    }
+    
+    .content-body p {
+        margin-bottom: 1.2em;
+        text-align: justify;
+    }
+    
+    .content-body h1, .content-body h2, .content-body h3 {
+        margin-top: 2em;
+        margin-bottom: 1em;
+        color: var(--dark-color);
+    }
+    
+    .loading-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(248, 250, 252, 0.9);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    }
+    
+    .loading-spinner {
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid var(--primary-color);
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    .format-info {
+        background: #f8fafc;
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius);
+        padding: 10px 12px;
+        margin-bottom: 12px;
+        color: var(--secondary-color);
+    }
+    
+    .format-badge {
+        background: var(--primary-color);
+        color: white;
+        padding: 2px 8px;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        margin-right: 8px;
+    }
+    
+    .error-message {
+        background: #fef2f2;
+        border: 1px solid #fecaca;
+        color: #991b1b;
+        padding: 15px;
+        border-radius: var(--border-radius);
+        margin: 20px;
+    }
+    
+    .metadata-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 5px 0;
+        border-bottom: 1px solid var(--border-color);
+    }
+    
+    .metadata-item:last-child {
+        border-bottom: none;
+    }
+    
+    .pagination-info {
+        text-align: center;
+        color: var(--secondary-color);
+        font-size: 0.9rem;
+        margin-top: 20px;
+    }
+    
+    @media (max-width: 768px) {
+        .reader-main {
+            grid-template-columns: 1fr;
+        }
+        
+        .reader-sidebar {
+            width: 100%;
+        }
+        
+        .reader-controls {
+            justify-content: center;
+        }
+        
+        .content-body {
+            padding: 20px;
+            font-size: 14px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="enhanced-reader">
+    <div class="reader-header">
+        <div class="reader-info">
+            <div class="book-info">
+                <h1>{{ book.title }}</h1>
+                <div class="book-meta">
+                    {% if book.author %}作者: {{ book.author }} | {% endif %}
+                    格式: {{ book.format|upper }}
+                    <span class="plugin-badge">{{ plugin_name }} v{{ plugin_version }}</span>
+                </div>
+            </div>
+            <div class="plugin-info">
+                渲染器: {{ renderer_type }}
+                {% if supports_pagination %}
+                    | 支持分页
+                {% endif %}
+            </div>
+        </div>
+        
+        {% if format_info %}
+        <div class="format-info">
+            <span class="format-badge">{{ format_info.name }}</span>
+            {{ format_info.description }}
+            {% if format_info.features %}
+                <div style="margin-top: 5px; font-size: 0.85em;">
+                    特性: {{ format_info.features|join:", " }}
+                </div>
+            {% endif %}
+        </div>
+        {% endif %}
+        
+        <div class="reader-controls">
+            <button class="btn-control" onclick="detectFormat()">
+                <i class="fas fa-search"></i> 检测格式
+            </button>
+            <button class="btn-control" onclick="showPluginInfo()">
+                <i class="fas fa-puzzle-piece"></i> 插件信息
+            </button>
+            <button class="btn-control" onclick="refreshContent()">
+                <i class="fas fa-sync"></i> 刷新
+            </button>
+            <select class="btn-control" onchange="changeDisplayMode(this.value)">
+                <option value="normal">普通模式</option>
+                <option value="night">夜间模式</option>
+                <option value="sepia">护眼模式</option>
+            </select>
+            <input type="range" class="btn-control" min="12" max="20" value="16" 
+                   onchange="changeFontSize(this.value)" title="字体大小">
+        </div>
+    </div>
+    
+    <div class="reader-main">
+        <div class="reader-sidebar">
+            {% if table_of_contents %}
+            <div class="sidebar-section">
+                <div class="sidebar-header">
+                    <i class="fas fa-list"></i> 目录
+                </div>
+                <div class="sidebar-content">
+                    {% for chapter in table_of_contents %}
+                    <div class="toc-item {% if chapter.chapter_number == current_chapter %}current{% endif %}"
+                         onclick="navigateToChapter({{ chapter.chapter_number }})">
+                        {{ chapter.title }}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+            
+            {% if metadata %}
+            <div class="sidebar-section">
+                <div class="sidebar-header">
+                    <i class="fas fa-info-circle"></i> 元数据
+                </div>
+                <div class="sidebar-content">
+                    {% for key, value in metadata.items %}
+                        {% if value %}
+                        <div class="metadata-item">
+                            <span>{{ key|title }}:</span>
+                            <span>{{ value|truncatechars:20 }}</span>
+                        </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+            
+            <div class="sidebar-section">
+                <div class="sidebar-header">
+                    <i class="fas fa-chart-line"></i> 阅读进度
+                </div>
+                <div class="sidebar-content">
+                    {% if table_of_contents %}
+                    <div class="metadata-item">
+                        <span>当前章节:</span>
+                        <span>{{ current_chapter }}/{{ table_of_contents|length }}</span>
+                    </div>
+                    {% endif %}
+                    {% if supports_pagination %}
+                    <div class="metadata-item">
+                        <span>当前页:</span>
+                        <span>{{ current_page }}</span>
+                    </div>
+                    {% endif %}
+                    <div class="metadata-item">
+                        <span>上次阅读:</span>
+                        <span>{{ reading_progress.last_read_at|date:"m/d H:i" }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="reader-content" id="reader-content">
+            {% if render_result.error %}
+            <div class="error-message">
+                <strong>渲染错误:</strong> {{ render_result.error }}
+            </div>
+            {% else %}
+            <div class="content-header">
+                <h2 class="chapter-title">
+                    {{ render_result.chapter_title|default:"章节内容" }}
+                </h2>
+                <div class="chapter-nav">
+                    {% if current_chapter > 1 %}
+                    <button class="btn-control" onclick="navigateToChapter({{ current_chapter|add:'-1' }})">
+                        <i class="fas fa-chevron-left"></i> 上一章
+                    </button>
+                    {% endif %}
+                    {% if table_of_contents and current_chapter < table_of_contents|length %}
+                    <button class="btn-control" onclick="navigateToChapter({{ current_chapter|add:'1' }})">
+                        下一章 <i class="fas fa-chevron-right"></i>
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="content-body" id="content-body">
+                {{ render_result.content|safe }}
+            </div>
+            
+            {% if supports_pagination and render_result.total_pages %}
+            <div class="pagination-info">
+                第 {{ current_page }} 页 / 共 {{ render_result.total_pages }} 页
+            </div>
+            {% endif %}
+            {% endif %}
+            
+            <div class="loading-overlay" id="loading-overlay" style="display: none;">
+                <div class="loading-spinner"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 插件信息模态框 -->
+<div class="modal fade" id="pluginInfoModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">插件信息</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" id="plugin-info-content">
+                <div class="text-center">
+                    <div class="loading-spinner"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/reader.js' %}"></script>
+<script>
+    let currentChapter = {{ current_chapter }};
+    let currentPage = {{ current_page }};
+    let bookId = {{ book.id }};
+    let supportsPagination = {{ supports_pagination|yesno:"true,false" }};
+    
+    // 章节导航
+    function navigateToChapter(chapterNumber) {
+        if (chapterNumber === currentChapter) return;
+        
+        showLoading();
+        const url = `{% url 'enhanced_book_reader' book.id %}?chapter=${chapterNumber}&page=1`;
+        window.location.href = url;
+    }
+    
+    // 显示加载状态
+    function showLoading() {
+        document.getElementById('loading-overlay').style.display = 'flex';
+    }
+    
+    // 隐藏加载状态
+    function hideLoading() {
+        document.getElementById('loading-overlay').style.display = 'none';
+    }
+    
+    // 检测格式
+    async function detectFormat() {
+        try {
+            showLoading();
+            const response = await fetch(`{% url 'detect_book_format_api' book.id %}`);
+            const data = await response.json();
+            
+            if (data.success) {
+                if (data.format_updated) {
+                    alert(`格式已更新: ${data.old_format} → ${data.detected_format}`);
+                    location.reload();
+                } else {
+                    alert(`当前格式: ${data.detected_format} (置信度: ${(data.detection_info.confidence * 100).toFixed(1)}%)`);
+                }
+            } else {
+                alert('格式检测失败: ' + data.error);
+            }
+        } catch (error) {
+            alert('检测过程中发生错误: ' + error.message);
+        } finally {
+            hideLoading();
+        }
+    }
+    
+    // 显示插件信息
+    async function showPluginInfo() {
+        try {
+            const response = await fetch('{% url "get_plugin_info_api" %}');
+            const data = await response.json();
+            
+            if (data.success) {
+                let html = `
+                    <h6>已加载插件 (${data.total_plugins}个)</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>插件名称</th>
+                                    <th>版本</th>
+                                    <th>支持格式</th>
+                                    <th>优先级</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+                
+                data.plugins.forEach(plugin => {
+                    html += `
+                        <tr>
+                            <td>${plugin.name}</td>
+                            <td><span class="badge badge-info">${plugin.version}</span></td>
+                            <td>${plugin.supported_formats.join(', ')}</td>
+                            <td>${plugin.priority}</td>
+                        </tr>
+                    `;
+                });
+                
+                html += `
+                            </tbody>
+                        </table>
+                    </div>
+                    <hr>
+                    <h6>支持的格式</h6>
+                    <p>${data.supported_formats.join(', ')}</p>
+                `;
+                
+                document.getElementById('plugin-info-content').innerHTML = html;
+                $('#pluginInfoModal').modal('show');
+            } else {
+                alert('获取插件信息失败: ' + data.error);
+            }
+        } catch (error) {
+            alert('获取插件信息时发生错误: ' + error.message);
+        }
+    }
+    
+    // 刷新内容
+    async function refreshContent() {
+        try {
+            showLoading();
+            const response = await fetch(`{% url 'get_enhanced_chapter_content' book.id %}?chapter=${currentChapter}&page=${currentPage}`);
+            const data = await response.json();
+            
+            if (data.success) {
+                document.getElementById('content-body').innerHTML = data.data.content;
+                document.querySelector('.chapter-title').textContent = data.data.chapter_title || '章节内容';
+            } else {
+                alert('刷新失败: ' + data.error);
+            }
+        } catch (error) {
+            alert('刷新过程中发生错误: ' + error.message);
+        } finally {
+            hideLoading();
+        }
+    }
+    
+    // 改变显示模式
+    function changeDisplayMode(mode) {
+        const contentBody = document.getElementById('content-body');
+        contentBody.className = 'content-body';
+        
+        switch (mode) {
+            case 'night':
+                contentBody.style.background = '#2c3e50';
+                contentBody.style.color = '#ecf0f1';
+                break;
+            case 'sepia':
+                contentBody.style.background = '#f7f3e9';
+                contentBody.style.color = '#5d4e37';
+                break;
+            default:
+                contentBody.style.background = 'white';
+                contentBody.style.color = '#333';
+        }
+    }
+    
+    // 改变字体大小
+    function changeFontSize(size) {
+        document.getElementById('content-body').style.fontSize = size + 'px';
+    }
+    
+    // 页面加载完成后初始化
+    document.addEventListener('DOMContentLoaded', function() {
+        // 自动隐藏加载状态
+        hideLoading();
+        
+        // 设置键盘快捷键
+        document.addEventListener('keydown', function(e) {
+            if (e.target.tagName.toLowerCase() === 'input' || e.target.tagName.toLowerCase() === 'textarea') {
+                return;
+            }
+            
+            switch (e.key) {
+                case 'ArrowLeft':
+                    if (currentChapter > 1) {
+                        navigateToChapter(currentChapter - 1);
+                    }
+                    break;
+                case 'ArrowRight':
+                    {% if table_of_contents %}
+                    if (currentChapter < {{ table_of_contents|length }}) {
+                        navigateToChapter(currentChapter + 1);
+                    }
+                    {% endif %}
+                    break;
+                case 'r':
+                    refreshContent();
+                    break;
+                case 'd':
+                    detectFormat();
+                    break;
+            }
+        });
+    });
+</script>
+{% endblock %}
