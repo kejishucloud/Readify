@@ -1,7 +1,9 @@
 import os
+import posixpath
 import zipfile
 import logging
 import mimetypes
+import xml.etree.ElementTree as ET
 from typing import List, Dict, Any, Optional
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
@@ -164,6 +166,166 @@ class BookProcessingService:
             title = title.replace(suffix, '').strip()
         
         return title or filename
+
+    def _extract_cover_if_missing(self, book: Book) -> None:
+        """为书籍提取封面（仅在未设置封面时）"""
+        if book.cover:
+            return
+
+        cover_result = self._extract_cover_image(book)
+        if not cover_result:
+            return
+
+        cover_bytes, extension = cover_result
+        if not extension:
+            extension = '.jpg'
+        if not extension.startswith('.'):
+            extension = f'.{extension}'
+
+        filename = f"book_{book.id}_cover{extension}"
+        try:
+            book.cover.save(filename, ContentFile(cover_bytes), save=True)
+            logger.info(f"已自动提取封面: 书籍《{book.title}》")
+        except Exception as e:
+            logger.warning(f"保存封面失败: {str(e)}")
+
+    def _extract_cover_image(self, book: Book) -> Optional[tuple]:
+        """根据文件类型提取封面"""
+        file_ext = book.get_file_extension()
+        if file_ext == '.epub':
+            return self._extract_epub_cover(book)
+        if file_ext == '.pdf':
+            return self._extract_pdf_cover(book)
+        return None
+
+    def _extract_epub_cover(self, book: Book) -> Optional[tuple]:
+        """提取EPUB封面"""
+        try:
+            with book.file.open('rb') as file_obj:
+                with zipfile.ZipFile(file_obj) as zip_file:
+                    if 'META-INF/container.xml' not in zip_file.namelist():
+                        return None
+
+                    container_xml = zip_file.read('META-INF/container.xml')
+                    container_root = ET.fromstring(container_xml)
+                    rootfile = container_root.find('.//{*}rootfile')
+                    if rootfile is None:
+                        return None
+
+                    opf_path = rootfile.attrib.get('full-path')
+                    if not opf_path:
+                        return None
+
+                    opf_xml = zip_file.read(opf_path)
+                    opf_root = ET.fromstring(opf_xml)
+                    manifest_items = opf_root.findall('.//{*}item')
+
+                    cover_id = None
+                    for meta in opf_root.findall('.//{*}meta'):
+                        if meta.attrib.get('name') == 'cover':
+                            cover_id = meta.attrib.get('content')
+                            if cover_id:
+                                break
+
+                    cover_item = None
+                    if cover_id:
+                        for item in manifest_items:
+                            if item.attrib.get('id') == cover_id:
+                                cover_item = item
+                                break
+
+                    if not cover_item:
+                        for item in manifest_items:
+                            properties = item.attrib.get('properties', '')
+                            if 'cover-image' in properties.split():
+                                cover_item = item
+                                break
+
+                    if not cover_item:
+                        for item in manifest_items:
+                            href = item.attrib.get('href', '').lower()
+                            media_type = item.attrib.get('media-type', '')
+                            item_id = item.attrib.get('id', '').lower()
+                            if media_type.startswith('image/') and ('cover' in href or 'cover' in item_id):
+                                cover_item = item
+                                break
+
+                    if not cover_item:
+                        return None
+
+                    href = cover_item.attrib.get('href')
+                    if not href:
+                        return None
+
+                    href = href.split('#')[0].lstrip('/')
+                    media_type = cover_item.attrib.get('media-type', '')
+                    opf_dir = posixpath.dirname(opf_path)
+                    cover_path = posixpath.normpath(posixpath.join(opf_dir, href)) if opf_dir else posixpath.normpath(href)
+
+                    if cover_path not in zip_file.namelist():
+                        if href in zip_file.namelist():
+                            cover_path = href
+                        else:
+                            return None
+
+                    cover_bytes = zip_file.read(cover_path)
+                    extension = self._media_type_to_extension(media_type)
+                    if not extension:
+                        extension = os.path.splitext(cover_path)[1].lower()
+                    return cover_bytes, extension or '.jpg'
+        except Exception as e:
+            logger.warning(f"EPUB封面提取失败: {str(e)}")
+            return None
+
+    def _extract_pdf_cover(self, book: Book) -> Optional[tuple]:
+        """提取PDF封面"""
+        try:
+            import fitz
+        except ImportError:
+            logger.warning("PyMuPDF未安装，无法提取PDF封面")
+            return None
+
+        doc = None
+        try:
+            file_path = None
+            try:
+                file_path = book.file.path
+            except Exception:
+                file_path = None
+
+            if file_path and os.path.exists(file_path):
+                doc = fitz.open(file_path)
+            else:
+                with book.file.open('rb') as file_obj:
+                    pdf_bytes = file_obj.read()
+                doc = fitz.open(stream=pdf_bytes, filetype='pdf')
+
+            if doc.page_count < 1:
+                return None
+
+            page = doc.load_page(0)
+            pix = page.get_pixmap(dpi=150)
+            return pix.tobytes("png"), '.png'
+        except Exception as e:
+            logger.warning(f"PDF封面提取失败: {str(e)}")
+            return None
+        finally:
+            if doc is not None:
+                try:
+                    doc.close()
+                except Exception:
+                    pass
+
+    def _media_type_to_extension(self, media_type: str) -> str:
+        """根据媒体类型推断扩展名"""
+        if not media_type:
+            return ''
+        if media_type == 'image/jpeg':
+            return '.jpg'
+        extension = mimetypes.guess_extension(media_type)
+        if extension == '.jpe':
+            return '.jpg'
+        return extension or ''
     
     def _extract_text_content(self, book: Book) -> str:
         """提取文本内容"""
@@ -462,30 +624,30 @@ class BookProcessingService:
 
     def _get_category_options(self) -> List[tuple]:
         """获取分类标准选项"""
-        categories = []
         try:
             from readify.user_management.models import UserPreferences
             preferences = UserPreferences.objects.filter(user=self.user).first()
             if preferences and preferences.category_standard == 'custom':
                 custom_codes = [code for code in preferences.custom_category_codes if isinstance(code, str)]
                 if custom_codes:
-                    categories = list(
+                    selected_categories = list(
                         BookCategory.objects.filter(code__in=custom_codes)
                         .order_by('name')
                         .values_list('code', 'name')
                     )
-                if categories:
-                    return categories
-                return BookCategory.CATEGORY_TYPES
-            return BookCategory.CATEGORY_TYPES
+                    if selected_categories:
+                        return selected_categories
+
+            default_categories = list(
+                BookCategory.objects.all()
+                .order_by('name')
+                .values_list('code', 'name')
+            )
+            if default_categories:
+                return default_categories
         except Exception as e:
             logger.warning(f"获取分类标准失败: {str(e)}")
-            categories = []
-        
-        if not categories:
-            categories = BookCategory.CATEGORY_TYPES
-        
-        return categories
+        return BookCategory.CATEGORY_TYPES
     
     def _get_book_text_for_classification(self, book: Book) -> str:
         """获取用于分类的书籍文本"""
@@ -666,6 +828,8 @@ class BookProcessingService:
     def create_book_chapters(self, book: Book) -> bool:
         """为书籍创建章节内容"""
         try:
+            self._extract_cover_if_missing(book)
+
             # 删除现有的章节内容
             BookContent.objects.filter(book=book).delete()
             

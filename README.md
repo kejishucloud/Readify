@@ -1,5 +1,5 @@
 # Readify - 智能阅读助手
-
+通过AI解决不同国家的书籍阅读困难，往往不同译者的书籍翻译质量参差不齐，传统翻译工具翻译过于生硬，极度影响获取知识的途径，现在借助强大的AI大模型实现书籍的无缝阅读
 ## 🚀 快速启动
 
 ### 环境要求
@@ -50,8 +50,6 @@ python optimize_project.py
 - **模型**: Qwen3-30B-A3B (40K上下文)
 - **状态**: 已启用并测试通过
 - **功能**: 智能摘要、问答、关键词提取、文本分析
-- **使用指南**: 查看 [AI_USAGE_GUIDE.md](AI_USAGE_GUIDE.md)
-
 ---
 
 ## 📖 项目介绍
@@ -206,7 +204,7 @@ Readify/
 ```
 
 ## 🎨 功能模块
-
+![img.png](docs/imgs/img.png)
 ### 书籍管理 (books)
 - 书籍上传和存储
 - 内容解析和处理
@@ -220,7 +218,7 @@ Readify/
 - 问答系统
 - 关键词提取
 - 任务队列管理
-
+![img_1.png](docs/imgs/img_1.png)
 ### TTS服务 (tts_service)
 - 文本转语音
 - 多语言支持
@@ -232,13 +230,15 @@ Readify/
 - 上下文理解
 - 翻译缓存
 - 批量翻译
-
+![img_4.png](docs/imgs/img_4.png)
+![img_5.png](docs/imgs/img_5.png)
 ### 用户管理 (user_management)
 - 用户认证
 - 个人资料管理
 - 阅读偏好设置
 - 数据统计
-
+![img_2.png](docs/imgs/img_2.png)
+![img_3.png](docs/imgs/img_3.png)
 ## 🔧 开发指南
 
 ### 添加新的电子书格式
