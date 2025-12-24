@@ -204,6 +204,7 @@ Readify/
 ```
 
 ## 🎨 功能模块
+
 ![img.png](docs/imgs/img.png)
 ### 书籍管理 (books)
 - 书籍上传和存储
@@ -218,6 +219,7 @@ Readify/
 - 问答系统
 - 关键词提取
 - 任务队列管理
+
 ![img_1.png](docs/imgs/img_1.png)
 ### TTS服务 (tts_service)
 - 文本转语音
@@ -230,6 +232,7 @@ Readify/
 - 上下文理解
 - 翻译缓存
 - 批量翻译
+
 ![img_4.png](docs/imgs/img_4.png)
 ![img_5.png](docs/imgs/img_5.png)
 ### 用户管理 (user_management)
@@ -237,6 +240,7 @@ Readify/
 - 个人资料管理
 - 阅读偏好设置
 - 数据统计
+
 ![img_2.png](docs/imgs/img_2.png)
 ![img_3.png](docs/imgs/img_3.png)
 ## 🔧 开发指南
