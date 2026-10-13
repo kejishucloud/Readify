@@ -66,7 +66,7 @@ def chapter_api(request, book_id, chapter_number):
         "chapter": {"number": chapter.chapter_number, "title": chapter.chapter_title, "content": chapter.content},
         "chapters": [{"number": x["chapter_number"], "title": x["chapter_title"]} for x in chapters],
         "progress": {"chapter": progress.current_chapter, "position": progress.current_position}
-        if progress else {"chapter": chapters[0]["number"], "position": 0},
+        if progress else {"chapter": chapters[0]["chapter_number"], "position": 0},
     })
     response["Cache-Control"] = "private, no-store"
     return response
