@@ -18,9 +18,12 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from readify.v2.views import reader_page
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('api/v2/', include('readify.v2.urls')),
+    path('books/<int:book_id>/v2/', reader_page, name='v2_reader'),
     path('', include('readify.books.urls')),
     path('ai/', include('readify.ai_services.urls')),
     # path('tts/', include('readify.tts_service.urls')),  # 暂时注释掉

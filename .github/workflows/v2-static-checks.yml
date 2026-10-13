@@ -1,0 +1,61 @@
+name: Readify V2 syntax checks
+
+on:
+  pull_request:
+  push:
+    branches: [main, feature/readify-v2-foundation]
+
+jobs:
+  react:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/reader-client
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install React dependencies
+        run: npm install --ignore-scripts
+      - name: Check TypeScript and bundle SPA
+        run: npm run build
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install CPU-only app dependencies
+        run: pip install -r requirements-v2-core.txt
+      - name: Generate the missing legacy migrations for an isolated temporary test DB
+        run: python manage.py makemigrations books ai_services translation_service tts_service user_management
+        env:
+          DEBUG: 'True'
+          SECRET_KEY: integration-test-only-key
+          ALLOWED_HOSTS: testserver,localhost
+      - name: Run Django checks and security regressions
+        run: |
+          python manage.py check
+          python manage.py test readify.v2 --verbosity 2
+        env:
+          DEBUG: 'True'
+          SECRET_KEY: integration-test-only-key
+          ALLOWED_HOSTS: testserver,localhost
+  static:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Compile all Python sources without installing GPU libraries
+        run: python -m compileall -q readify services
+      - name: Check browser JavaScript syntax
+        run: node --check frontend/static/js/reader-v2.js && node --check frontend/static/js/readify-sw.js
+      - name: Validate manifest JSON
+        run: python -m json.tool frontend/static/manifest.webmanifest > /dev/null

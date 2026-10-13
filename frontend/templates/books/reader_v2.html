@@ -1,0 +1,56 @@
+{% load static %}
+<!DOCTYPE html><html lang="zh-CN"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f5f1e9"><title>{{ book.title }} | Readify V2</title>
+<link rel="manifest" href="{% static 'manifest.webmanifest' %}">
+<link rel="stylesheet" href="{% static 'css/reader-v2.css' %}">
+<script src="{% static 'js/reader-v2.js' %}" defer></script>
+</head><body data-book-id="{{ book.id }}">
+<form id="csrf" hidden>{% csrf_token %}</form>
+<div class="app">
+<header class="topbar">
+  <div class="topbar-left"><a class="brand" href="{% url 'book_detail' book.id %}" aria-label="返回书籍详情">R<span> Readify</span></a>
+    <button type="button" id="toc-toggle" class="outline" aria-label="切换目录">☰</button>
+    <div class="book-name"><strong>{{ book.title }}</strong><small>{{ book.author|default:'电子书阅读' }}</small></div></div>
+  <div class="topbar-right"><span id="save-state" role="status">就绪</span>
+    <button id="save-note" type="button" class="outline">✎ 记笔记</button><button id="speak" type="button" class="outline">▶ 朗读</button>
+    <button id="settings-toggle" type="button" class="outline">⚙ 设置</button></div>
+</header>
+<div class="workspace">
+  <aside class="toc" id="toc"><div class="side-title">章节目录<button class="icon" id="toc-close" aria-label="关闭目录">×</button></div><nav id="chapters" aria-label="章节目录"></nav></aside>
+  <main class="reader" id="reader" tabindex="-1"><div class="paper">
+    <div class="eyebrow" id="chapter-caption">READIFY READER</div><h1 id="chapter-title">正在读取章节…</h1>
+    <p id="error" role="alert" hidden></p><article id="content" aria-label="章节正文"></article>
+    <nav class="page-nav"><button id="prev" type="button">← 上一章</button><span id="chapter-index"></span><button id="next" type="button">下一章 →</button></nav>
+  </div></main>
+  <aside class="settings" id="settings" hidden><div class="side-title">阅读设置<button class="icon" id="settings-close" aria-label="关闭设置">×</button></div><div class="settings-inner">
+    <fieldset><legend>我的笔记</legend><button class="outline wide" id="show-notes" type="button">查看本书笔记</button><div id="notes-list" class="notes-list" aria-live="polite"></div></fieldset><fieldset><legend>背景主题</legend><div class="theme-group">
+    <button data-reader-theme="paper" type="button">纸张</button>
+    <button data-reader-theme="warm" type="button">暖黄</button>
+    <button data-reader-theme="dark" type="button">深色</button></div></fieldset>
+    <label for="font">字号 <output id="font-label">20px</output></label><input id="font" type="range" min="15" max="32" value="20">
+    <label for="line">行高 <output id="line-label">1.9</output></label><input id="line" type="range" min="1.4" max="2.6" step=".1" value="1.9">
+    <fieldset><legend>语音模式</legend>
+      <label for="voice-mode">朗读方式</label><select id="voice-mode">
+      <option value="browser">设备系统语音</option><option value="clone" disabled>授权声音克隆</option><option value="cross_language" disabled>跨语言声音克隆</option><option value="instruct" disabled>情绪风格朗读</option></select>
+      <label for="voice">设备音色</label><select id="voice"><option value="">默认</option></select>
+      <label for="voice-style">朗读情绪</label><select id="voice-style"><option value="calm">平静</option><option value="warm">温柔</option><option value="cheerful">欢快</option><option value="serious">严肃</option></select><label for="clone-profile">授权音色</label><select id="clone-profile"><option value="">暂无</option></select>
+      <label for="rate">速度 <output id="rate-label">1.0×</output></label><input type="range" id="rate" min=".7" max="1.7" step=".1" value="1">
+      <button class="outline wide" id="add-voice" type="button">+ 添加授权声音</button>
+      <p class="hint">设备语音无需服务器。声音克隆需要独立部署 CosyVoice 服务；参考声音仅保存在私有目录。</p>
+    </fieldset>
+  </div></aside>
+</div>
+<footer class="footer"><span id="position">阅读进度</span><div class="meter"><span id="fill"></span></div><span id="percent">0%</span></footer>
+</div><div id="shade" hidden></div>
+<dialog id="voice-dialog" aria-labelledby="voice-heading"><form id="voice-form" method="dialog">
+  <div class="dialog-heading"><h2 id="voice-heading">添加授权声音</h2><button type="button" id="cancel-voice" class="icon" aria-label="关闭">×</button></div>
+  <p class="hint">仅允许使用本人声音或获明确授权的声音。上传 3–30 秒 WAV 文件，并填写音频所说的文本。</p>
+  <label for="voice-name">音色名称</label><input id="voice-name" name="name" required maxlength="80">
+  <label for="rights">音色来源</label><select id="rights" name="rights"><option value="self">本人声音</option><option value="licensed">已获明确授权</option></select>
+  <label for="prompt-text">参考音频对应文字</label><textarea id="prompt-text" name="prompt_text" maxlength="600" rows="3" required></textarea>
+  <label for="sample">WAV 参考音频（最大 8MB）</label><input id="sample" name="sample" type="file" accept=".wav,audio/wav" required>
+  <label class="consent"><input id="consent" type="checkbox" required> 我确认拥有使用此声音的权利，并同意用于个人主动发起的合成。</label>
+  <p id="voice-error" role="alert" hidden></p><div class="dialog-actions"><button id="close-voice" type="button">取消</button><button type="submit" class="primary">保存</button></div>
+</form></dialog>
+</body></html>

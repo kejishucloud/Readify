@@ -1,0 +1,35 @@
+# Secrets and environments
+.env
+.env.*
+!.env.example
+!.env.v2.example
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.coverage
+*.sqlite3
+db.sqlite3
+private_voice_samples/
+media/
+logs/
+temp/
+*.log
+# Audio and AI weights
+pretrained_models/
+models/
+*.pth
+*.pt
+*.ckpt
+*.safetensors
+*.onnx
+# Build outputs
+node_modules/
+dist/
+build/
+target/
+.DS_Store
+.idea/
+.vscode/

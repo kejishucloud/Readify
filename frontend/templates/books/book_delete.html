@@ -1,0 +1,5 @@
+{% extends 'base.html' %}{% block title %}删除书籍 - Readify{% endblock %}
+{% block content %}<main class="container py-5" style="max-width:700px">
+<h1>确认删除</h1><p>确定要删除《{{ book.title }}》吗？删除后无法恢复。</p>
+<form action="" method="post">{% csrf_token %}<button type="submit" class="btn btn-danger">确认删除</button>
+<a class="btn btn-secondary" href="{% url 'book_detail' book.id %}">取消</a></form></main>{% endblock %}
