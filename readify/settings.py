@@ -27,7 +27,7 @@ SECRET_KEY = config('SECRET_KEY', default='django-insecure-xhf&x6@xlty7)t9p21gv7
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=True, cast=bool)
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = [host.strip() for host in config('ALLOWED_HOSTS', default='localhost,127.0.0.1').split(',') if host.strip()]
 
 
 # Application definition
@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'readify.tts_service',
     'readify.translation_service',
     'readify.user_management',
+    'readify.v2.apps.ReadifyV2Config',
 ]
 
 MIDDLEWARE = [
@@ -95,6 +96,10 @@ DATABASES = {
     }
 }
 
+
+if not DEBUG and not config('SECRET_KEY', default=''):
+    from django.core.exceptions import ImproperlyConfigured
+    raise ImproperlyConfigured('生产环境必须设置 SECRET_KEY')
 
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
@@ -170,8 +175,16 @@ REST_FRAMEWORK = {
 }
 
 # CORS settings
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_ALL_ORIGINS = False
+CORS_ALLOWED_ORIGINS = [origin.strip() for origin in config('CORS_ALLOWED_ORIGINS', default='').split(',') if origin.strip()]
 CORS_ALLOW_CREDENTIALS = True
+CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in config('CSRF_TRUSTED_ORIGINS', default='').split(',') if origin.strip()]
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
+SECURE_CONTENT_TYPE_NOSNIFF = True
+READIFY_VOICE_WORKER_URL = config('READIFY_VOICE_WORKER_URL', default='')
+READIFY_VOICE_WORKER_TOKEN = config('READIFY_VOICE_WORKER_TOKEN', default='')
+PRIVATE_VOICE_STORAGE_ROOT = BASE_DIR / 'private_voice_samples'
 
 # AI Service settings
 OPENAI_API_KEY = config('OPENAI_API_KEY', default='')

@@ -21,6 +21,8 @@ from django.conf.urls.static import static
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('api/v2/', include('readify.v2.urls')),
+    path('books/<int:book_id>/v2/', __import__('readify.v2.views', fromlist=['reader_page']).reader_page, name='v2_reader'),
     path('', include('readify.books.urls')),
     path('ai/', include('readify.ai_services.urls')),
     # path('tts/', include('readify.tts_service.urls')),  # 暂时注释掉
