@@ -108,7 +108,7 @@ def voices_api(request):
     return JsonResponse({
         "browser_tts": True,
         "clone_available": worker.available,
-        "clone_modes": ["clone", "cross_language"] if worker.available else [],
+        "clone_modes": ["clone", "cross_language", "instruct"] if worker.available else [],
         "voices": list(profiles),
     })
 
@@ -162,10 +162,13 @@ def synthesize_api(request):
         voice_id = data.get("voice_id")
         if not isinstance(text, str) or not (1 <= len(text.strip()) <= 500):
             raise ValueError("单次合成文本必须为 1-500 字符")
-        if mode not in {"clone", "cross_language"} or type(voice_id) is not int:
+        if mode not in {"clone", "cross_language", "instruct"} or type(voice_id) is not int:
             raise ValueError("不支持的语音模式或音色编号")
+        style = data.get("style", "calm")
+        if style not in {"calm", "warm", "cheerful", "serious"}:
+            raise ValueError("不支持的语音风格")
         profile = get_object_or_404(VoiceProfile, pk=voice_id, user=request.user, is_active=True)
-        audio = CosyVoiceWorkerClient().synthesize(text=text, profile=profile, mode=mode)
+        audio = CosyVoiceWorkerClient().synthesize(text=text, profile=profile, mode=mode, style=style)
         response = HttpResponse(audio, content_type="audio/wav")
         response["Cache-Control"] = "private, no-store"
         response["Content-Disposition"] = 'inline; filename="readify-speech.wav"'

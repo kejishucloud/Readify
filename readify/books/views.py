@@ -162,7 +162,10 @@ def book_upload(request):
                 author=author,
                 description=description,
                 file=file,
-                cover=cover
+                cover=cover,
+                format=os.path.splitext(file.name)[1].lstrip('.').lower(),
+                file_size=file.size,
+                processing_status='pending'
             )
             
             # 处理书籍内容提取和AI分类

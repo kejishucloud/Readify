@@ -71,7 +71,7 @@ class CosyVoiceWorkerClient:
     def available(self) -> bool:
         return bool(self.url and self.token and self.url.startswith(("https://", "http://")))
 
-    def synthesize(self, *, text: str, profile, mode: str) -> bytes:
+    def synthesize(self, *, text: str, profile, mode: str, style: str = "calm") -> bytes:
         if not self.available:
             raise VoiceServiceError("尚未配置声音克隆服务，请使用设备语音模式")
         with PrivateVoiceStore().open_sample(profile.sample_key) as sample:
@@ -84,6 +84,7 @@ class CosyVoiceWorkerClient:
                             "text": text,
                             "prompt_text": profile.prompt_text,
                             "mode": mode,
+                            "style": style,
                         },
                         files={"reference": ("reference.wav", sample, "audio/wav")},
                     )

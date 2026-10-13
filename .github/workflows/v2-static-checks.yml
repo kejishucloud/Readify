@@ -1,0 +1,24 @@
+name: Readify V2 syntax checks
+
+on:
+  pull_request:
+  push:
+    branches: [main, feature/readify-v2-foundation]
+
+jobs:
+  static:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Compile all Python sources without installing GPU libraries
+        run: python -m compileall -q readify services
+      - name: Check browser JavaScript syntax
+        run: node --check frontend/static/js/reader-v2.js && node --check frontend/static/js/readify-sw.js
+      - name: Validate manifest JSON
+        run: python -m json.tool frontend/static/manifest.webmanifest > /dev/null
