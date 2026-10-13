@@ -13,7 +13,7 @@
     <button type="button" id="toc-toggle" class="outline" aria-label="切换目录">☰</button>
     <div class="book-name"><strong>{{ book.title }}</strong><small>{{ book.author|default:'电子书阅读' }}</small></div></div>
   <div class="topbar-right"><span id="save-state" role="status">就绪</span>
-    <button id="speak" type="button" class="outline">▶ 朗读</button>
+    <button id="save-note" type="button" class="outline">✎ 记笔记</button><button id="speak" type="button" class="outline">▶ 朗读</button>
     <button id="settings-toggle" type="button" class="outline">⚙ 设置</button></div>
 </header>
 <div class="workspace">
@@ -24,7 +24,7 @@
     <nav class="page-nav"><button id="prev" type="button">← 上一章</button><span id="chapter-index"></span><button id="next" type="button">下一章 →</button></nav>
   </div></main>
   <aside class="settings" id="settings" hidden><div class="side-title">阅读设置<button class="icon" id="settings-close" aria-label="关闭设置">×</button></div><div class="settings-inner">
-    <fieldset><legend>背景主题</legend><div class="theme-group">
+    <fieldset><legend>我的笔记</legend><button class="outline wide" id="show-notes" type="button">查看本书笔记</button><div id="notes-list" class="notes-list" aria-live="polite"></div></fieldset><fieldset><legend>背景主题</legend><div class="theme-group">
     <button data-reader-theme="paper" type="button">纸张</button>
     <button data-reader-theme="warm" type="button">暖黄</button>
     <button data-reader-theme="dark" type="button">深色</button></div></fieldset>
@@ -32,9 +32,9 @@
     <label for="line">行高 <output id="line-label">1.9</output></label><input id="line" type="range" min="1.4" max="2.6" step=".1" value="1.9">
     <fieldset><legend>语音模式</legend>
       <label for="voice-mode">朗读方式</label><select id="voice-mode">
-      <option value="browser">设备系统语音</option><option value="clone" disabled>授权声音克隆</option><option value="cross_language" disabled>跨语言声音克隆</option></select>
+      <option value="browser">设备系统语音</option><option value="clone" disabled>授权声音克隆</option><option value="cross_language" disabled>跨语言声音克隆</option><option value="instruct" disabled>情绪风格朗读</option></select>
       <label for="voice">设备音色</label><select id="voice"><option value="">默认</option></select>
-      <label for="clone-profile">授权音色</label><select id="clone-profile"><option value="">暂无</option></select>
+      <label for="voice-style">朗读情绪</label><select id="voice-style"><option value="calm">平静</option><option value="warm">温柔</option><option value="cheerful">欢快</option><option value="serious">严肃</option></select><label for="clone-profile">授权音色</label><select id="clone-profile"><option value="">暂无</option></select>
       <label for="rate">速度 <output id="rate-label">1.0×</output></label><input type="range" id="rate" min=".7" max="1.7" step=".1" value="1">
       <button class="outline wide" id="add-voice" type="button">+ 添加授权声音</button>
       <p class="hint">设备语音无需服务器。声音克隆需要独立部署 CosyVoice 服务；参考声音仅保存在私有目录。</p>

@@ -106,6 +106,8 @@ class ReaderV2 {
     }
     document.querySelectorAll("[data-reader-theme]").forEach(el=>el.onclick=()=>{this.prefs.theme=el.dataset.readerTheme;this.applyPrefs();this.savePrefs();});
     this.$("speak").onclick=()=>this.talking?this.stop():this.start();
+    this.$("save-note").onclick=()=>this.createNote();
+    this.$("show-notes").onclick=()=>this.showNotes();
     this.$("add-voice").onclick=()=>this.$("voice-dialog").showModal();
     this.$("cancel-voice").onclick=this.$("close-voice").onclick=()=>this.$("voice-dialog").close();
     this.$("voice-form").onsubmit=e=>this.createVoice(e);
@@ -137,6 +139,40 @@ class ReaderV2 {
       this.$("save-state").textContent="音色已保存";
     }catch(e){error.textContent=e.message;error.hidden=false;}
   }
+  async createNote() {
+    if (!this.chapter) return;
+    const selection=String(window.getSelection()?.toString() || "").slice(0,1000);
+    const parent=window.getSelection()?.anchorNode?.parentElement;
+    const indexEl=parent?.closest("#content p");
+    const position=indexEl?Number(indexEl.dataset.index):this.position;
+    const note=window.prompt("请输入笔记（可空，仅保存所选摘录）", "");
+    if (note===null) return;
+    if (!selection.trim() && !note.trim()) return;
+    try{
+      await this.json(`/api/v2/books/${this.id}/notes/create/`,{
+        method:"POST",headers:{"Content-Type":"application/json","X-CSRFToken":this.token},
+        body:JSON.stringify({chapter:this.chapter.number,position,selected_text:selection,content:note.slice(0,2000)})
+      });
+      this.$("save-state").textContent="笔记已保存";
+      window.getSelection()?.removeAllRanges();
+    }catch(e){this.error(e.message);}
+  }
+  async showNotes() {
+    if (!this.chapter) return;
+    try{
+      const result=await this.json(`/api/v2/books/${this.id}/notes/`);
+      const list=this.$("notes-list");list.replaceChildren();
+      if (!result.notes.length){list.textContent="尚无笔记。选中正文后点击「记笔记」。";return;}
+      result.notes.forEach(note=>{
+        const item=document.createElement("button");item.type="button";
+        item.textContent=`第 ${note.chapter} 章 · ${(note.selected_text||note.content).slice(0,70)}`;
+        item.onclick=()=>{this.closePanels();this.load(note.chapter).then(()=>{
+          this.paragraphs[Math.min(note.position,this.paragraphs.length-1)]?.scrollIntoView({block:"center"});
+        });};
+        list.append(item);
+      });
+    }catch(e){this.error(e.message);}
+  }
   async start() {
     if(!this.chapter||!this.paragraphs.length)return;
     if(this.$("voice-mode").value==="browser"&&!("speechSynthesis" in window)){this.error("当前设备不支持浏览器语音");return;}
@@ -158,7 +194,7 @@ class ReaderV2 {
     }
     try{
       const r=await fetch("/api/v2/tts/synthesize/",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json","X-CSRFToken":this.token},
-        body:JSON.stringify({mode,voice_id:Number(this.$("clone-profile").value),text:text.slice(0,500)})});
+        body:JSON.stringify({mode,style:this.$("voice-style").value,voice_id:Number(this.$("clone-profile").value),text:text.slice(0,500)})});
       if(!r.ok){const err=await r.json().catch(()=>({}));throw Error(err.error||"语音合成失败");}
       if(!this.talking)return;
       const url=URL.createObjectURL(await r.blob()),audio=new Audio(url);this.audio=audio;
@@ -174,4 +210,9 @@ class ReaderV2 {
     if(this.audio){this.audio.pause();this.audio.src="";this.audio=null;}
   }
 }
-document.addEventListener("DOMContentLoaded",()=>{if(document.body.dataset.bookId)new ReaderV2();});
+document.addEventListener("DOMContentLoaded",()=>{
+  if(document.body.dataset.bookId)new ReaderV2();
+  if("serviceWorker" in navigator && (location.protocol==="https:" || location.hostname==="localhost")){
+    navigator.serviceWorker.register("/static/js/readify-sw.js",{scope:"/static/"}).catch(()=>{});
+  }
+});

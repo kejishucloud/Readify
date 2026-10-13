@@ -1,0 +1,5 @@
+{% extends 'base.html' %}{% block title %}书籍笔记{% endblock %}
+{% block content %}<main class="container py-4"><h1>{{ book.title }} - 笔记</h1>
+<a class="btn btn-primary" href="{% url 'v2_reader' book.id %}">进入 V2 阅读器</a>
+{% for note in notes %}<article class="card p-3 my-2"><p>{{ note.selected_text }}</p><p>{{ note.note_content }}</p></article>{% empty %}<p>暂无笔记</p>{% endfor %}
+</main>{% endblock %}

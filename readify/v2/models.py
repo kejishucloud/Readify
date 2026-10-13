@@ -26,7 +26,7 @@ class VoiceProfile(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
-        indexes = [models.Index(fields=["user", "is_active"])]
+        indexes = [models.Index(fields=["user", "is_active"], name="v2_voice_user_active_idx")]
 
     def __str__(self):
         return self.name

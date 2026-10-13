@@ -1,0 +1,4 @@
+{% extends 'base.html' %}{% block title %}笔记集合{% endblock %}
+{% block content %}<main class="container py-4"><h1>笔记集合</h1>
+{% for collection in collections %}<article class="card p-3 my-2"><strong>{{ collection.name }}</strong><p>{{ collection.description }}</p></article>
+{% empty %}<p>暂未创建笔记集合。</p>{% endfor %}</main>{% endblock %}

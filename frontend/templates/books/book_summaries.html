@@ -1,0 +1,4 @@
+{% extends 'base.html' %}{% block title %}书籍摘要{% endblock %}
+{% block content %}<main class="container py-4"><h1>《{{ book.title }}》摘要</h1>
+{% for summary in summaries %}<article class="card p-3 my-3"><p>{{ summary.summary_content|default:summary.content }}</p></article>
+{% empty %}<p>暂无书籍总结。</p>{% endfor %}</main>{% endblock %}

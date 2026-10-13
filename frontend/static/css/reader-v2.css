@@ -31,3 +31,5 @@ dialog input:not([type=checkbox]),dialog textarea,dialog select{width:100%;borde
 @media(min-width:1101px){#toc-toggle,#toc-close,#settings-close{display:none}#shade{display:none!important}}
 @media(max-width:650px){.topbar{height:56px;padding:0 10px;gap:7px}.topbar-left,.topbar-right{gap:5px}.brand span,.book-name small,#save-state{display:none}.book-name strong{max-width:28vw}.outline{padding:8px;font-size:12px}.paper{width:calc(100% - 36px);padding:37px 0 65px}h1{font-size:26px;margin-bottom:28px}.settings{width:min(90vw,315px)}.toc{width:min(86vw,290px)}.footer{height:30px;padding:0 12px}#shade{inset:56px 0 30px}}
 @media(prefers-reduced-motion:reduce){.meter span{transition:none}}
+
+.notes-list{display:flex;flex-direction:column;gap:6px;margin-top:12px;max-height:230px;overflow:auto}.notes-list button{text-align:left;font-size:12px;line-height:1.5;overflow-wrap:anywhere}

@@ -1,0 +1,5 @@
+{% extends 'base.html' %}{% block content %}
+<div class="container py-5"><h1>新版阅读器已就绪</h1>
+<p>点击下方按钮使用支持手机、平板与桌面的 Readify V2 阅读器。</p>
+<a class="btn btn-primary" href="{% url 'v2_reader' book.id %}">打开新版阅读器</a></div>
+{% endblock %}

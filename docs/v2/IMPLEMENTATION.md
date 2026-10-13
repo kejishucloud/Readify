@@ -49,7 +49,7 @@ READIFY_VOICE_WORKER_TOKEN=replace-with-the-same-secret
 
 主 Django 和 GPU worker 若部署在不同机器上，必须使用 TLS 或受信任的私有隧道，不得把包含参考音频的 HTTP 流量直接暴露在公共网络。GPU worker 不允许直接公网无鉴权访问。语音质量、不同版本模型的 `inference_instruct2` 兼容性、并发限制须在 GPU 环境实测；没有运行 GPU 集成测试的情况不能宣称已验证克隆质量。
 
-## 当前已知的限制与第二阶段工作
+新增：V2 书籍笔记 API（私有摘录）以及本书笔记入口。旧版缺失的若干页面提供基本可访问模板，后续需要按正式设计系统进一步完善。\n\n## 当前已知的限制与第二阶段工作
 
 1. 目前手机、平板、桌面均可在浏览器访问响应式 Web，但未生成 Windows/macOS/Linux 原生安装包，也未发布 Android APK 或 iOS IPA。
 2. PWA 配置只提供基础 Manifest；尚未提供加密离线书籍下载、双向冲突解决与真实离线客户端。

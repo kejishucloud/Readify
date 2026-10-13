@@ -1,0 +1,3 @@
+{% extends 'base.html' %}{% block title %}阅读历史{% endblock %}
+{% block content %}<main class="container py-4"><h1>阅读历史</h1>
+<p>继续上次的阅读：</p><a class="btn btn-primary" href="{% url 'recent_books' %}">查看最近阅读</a></main>{% endblock %}

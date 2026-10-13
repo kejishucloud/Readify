@@ -29,5 +29,5 @@ urlpatterns = [
     path('ai-config/test/', views.test_ai_config_view, name='test_ai_config'),
     
     # 用户统计
-    path('stats/', views.get_user_stats, name='user_stats'),
+    path('stats/', views.get_user_stats_view, name='user_stats'),
 ] 

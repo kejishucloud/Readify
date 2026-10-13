@@ -1,0 +1,6 @@
+{% extends 'base.html' %}{% block title %}{{ book.title }} - 笔记{% endblock %}
+{% block content %}<main class="container py-4"><h1>《{{ book.title }}》的笔记</h1>
+<a href="{% url 'v2_reader' book.id %}" class="btn btn-primary mb-3">返回阅读并记笔记</a>
+{% for note in notes %}<section class="card p-3 my-2"><small>第 {{ note.chapter_number }} 章</small>
+<blockquote>{{ note.selected_text }}</blockquote><p>{{ note.note_content }}</p></section>
+{% empty %}<p>本书还没有笔记。</p>{% endfor %}</main>{% endblock %}

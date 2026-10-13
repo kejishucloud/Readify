@@ -13,7 +13,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 from django.views.decorators.cache import never_cache
 
-from readify.books.models import Book, BookContent, ReadingProgress
+from readify.books.models import Book, BookContent, ReadingProgress, BookNote
 from .models import VoiceProfile
 from .voice_service import CosyVoiceWorkerClient, PrivateVoiceStore, VoiceServiceError
 
@@ -177,3 +177,51 @@ def synthesize_api(request):
         return JsonResponse({"error": str(exc)}, status=400)
     except VoiceServiceError as exc:
         return JsonResponse({"error": str(exc)}, status=503)
+
+
+@login_required
+@require_GET
+@never_cache
+def notes_api(request, book_id):
+    """Read only the signed-in user's notes for a book."""
+    book = get_object_or_404(Book, pk=book_id, user=request.user)
+    notes = BookNote.objects.filter(user=request.user, book=book).order_by("-created_at")[:200]
+    response = JsonResponse({"notes": [
+        {"id": n.id, "chapter": n.chapter_number, "position": n.position_start,
+         "selected_text": n.selected_text, "content": n.note_content,
+         "type": n.note_type, "created_at": n.created_at.isoformat()}
+        for n in notes
+    ]})
+    response["Cache-Control"] = "private, no-store"
+    return response
+
+
+@login_required
+@require_POST
+def note_create_api(request, book_id):
+    """Create a user-owned note from the current chapter selection."""
+    book = get_object_or_404(Book, pk=book_id, user=request.user)
+    try:
+        data = parse_json(request)
+        chapter = data.get("chapter")
+        position = data.get("position")
+        selection = data.get("selected_text", "")
+        body = data.get("content", "")
+        if type(chapter) is not int or type(position) is not int or position < 0:
+            raise ValueError("笔记位置无效")
+        if not BookContent.objects.filter(book=book, chapter_number=chapter).exists():
+            raise ValueError("章节不存在")
+        if not isinstance(selection, str) or not isinstance(body, str):
+            raise ValueError("笔记内容必须为文字")
+        if len(selection) > 1000 or len(body) > 2000 or not (selection.strip() or body.strip()):
+            raise ValueError("笔记不能为空，选中文本最多1000字、笔记最多2000字")
+    except ValueError as exc:
+        return JsonResponse({"error": str(exc)}, status=400)
+    note = BookNote.objects.create(
+        user=request.user, book=book, chapter_number=chapter,
+        position_start=position, position_end=position,
+        selected_text=selection, note_content=body,
+        note_type="highlight" if selection.strip() else "note",
+        is_public=False,
+    )
+    return JsonResponse({"success": True, "id": note.pk}, status=201)
