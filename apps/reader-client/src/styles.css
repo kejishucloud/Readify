@@ -1,0 +1,21 @@
+:root{font-family:system-ui,-apple-system,"PingFang SC",sans-serif;color:#36322b;background:#f8f5ef}*{box-sizing:border-box}body{margin:0}button,input{font:inherit}button{cursor:pointer}a{color:inherit}
+.shell{height:100dvh;display:flex;flex-direction:column;background:#faf8f2;color:#37332b;--surface:#fffdf9;--line:#e8e4dd;--muted:#817d73;--focus:#eee8db}
+.shell.dark{background:#1a1f25;color:#ebe9e2;--surface:#242930;--line:#38414b;--muted:#a8abb0;--focus:#343a40}
+.header{height:64px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid var(--line);background:var(--surface);gap:15px}
+.logo{font-size:19px;cursor:pointer}.logo span{font-size:10px;opacity:.55}.head-title{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.actions{display:flex;gap:7px}.actions button,.side-footer button,.pager button{border:1px solid var(--line);border-radius:8px;padding:9px;background:var(--surface);color:inherit}
+.content-grid{display:grid;grid-template-columns:248px minmax(0,1fr) 248px;min-height:0;flex:1}
+.sidebar,.rightpane{background:var(--surface);overflow-y:auto;padding:20px;border-right:1px solid var(--line)}.rightpane{border-right:0;border-left:1px solid var(--line)}
+.sidebar h2,.rightpane h2{font-size:13px;margin:0 0 20px}
+.side-entry{display:flex;width:100%;flex-direction:column;text-align:left;border:0;background:transparent;color:inherit;border-radius:8px;padding:13px 11px;font-size:13px;line-height:1.5;overflow-wrap:anywhere}
+.side-entry small,.muted{color:var(--muted);line-height:1.8}.side-entry:hover,.side-entry.active{background:var(--focus)}
+.side-footer{margin-top:30px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:12px}
+.read-pane{min-width:0;overflow-y:auto}.page{max-width:770px;margin:auto;padding:clamp(40px,7vh,90px) 34px 110px}
+.eyebrow{font-size:11px;letter-spacing:.2em;color:var(--muted);margin:0 0 27px}h1{font:600 clamp(27px,3vw,38px)/1.45 Georgia,serif;margin:0 0 40px}
+article{font-family:Georgia,"Noto Serif CJK SC","Songti SC",serif;line-height:1.95;overflow-wrap:anywhere}
+article p{margin:0 0 1.2em;text-indent:2em;white-space:pre-wrap}.pager{margin-top:60px;padding-top:25px;border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}.pager span{font-size:12px;color:var(--muted)}
+.rightpane label{font-size:12px;display:block;margin:25px 0 12px}.rightpane input{width:100%}.rightpane p{font-size:12px}.rightpane a{font-size:12px}
+.bottom{height:31px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 20px;font-size:11px;color:var(--muted);background:var(--surface);border-top:1px solid var(--line)}
+.error{padding:14px;color:#7f3e2c;background:#f9e3d5;border-radius:9px}
+@media(max-width:1150px){.content-grid{grid-template-columns:210px minmax(0,1fr)}.rightpane{display:none}}
+@media(max-width:700px){.content-grid{grid-template-columns:1fr}.sidebar{display:none}.header{padding:0 10px;height:56px}.head-title{max-width:33vw}.page{padding:37px 19px 75px}.actions button{padding:7px}.bottom{height:30px}}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
