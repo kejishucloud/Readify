@@ -6,6 +6,29 @@ on:
     branches: [main, feature/readify-v2-foundation]
 
 jobs:
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install CPU-only app dependencies
+        run: pip install -r requirements-v2-core.txt
+      - name: Generate the missing legacy migrations for an isolated temporary test DB
+        run: python manage.py makemigrations books ai_services translation_service tts_service user_management
+        env:
+          DEBUG: 'True'
+          SECRET_KEY: integration-test-only-key
+          ALLOWED_HOSTS: testserver,localhost
+      - name: Run Django checks and security regressions
+        run: |
+          python manage.py check
+          python manage.py test readify.v2 --verbosity 2
+        env:
+          DEBUG: 'True'
+          SECRET_KEY: integration-test-only-key
+          ALLOWED_HOSTS: testserver,localhost
   static:
     runs-on: ubuntu-latest
     steps:

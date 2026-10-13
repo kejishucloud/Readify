@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from readify.v2.views import reader_page
 
 urlpatterns = [
     # 首页
@@ -16,7 +17,7 @@ urlpatterns = [
     path('books/<int:book_id>/notes/', views.notes_list, name='notes_list'),
     
     # 新的阅读器功能
-    path('books/<int:book_id>/reader/', views.book_reader, name='book_reader'),
+    path('books/<int:book_id>/reader/', reader_page, name='book_reader'),
     
     # 分类管理
     path('categories/', views.category_list, name='category_list'),

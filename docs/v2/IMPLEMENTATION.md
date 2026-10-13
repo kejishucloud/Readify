@@ -26,6 +26,12 @@ python manage.py runserver 127.0.0.1:8000
 
 当前主分支**未包含旧五个业务模块的历史迁移文件**。该脚本仅用于新开发库，自动生成 Django migrations。**已有业务数据的环境必须先备份、识别已存在表及迁移历史，人工审核迁移方案；不可直接在生产执行此脚本。** 所有旧业务迁移需要生成、审阅并提交后才能称为可重复部署。
 
+## Django 集成验证（GitHub Actions）
+
+新加入 `integration` Job：在干净的 Ubuntu/ Python 3.11 测试环境安装 CPU 依赖、生成**仅用于测试数据库**的旧模型迁移、执行 Django 系统检查和 V2 权限测试。
+
+若 CI 失败，优先查看 [GitHub Actions](https://github.com/kejishucloud/Readify/actions) 日志；不能仅以 Python compileall 通过认定系统可启动。
+
 ## 可选 CosyVoice GPU 服务
 
 参考上游官方项目 [QwenAudio/CosyVoice](https://github.com/QwenAudio/CosyVoice) 的 README 和 FastAPI 实现。请在隔离的 Python 环境按**指定版本**安装官方 CosyVoice 及其依赖、模型权重（本项目不复制或再分发上游代码和权重）。
